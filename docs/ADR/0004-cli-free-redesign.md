@@ -1,4 +1,4 @@
-# 4. CLI is a free redesign, not a drop-in of taskstream-cli
+# 4. CLI is a free redesign, not a drop-in of openproject-cli
 
 Date: 2026-07-08
 
@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-The predecessor `taskstream-cli` (Python/Click) has existing consumers: shell
+The predecessor `openproject-cli` (Python/Click) has existing consumers: shell
 scripts and an agent whose notes pin exact command syntax. The new CLI could aim
 for a drop-in-compatible interface or redesign freely. Multi-server support
 (ADR 0002) and proxy support already force new surface that the predecessor

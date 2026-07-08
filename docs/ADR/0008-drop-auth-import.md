@@ -9,7 +9,7 @@ Accepted
 ## Context
 
 ADR 0004 added an `auth import` subcommand that read the predecessor
-`taskstream-cli` (Python) config and token once into a new server profile, to
+`openproject-cli` (Python) config and token once into a new server profile, to
 avoid a forced re-login when migrating. That predecessor tool is now being
 retired, so there is no longer a maintained config to import from. The one-off
 migration for the remaining users is done manually via `server add` and

@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-The Python taskstream-cli exposed semantic error categories (`NotFound`, `Api`,
+The Python openproject-cli exposed semantic error categories (`NotFound`, `Api`,
 `Auth`) and printed results as JSON. The Rust rewrite has a smaller, sysexits-style
 `Error` enum, and the CLI needs a single, predictable output policy across all
 commands so that both humans and scripts can consume it.
