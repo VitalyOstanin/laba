@@ -77,6 +77,7 @@ mod tests {
 
     fn profile() -> ServerProfile {
         ServerProfile {
+            backend: Default::default(),
             base_url: "https://host.example/openproject".into(),
             timeout: 30,
             verify_ssl: true,
@@ -467,6 +468,7 @@ mod exec_tests {
 
     fn profile_for(url: &str) -> ServerProfile {
         ServerProfile {
+            backend: Default::default(),
             base_url: url.into(),
             timeout: 30,
             verify_ssl: true,
@@ -917,6 +919,7 @@ mod attachment_tests {
 
     fn profile_for(url: &str) -> ServerProfile {
         ServerProfile {
+            backend: Default::default(),
             base_url: url.into(),
             timeout: 30,
             verify_ssl: true,
@@ -1022,6 +1025,7 @@ mod custom_field_tests {
 
     fn profile_for(url: &str) -> ServerProfile {
         ServerProfile {
+            backend: Default::default(),
             base_url: url.into(),
             timeout: 30,
             verify_ssl: true,
@@ -1144,6 +1148,7 @@ mod retry_tests {
             .mount(&server)
             .await;
         let p = ServerProfile {
+            backend: Default::default(),
             base_url: server.uri(),
             timeout: 30,
             verify_ssl: true,

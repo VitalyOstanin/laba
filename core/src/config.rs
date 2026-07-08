@@ -5,9 +5,39 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::Error;
 
+/// Which tracker a server profile talks to.
+///
+/// Defaults to [`Backend::OpenProject`] so configs written before the field
+/// existed keep working.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Backend {
+    #[default]
+    OpenProject,
+    Github,
+}
+
+impl Backend {
+    /// Whether this backend tracks logged time (timelog aggregation applies).
+    pub fn supports_timelog(self) -> bool {
+        matches!(self, Backend::OpenProject)
+    }
+
+    /// Default polling interval in seconds. GitHub is polled less often because
+    /// `gh` shares the account's stricter API rate limit.
+    pub fn default_poll_secs(self) -> u64 {
+        match self {
+            Backend::OpenProject => 120,
+            Backend::Github => 900,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ServerProfile {
     pub base_url: String,
+    #[serde(default)]
+    pub backend: Backend,
     #[serde(default = "default_timeout")]
     pub timeout: u64,
     #[serde(default = "default_true")]
@@ -101,6 +131,7 @@ mod tests {
         cfg.servers.insert(
             "primary".into(),
             ServerProfile {
+                backend: Default::default(),
                 base_url: "https://host.example/openproject".into(),
                 timeout: 30,
                 verify_ssl: true,
@@ -119,6 +150,7 @@ mod tests {
             c.servers.insert(
                 (*n).into(),
                 ServerProfile {
+                    backend: Default::default(),
                     base_url: "u".into(),
                     timeout: 30,
                     verify_ssl: true,
@@ -145,5 +177,26 @@ mod tests {
     fn unknown_server_is_usage_error() {
         let c = cfg_with(&["a"], None);
         assert_eq!(c.resolve_server_name(Some("x")).unwrap_err().exit_code(), 2);
+    }
+
+    #[test]
+    fn backend_defaults_to_openproject_when_absent() {
+        let p: ServerProfile = serde_json::from_str(r#"{"base_url":"u"}"#).unwrap();
+        assert_eq!(p.backend, Backend::OpenProject);
+    }
+
+    #[test]
+    fn backend_parses_github() {
+        let p: ServerProfile =
+            serde_json::from_str(r#"{"base_url":"github.com","backend":"github"}"#).unwrap();
+        assert_eq!(p.backend, Backend::Github);
+    }
+
+    #[test]
+    fn backend_capabilities() {
+        assert!(Backend::OpenProject.supports_timelog());
+        assert!(!Backend::Github.supports_timelog());
+        assert_eq!(Backend::OpenProject.default_poll_secs(), 120);
+        assert_eq!(Backend::Github.default_poll_secs(), 900);
     }
 }

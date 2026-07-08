@@ -62,6 +62,7 @@ pub async fn run(cmd: ServerCmd, config_flag: &Option<PathBuf>) -> Result<(), Er
             cfg.servers.insert(
                 name.clone(),
                 ServerProfile {
+                    backend: Default::default(),
                     base_url: url,
                     timeout,
                     verify_ssl,

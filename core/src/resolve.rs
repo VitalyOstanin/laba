@@ -191,6 +191,7 @@ mod tests {
 
     fn profile_for(url: &str) -> ServerProfile {
         ServerProfile {
+            backend: Default::default(),
             base_url: url.into(),
             timeout: 30,
             verify_ssl: true,
