@@ -89,7 +89,7 @@ pub async fn run(
                 );
                 return Ok(());
             }
-            let client = Client::new(profile, token, None)?;
+            let client = Client::new(&name, profile, token, None)?;
             let me = client.get_json_retrying("users/me", 3).await?;
             println!(
                 "{}",

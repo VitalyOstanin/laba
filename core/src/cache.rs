@@ -51,6 +51,7 @@ struct CacheData {
 }
 
 /// Per-server two-tier cache of stable entities.
+#[derive(Debug)]
 pub struct Cache {
     server: String,
     path: PathBuf,
