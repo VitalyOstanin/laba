@@ -336,6 +336,129 @@ impl Client {
     }
 }
 
+/// True for a key of the form `customField<digits>` (non-empty digit suffix).
+fn is_custom_field_key(key: &str) -> bool {
+    match key.strip_prefix("customField") {
+        Some(rest) => !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit()),
+        None => false,
+    }
+}
+
+/// A scalar JSON value that is neither null nor the empty string.
+fn is_present_scalar(v: &serde_json::Value) -> bool {
+    match v {
+        serde_json::Value::Null => false,
+        serde_json::Value::String(s) => !s.is_empty(),
+        serde_json::Value::Array(_) | serde_json::Value::Object(_) => false,
+        _ => true,
+    }
+}
+
+/// Collect the raw custom-field values of a payload, preserving encounter order:
+/// scalar `customFieldN` keys from the top level, then linked `customFieldN`
+/// keys from `_links` (titles of the referenced resources).
+fn extract_raw_custom_fields(payload: &serde_json::Value) -> Vec<(String, serde_json::Value)> {
+    let mut out: Vec<(String, serde_json::Value)> = Vec::new();
+    if let Some(map) = payload.as_object() {
+        for (key, value) in map {
+            if is_custom_field_key(key) && is_present_scalar(value) {
+                out.push((key.clone(), value.clone()));
+            }
+        }
+    }
+    if let Some(links) = payload.get("_links").and_then(|l| l.as_object()) {
+        for (key, value) in links {
+            if !is_custom_field_key(key) {
+                continue;
+            }
+            let extracted = match value {
+                serde_json::Value::Array(items) => {
+                    let titles: Vec<serde_json::Value> = items
+                        .iter()
+                        .filter_map(|it| it.get("title").and_then(|t| t.as_str()))
+                        .map(|s| serde_json::Value::String(s.to_owned()))
+                        .collect();
+                    serde_json::Value::Array(titles)
+                }
+                serde_json::Value::Object(_) => match value.get("title") {
+                    Some(t) if !t.is_null() => t.clone(),
+                    _ => continue,
+                },
+                _ => continue,
+            };
+            out.push((key.clone(), extracted));
+        }
+    }
+    out
+}
+
+impl Client {
+    /// Expand a payload's custom fields into `{key, name, value}` objects. The
+    /// display names come from the payload's form schema (cached per server).
+    /// A payload with no custom-field values yields an empty vec and skips the
+    /// schema request.
+    pub async fn custom_fields(
+        &self,
+        payload: &serde_json::Value,
+    ) -> Result<Vec<serde_json::Value>, Error> {
+        let raw = extract_raw_custom_fields(payload);
+        if raw.is_empty() {
+            return Ok(vec![]);
+        }
+        let names = match payload
+            .get("_links")
+            .and_then(|l| l.get("schema"))
+            .and_then(|s| s.get("href"))
+            .and_then(|h| h.as_str())
+        {
+            Some(href) => self.custom_field_names(href).await,
+            None => std::collections::HashMap::new(),
+        };
+        let out = raw
+            .into_iter()
+            .map(|(key, value)| {
+                let name = names
+                    .get(&key)
+                    .map(|n| serde_json::Value::String(n.clone()))
+                    .unwrap_or(serde_json::Value::Null);
+                serde_json::json!({"key": key, "name": name, "value": value})
+            })
+            .collect();
+        Ok(out)
+    }
+
+    /// Map of `customFieldN -> display name` from a form schema href, cached per
+    /// server. A failed schema read yields an empty (uncached) map.
+    async fn custom_field_names(
+        &self,
+        schema_href: &str,
+    ) -> std::collections::HashMap<String, String> {
+        if let Some(cached) = self.cache().get_schema(schema_href) {
+            return cached;
+        }
+        let schema = match self
+            .request_json(reqwest::Method::GET, schema_href, None)
+            .await
+        {
+            Ok(v) => v,
+            Err(_) => return std::collections::HashMap::new(),
+        };
+        let mut map = std::collections::HashMap::new();
+        if let Some(obj) = schema.as_object() {
+            for (key, value) in obj {
+                if !is_custom_field_key(key) {
+                    continue;
+                }
+                if let Some(name) = value.get("name").and_then(|n| n.as_str()) {
+                    map.insert(key.clone(), name.to_owned());
+                }
+            }
+        }
+        self.cache().put_schema(schema_href, map.clone());
+        map
+    }
+}
+
 #[cfg(test)]
 mod exec_tests {
     use super::*;
@@ -888,6 +1011,115 @@ mod attachment_tests {
             .await
             .unwrap();
         assert_eq!(v["id"], 42);
+    }
+}
+
+#[cfg(test)]
+mod custom_field_tests {
+    use super::*;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    fn profile_for(url: &str) -> ServerProfile {
+        ServerProfile {
+            base_url: url.into(),
+            timeout: 30,
+            verify_ssl: true,
+            proxy: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn expands_scalar_and_linked_fields_with_names() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::env::set_var("OPENPROJECT_CACHE", tmp.path());
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/v3/work_packages/schemas/1-1"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "customField1": {"name": "Priority"},
+                "customField2": {"name": "Sprint"}
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let c = Client::new(
+            "cf-expand",
+            &profile_for(&server.uri()),
+            "t".into(),
+            Some("none"),
+        )
+        .unwrap();
+        let payload = serde_json::json!({
+            "customField1": "high",
+            "_links": {
+                "schema": {"href": "/api/v3/work_packages/schemas/1-1"},
+                "customField2": {"href": "/x", "title": "Sprint 5"}
+            }
+        });
+        let out = c.custom_fields(&payload).await.unwrap();
+        assert_eq!(out.len(), 2);
+        assert_eq!(
+            out[0],
+            serde_json::json!({"key": "customField1", "name": "Priority", "value": "high"})
+        );
+        assert_eq!(
+            out[1],
+            serde_json::json!({"key": "customField2", "name": "Sprint", "value": "Sprint 5"})
+        );
+    }
+
+    #[tokio::test]
+    async fn no_custom_fields_yields_empty_and_no_schema_request() {
+        let server = MockServer::start().await;
+        // No schema mock: any request would 404 and (if reached) still not fail,
+        // but the contract is that no request is made at all.
+        let c = Client::new(
+            "cf-empty",
+            &profile_for(&server.uri()),
+            "t".into(),
+            Some("none"),
+        )
+        .unwrap();
+        let payload = serde_json::json!({
+            "subject": "hi",
+            "_links": {"schema": {"href": "/api/v3/work_packages/schemas/1-1"}}
+        });
+        let out = c.custom_fields(&payload).await.unwrap();
+        assert!(out.is_empty());
+        assert_eq!(server.received_requests().await.unwrap().len(), 0);
+    }
+
+    #[tokio::test]
+    async fn linked_array_field_collects_titles() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/v3/schema"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+            .mount(&server)
+            .await;
+        let c = Client::new(
+            "cf-array",
+            &profile_for(&server.uri()),
+            "t".into(),
+            Some("none"),
+        )
+        .unwrap();
+        let payload = serde_json::json!({
+            "_links": {
+                "schema": {"href": "/api/v3/schema"},
+                "customField3": [
+                    {"href": "/a", "title": "A"},
+                    {"href": "/b", "title": "B"}
+                ]
+            }
+        });
+        let out = c.custom_fields(&payload).await.unwrap();
+        assert_eq!(out.len(), 1);
+        assert_eq!(
+            out[0],
+            serde_json::json!({"key": "customField3", "name": null, "value": ["A", "B"]})
+        );
     }
 }
 
