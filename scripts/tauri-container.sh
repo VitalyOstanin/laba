@@ -10,6 +10,11 @@
 #   container (its 127.0.0.1 address is not reachable from the container anyway).
 # - Named volumes cache cargo registry and the rustup toolchain across runs so
 #   `stable` (with rustfmt/clippy, per rust-toolchain.toml) is fetched once.
+# - cargo-nextest (project test runner) is not in the image and its default home
+#   (/usr/local/cargo/bin) is not a mounted volume, so it would vanish between
+#   runs. We install it into the toolchain bin, which lives on the persisted
+#   rustup volume, and put that bin on PATH. The install is self-healing: it runs
+#   once, then the check short-circuits.
 # - Rootless podman maps container root to the host user, so files created in
 #   the mounted repo are owned by the host user.
 # - The default seccomp profile is kept for build/test. Set TAURI_E2E=1 to relax
@@ -36,4 +41,12 @@ exec podman run --rm \
   -v taskstream-npm:/root/.npm \
   -e PATH=/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin \
   "$IMAGE" \
-  bash -c 'unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY; '"$*"
+  bash -c '
+    unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+    TCBIN="$(rustc --print sysroot 2>/dev/null)/bin"
+    export PATH="$TCBIN:$PATH"
+    if [ -d "$TCBIN" ] && ! command -v cargo-nextest >/dev/null 2>&1; then
+      curl -LsSf --retry 3 https://get.nexte.st/latest/linux \
+        | tar zxf - -C "$TCBIN" 2>/dev/null || true
+    fi
+    '"$*"

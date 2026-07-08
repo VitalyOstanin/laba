@@ -13,6 +13,7 @@
   --accent: #3b6ea5;
   --accent-text: #ffffff;
   --danger: #c0392b;
+  --warn: #b8860b;
   --ok: #2e8b57;
 }
 
@@ -41,6 +42,7 @@
     --accent: #5a92cc;
     --accent-text: #0f1216;
     --danger: #e06254;
+    --warn: #d1a12a;
     --ok: #57b989;
   }
 }
@@ -55,6 +57,7 @@
   --accent: #5a92cc;
   --accent-text: #0f1216;
   --danger: #e06254;
+  --warn: #d1a12a;
   --ok: #57b989;
 }
 
@@ -128,12 +131,24 @@ body {
   background: var(--danger);
 }
 
-.server-switch .bk {
+.bk {
   font-size: 11px;
   letter-spacing: 0.04em;
   padding: 1px 5px;
   border-radius: 4px;
   background: rgba(127, 127, 127, 0.18);
+}
+
+.server-switch button.off {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.server-switch .off-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
 }
 
 .banner.error {
@@ -143,6 +158,135 @@ body {
   border: 1px solid var(--danger);
   color: var(--danger);
   background: rgba(192, 57, 43, 0.08);
+}
+
+/* Timelog indicator */
+.timelog {
+  margin: 10px 14px 0;
+}
+
+.timelog-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.timelog-bar .tl-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.timelog-bar.status-red .tl-dot {
+  background: var(--danger);
+}
+.timelog-bar.status-yellow .tl-dot {
+  background: var(--warn);
+}
+.timelog-bar.status-green .tl-dot {
+  background: var(--ok);
+}
+.timelog-bar.status-over .tl-dot {
+  background: var(--accent);
+}
+
+.timelog-bar .tl-label {
+  font-weight: 600;
+}
+
+.timelog-bar .tl-nums {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.timelog-bar .tl-deficit {
+  color: var(--danger);
+}
+.timelog-bar .tl-surplus {
+  color: var(--accent);
+}
+
+.timelog .tl-hint {
+  margin: 6px 2px 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.timelog-panel {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.timelog-panel h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.timelog-panel .timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.timelog-panel .timeline li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 52px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+
+.timelog-panel .timeline .tl-date {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.timelog-panel .timeline .tl-delta {
+  font-size: 12px;
+}
+
+.timelog-panel .timeline li.deficit {
+  border-color: var(--danger);
+  background: rgba(192, 57, 43, 0.1);
+}
+.timelog-panel .timeline li.deficit .tl-delta {
+  color: var(--danger);
+}
+.timelog-panel .timeline li.surplus {
+  border-color: var(--accent);
+  background: rgba(59, 110, 165, 0.1);
+}
+.timelog-panel .timeline li.surplus .tl-delta {
+  color: var(--accent);
+}
+.timelog-panel .timeline li.met .tl-delta {
+  color: var(--ok);
 }
 
 .cols {
@@ -313,27 +457,46 @@ body {
   font-size: 12px;
 }
 
-.settings .poll-list {
+.settings .server-settings {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.settings .poll-list li {
-  display: flex;
-  align-items: center;
   gap: 10px;
 }
 
-.settings .poll-name {
-  flex: 1;
+.settings .server-settings li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
 }
 
-.settings .poll-list input[type="number"] {
-  width: 96px;
+.settings .server-settings li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.settings .server-settings li.off {
+  opacity: 0.55;
+}
+
+.settings .srv-name {
+  font-weight: 600;
+}
+
+.settings .srv-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.settings .srv-field input {
   padding: 4px 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -341,4 +504,12 @@ body {
   color: var(--text);
   font: inherit;
   font-variant-numeric: tabular-nums;
+}
+
+.settings .srv-field input[type="number"] {
+  width: 88px;
+}
+
+.settings .auto-hint {
+  color: var(--warn);
 }

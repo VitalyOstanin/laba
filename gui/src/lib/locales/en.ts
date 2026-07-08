@@ -22,6 +22,23 @@ export const en = {
   "settings.poll": "Poll interval per server (seconds)",
   "settings.poll.hint": "Leave blank to use the backend default.",
   "settings.saved": "Saved",
+  "settings.servers": "Servers",
+  "settings.server.enabled": "Enabled",
+  "settings.timelog": "Timelog start per server (YYYY-MM-DD)",
+  "settings.timelog.hint": "Each server counts from its own start; the plan runs from the earliest.",
+  "settings.timelog.auto": "auto — set your real start date",
+  "server.off": "off",
+  "server.disabled": "disabled",
+  "timelog.title": "Time logged",
+  "timelog.logged": "Logged",
+  "timelog.planned": "Planned",
+  "timelog.deficit": "Deficit",
+  "timelog.surplus": "Surplus",
+  "timelog.today": "today",
+  "timelog.timeline": "Timeline",
+  "timelog.notConfigured": "Set a timelog start date in settings.",
+  "timelog.defaultHint": "Using the first-launch date — set real start dates in settings.",
+  "timelog.excluded": "No time tracking:",
 } as const;
 
 export type Key = keyof typeof en;

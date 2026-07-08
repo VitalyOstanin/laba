@@ -1,28 +1,49 @@
 import { get } from "svelte/store";
-import { listServers, listTasks, listNotifications } from "./api";
-import { servers, byServer, activeServer } from "./store";
+import { listServers, listTasks, listNotifications, getTimelog } from "./api";
+import { servers, byServer, activeServer, timelog } from "./store";
 import type { ServerInfo } from "./types";
 
 const timers = new Map<string, ReturnType<typeof setInterval>>();
+let timelogTimer: ReturnType<typeof setInterval> | undefined;
+
+/** Aggregate timelog refresh interval (seconds). */
+const TIMELOG_INTERVAL_SECS = 120;
 
 /** Load the server list, seed the active server, and start per-server polling. */
 export async function startPolling(): Promise<void> {
   const list = await listServers();
   servers.set(list);
-  if (get(activeServer) === null) {
-    const def = list.find((s) => s.is_default) ?? list[0];
+  const enabled = list.filter((s) => s.enabled);
+  if (get(activeServer) === null || !enabled.some((s) => s.name === get(activeServer))) {
+    const def = enabled.find((s) => s.is_default) ?? enabled[0];
     activeServer.set(def ? def.name : null);
   }
-  for (const s of list) {
+  for (const s of enabled) {
     void pollOnce(s);
     const id = setInterval(() => void pollOnce(s), s.poll_secs * 1000);
     timers.set(s.name, id);
   }
+  void refreshTimelog();
+  timelogTimer = setInterval(
+    () => void refreshTimelog(),
+    TIMELOG_INTERVAL_SECS * 1000,
+  );
 }
 
 export function stopPolling(): void {
   for (const id of timers.values()) clearInterval(id);
   timers.clear();
+  if (timelogTimer) clearInterval(timelogTimer);
+  timelogTimer = undefined;
+}
+
+/** Refresh the aggregate timelog; keep the last value on failure. */
+export async function refreshTimelog(): Promise<void> {
+  try {
+    timelog.set(await getTimelog());
+  } catch {
+    // Keep the previous value on transient errors.
+  }
 }
 
 /** Refresh one server; on failure keep old data and record the error. */

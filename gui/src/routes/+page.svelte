@@ -6,6 +6,7 @@
   import TaskColumn from "$lib/components/TaskColumn.svelte";
   import NotificationColumn from "$lib/components/NotificationColumn.svelte";
   import StatusBanner from "$lib/components/StatusBanner.svelte";
+  import TimelogIndicator from "$lib/components/TimelogIndicator.svelte";
   import { t } from "$lib/i18n";
 
   onMount(startPolling);
@@ -21,6 +22,7 @@
   >
 </header>
 <StatusBanner error={state?.error ?? null} />
+<TimelogIndicator />
 <main class="cols">
   <NotificationColumn notifications={state?.notifications ?? []} />
   <TaskColumn tasks={state?.tasks ?? []} />

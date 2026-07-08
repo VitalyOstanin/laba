@@ -82,3 +82,17 @@ Backlog of ideas to evaluate. Not commitments.
       (time tracking) onto the shared resource + normalization layer; feed logged
       work into the cross-backend timelog. Public and self-hosted (custom base URL)
       instances, multiple YouTrack servers.
+
+- [ ] Timelog plan: account for a public-holiday and transferred-workday
+      calendar. The current plan in `core/src/timelog.rs` (`plan_minutes`) is
+      naive: 8h on every Mon-Fri, 0 on Sat/Sun. It ignores public holidays
+      (a holiday weekday should carry 0 plan) and government-decreed workday
+      transfers (a Saturday declared a workday should carry a plan). Reference
+      implementation to follow: `markdown-org-extract` — `src/holidays.rs`
+      (`HolidayCalendar::is_workday`, `workdays_between_exclusive`, binary search
+      over sorted holiday/workday arrays) backed by `holidays_ru.json` (per-year
+      `holidays`/`workdays` arrays of YYYY-MM-DD, compiled in via build.rs; RF
+      decree facts, not copyrightable). Replace the weekday check in
+      `plan_minutes`/`build_timeline` with a calendar lookup. Open questions:
+      per-server locale/calendar (RF vs other countries), how to ship/update the
+      calendar data, and letting the user override specific days.

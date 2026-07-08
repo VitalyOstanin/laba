@@ -1,20 +1,30 @@
 <script lang="ts">
   import { servers, activeServer, byServer } from "../store";
+  import { t } from "../i18n";
 </script>
 
 <div class="server-switch" role="group" aria-label="Active server">
   {#each $servers as s (s.name)}
     <button
       type="button"
+      class:off={!s.enabled}
       aria-current={$activeServer === s.name}
-      title={`${s.name} · ${s.base_url}`}
+      disabled={!s.enabled}
+      title={s.enabled
+        ? `${s.name} · ${s.base_url}`
+        : `${s.name} · ${$t("server.disabled")}`}
       onclick={() => activeServer.set(s.name)}
     >
-      <span class="dot" class:err={$byServer[s.name]?.error}></span>
+      {#if s.enabled}
+        <span class="dot" class:err={$byServer[s.name]?.error}></span>
+      {/if}
       {s.name}
       <span class="bk {s.backend === 'github' ? 'gh' : 'op'}">
         {s.backend === "github" ? "GH" : "OP"}
       </span>
+      {#if !s.enabled}
+        <span class="off-tag">{$t("server.off")}</span>
+      {/if}
     </button>
   {/each}
 </div>

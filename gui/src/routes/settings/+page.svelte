@@ -1,6 +1,12 @@
 <script lang="ts">
   import { get } from "svelte/store";
-  import { settings, servers, setPollOverride } from "$lib/store";
+  import {
+    settings,
+    servers,
+    setPollOverride,
+    setServerEnabled,
+    setTimelogStart,
+  } from "$lib/store";
   import { saveSettings } from "$lib/api";
   import { applyTheme } from "$lib/theme";
   import { language, t } from "$lib/i18n";
@@ -33,6 +39,14 @@
   }
   function setPoll(name: string, raw: string): void {
     settings.update((s) => setPollOverride(s, name, raw));
+    void persist();
+  }
+  function setEnabled(name: string, enabled: boolean): void {
+    settings.update((s) => setServerEnabled(s, name, enabled));
+    void persist();
+  }
+  function setStart(name: string, date: string): void {
+    settings.update((s) => setTimelogStart(s, name, date));
     void persist();
   }
 
@@ -96,24 +110,46 @@
   </fieldset>
 
   <fieldset>
-    <legend>{$t("settings.poll")}</legend>
-    <p class="hint">{$t("settings.poll.hint")}</p>
-    <ul class="poll-list">
+    <legend>{$t("settings.servers")}</legend>
+    <p class="hint">{$t("settings.poll.hint")} {$t("settings.timelog.hint")}</p>
+    <ul class="server-settings">
       {#each $servers as s (s.name)}
-        <li>
-          <span class="poll-name">{s.name}</span>
+        <li class:off={!s.enabled}>
+          <label class="srv-enable" title={$t("settings.server.enabled")}>
+            <input
+              type="checkbox"
+              checked={s.enabled}
+              onchange={(e) => setEnabled(s.name, e.currentTarget.checked)}
+            />
+          </label>
+          <span class="srv-name">{s.name}</span>
           <span class="bk {s.backend === 'github' ? 'gh' : 'op'}">
             {s.backend === "github" ? "GH" : "OP"}
           </span>
-          <input
-            type="number"
-            min="1"
-            inputmode="numeric"
-            aria-label={`${$t("settings.poll")}: ${s.name}`}
-            placeholder={String(s.poll_secs)}
-            value={$settings.poll_override[s.name] ?? ""}
-            oninput={(e) => setPoll(s.name, e.currentTarget.value)}
-          />
+          <label class="srv-field">
+            <span>{$t("settings.poll")}</span>
+            <input
+              type="number"
+              min="1"
+              inputmode="numeric"
+              placeholder={String(s.poll_secs)}
+              value={$settings.poll_override[s.name] ?? ""}
+              oninput={(e) => setPoll(s.name, e.currentTarget.value)}
+            />
+          </label>
+          {#if s.backend !== "github"}
+            <label class="srv-field">
+              <span>{$t("settings.timelog")}</span>
+              <input
+                type="date"
+                value={$settings.timelog_start[s.name]?.date ?? ""}
+                onchange={(e) => setStart(s.name, e.currentTarget.value)}
+              />
+              {#if $settings.timelog_start[s.name]?.auto}
+                <span class="auto-hint">{$t("settings.timelog.auto")}</span>
+              {/if}
+            </label>
+          {/if}
         </li>
       {/each}
     </ul>

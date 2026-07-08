@@ -1,14 +1,24 @@
 import { writable, derived } from "svelte/store";
-import type { ServerInfo, Task, Notification, Settings } from "./types";
+import type {
+  ServerInfo,
+  Task,
+  Notification,
+  Settings,
+  TimelogResult,
+} from "./types";
 
 export const defaultSettings: Settings = {
   theme: "system",
   language: "system",
   minimize_to_tray: true,
   poll_override: {},
+  timelog_start: {},
+  disabled_servers: [],
 };
 
 export const settings = writable<Settings>(defaultSettings);
+
+export const timelog = writable<TimelogResult | null>(null);
 
 /**
  * Return settings with the poll override for `name` set from a raw input value.
@@ -25,6 +35,30 @@ export function setPollOverride(
   if (Number.isFinite(n) && n > 0) po[name] = n;
   else delete po[name];
   return { ...s, poll_override: po };
+}
+
+/** Enable or disable a server without removing its profile. */
+export function setServerEnabled(
+  s: Settings,
+  name: string,
+  enabled: boolean,
+): Settings {
+  const set = new Set(s.disabled_servers);
+  if (enabled) set.delete(name);
+  else set.add(name);
+  return { ...s, disabled_servers: [...set].sort() };
+}
+
+/** Set a server's timelog start date, clearing the auto (first-launch) flag. */
+export function setTimelogStart(
+  s: Settings,
+  name: string,
+  date: string,
+): Settings {
+  const ts = { ...s.timelog_start };
+  if (date) ts[name] = { date, auto: false };
+  else delete ts[name];
+  return { ...s, timelog_start: ts };
 }
 
 export interface ServerState {
