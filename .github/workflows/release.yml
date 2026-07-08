@@ -1,0 +1,91 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to release (vX.Y.Z)
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  gate:
+    needs: [ci]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve tag
+        id: tag
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          version="$(scripts/release-validate-tag.sh "$tag")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Check version matches manifest
+        run: |
+          manifest="$(grep -m1 '^version' Cargo.toml | sed -E 's/.*"([^"]+)".*/\1/')"
+          test "$manifest" = "${{ steps.tag.outputs.version }}" || { echo "tag != Cargo.toml version" >&2; exit 1; }
+      - run: chmod +x scripts/*.sh && scripts/check-changelog.sh "${{ steps.tag.outputs.version }}"
+
+  package:
+    needs: [gate]
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release --locked --target ${{ matrix.target }} --bin taskstream
+      - name: Package
+        shell: bash
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          bin=taskstream
+          ext=""
+          [[ "${{ matrix.target }}" == *windows* ]] && ext=".exe"
+          dir="${bin}-${tag}-${{ matrix.target }}"
+          mkdir "$dir"
+          cp "target/${{ matrix.target }}/release/${bin}${ext}" "$dir/"
+          cp README.md LICENSE "$dir/"
+          if [[ "${{ matrix.target }}" == *windows* ]]; then
+            7z a "${dir}.zip" "$dir" >/dev/null
+            asset="${dir}.zip"
+          else
+            tar czf "${dir}.tar.gz" "$dir"
+            asset="${dir}.tar.gz"
+          fi
+          sha256sum "$asset" > "${asset}.sha256" 2>/dev/null || shasum -a 256 "$asset" > "${asset}.sha256"
+          echo "ASSET=$asset" >> "$GITHUB_ENV"
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          gh release create "$tag" --verify-tag --title "$tag" --notes "See CHANGELOG.md" 2>/dev/null || true
+          gh release upload "$tag" "$ASSET" "${ASSET}.sha256" --clobber
