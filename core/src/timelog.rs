@@ -20,6 +20,9 @@ use chrono::{Datelike, Duration, NaiveDate, Weekday};
 /// Planned minutes for a full weekday.
 pub const DAILY_NORM_MINUTES: i64 = 8 * 60;
 
+/// `chrono` format string for the `YYYY-MM-DD` dates used throughout timelog.
+const DATE_FMT: &str = "%Y-%m-%d";
+
 /// A single day in the work-log timeline (requirement 16).
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct DayCell {
@@ -75,12 +78,12 @@ pub fn today_local() -> NaiveDate {
 
 /// Parse a `YYYY-MM-DD` date, returning `None` on any other shape.
 pub fn parse_date(s: &str) -> Option<NaiveDate> {
-    NaiveDate::parse_from_str(s, "%Y-%m-%d").ok()
+    NaiveDate::parse_from_str(s, DATE_FMT).ok()
 }
 
 /// Format a date as `YYYY-MM-DD`.
 pub fn fmt(date: NaiveDate) -> String {
-    date.format("%Y-%m-%d").to_string()
+    date.format(DATE_FMT).to_string()
 }
 
 /// Resolve the `[start, today]` window from a user-configured start date.
@@ -131,7 +134,7 @@ pub fn build_timeline(entries: &[(String, i64)], start: NaiveDate, today: NaiveD
     let mut cells = Vec::new();
     let mut cur = start;
     while cur <= today {
-        let key = cur.format("%Y-%m-%d").to_string();
+        let key = cur.format(DATE_FMT).to_string();
         let plan = plan_minutes(cur);
         let logged = by_day.get(&key).copied().unwrap_or(0);
         cells.push(DayCell {
@@ -216,11 +219,11 @@ pub fn compute_status(
     // Weekly shortfall keyed by that week's Monday, to judge "fully filled".
     let mut week_deficit: std::collections::HashMap<NaiveDate, i64> = std::collections::HashMap::new();
     for c in &cells {
-        let d = NaiveDate::parse_from_str(&c.date, "%Y-%m-%d").expect("cell date is valid");
+        let d = NaiveDate::parse_from_str(&c.date, DATE_FMT).expect("cell date is valid");
         *week_deficit.entry(monday_of(d)).or_insert(0) += c.deficit_min;
     }
 
-    let today_key = today.format("%Y-%m-%d").to_string();
+    let today_key = today.format(DATE_FMT).to_string();
     let mut logged = 0;
     let mut planned = 0;
     let mut today_deficit = 0;
@@ -229,7 +232,7 @@ pub fn compute_status(
     let mut prev_deficit = false;
 
     for c in &cells {
-        let d = NaiveDate::parse_from_str(&c.date, "%Y-%m-%d").expect("cell date is valid");
+        let d = NaiveDate::parse_from_str(&c.date, DATE_FMT).expect("cell date is valid");
         let week = monday_of(d);
         let is_current_week = week == cur_week;
         // Drop fully-filled past weeks; the current week is always counted.
@@ -272,7 +275,7 @@ mod tests {
     use super::*;
 
     fn d(s: &str) -> NaiveDate {
-        NaiveDate::parse_from_str(s, "%Y-%m-%d").unwrap()
+        NaiveDate::parse_from_str(s, DATE_FMT).unwrap()
     }
 
     fn e(day: &str, minutes: i64) -> (String, i64) {

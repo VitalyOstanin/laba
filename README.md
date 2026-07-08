@@ -24,6 +24,26 @@ built on [Tauri](https://tauri.app/) with a shared Rust core.
   credentials and proxy settings (SOCKS5 / HTTP).
 - Tray summaries for assigned work packages and logged time.
 
+## Environment variables
+
+CLI request options can be supplied via the environment (equivalent to the
+corresponding global flags):
+
+| Variable             | Equivalent flag | Purpose                                  |
+|----------------------|-----------------|------------------------------------------|
+| `OPENPROJECT_SERVER` | `--server`      | Select the active server profile         |
+| `OPENPROJECT_TOKEN`  | `--token`       | API token override for this invocation   |
+| `OPENPROJECT_PROXY`  | `--proxy`       | Proxy override (`none` disables it)      |
+| `OPENPROJECT_RETRIES`| `--retries`     | Retry attempts for idempotent GETs       |
+
+File locations follow the XDG base directories and can be overridden:
+
+| Variable             | Overrides                              | Default                         |
+|----------------------|----------------------------------------|---------------------------------|
+| `OPENPROJECT_CACHE`  | Cache directory (user names, schemas)  | `$XDG_CACHE_HOME/taskstream`    |
+| `OPENPROJECT_STATE`  | State file (last-seen history)         | `$XDG_STATE_HOME/taskstream`    |
+| `XDG_CONFIG_HOME`    | Config directory (`config.json`, GUI settings) | `~/.config`             |
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
