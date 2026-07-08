@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
 use clap::Subcommand;
+use serde_json::json;
 use taskstream_core::cache::Cache;
 use taskstream_core::config::Config;
 use taskstream_core::error::Error;
-use serde_json::json;
 
 #[derive(Debug, Subcommand)]
 pub enum CacheCmd {

@@ -22,8 +22,7 @@ fn state_path() -> PathBuf {
                 .unwrap_or_default();
             home.join(".local").join("state")
         });
-    base.join("taskstream")
-        .join("assignee-history.json")
+    base.join("taskstream").join("assignee-history.json")
 }
 
 fn key(base_url: &str, uid: &str) -> String {
