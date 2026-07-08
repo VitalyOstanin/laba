@@ -142,7 +142,10 @@ pub async fn get_timelog() -> Result<TimelogResult, String> {
         };
         let client = match Client::new("", p, token, None) {
             Ok(c) => c,
-            Err(_) => continue,
+            Err(e) => {
+                eprintln!("taskstream: timelog skipped server '{name}': {e}");
+                continue;
+            }
         };
         let list = time::list(
             &client,
@@ -156,8 +159,13 @@ pub async fn get_timelog() -> Result<TimelogResult, String> {
             false,
         )
         .await;
-        let Ok(Value::Array(arr)) = list else {
-            continue;
+        let arr = match list {
+            Ok(Value::Array(arr)) => arr,
+            Ok(_) => continue,
+            Err(e) => {
+                eprintln!("taskstream: timelog fetch failed for server '{name}': {e}");
+                continue;
+            }
         };
         for te in arr {
             let day = te.get("spentOn").and_then(|v| v.as_str()).unwrap_or("");

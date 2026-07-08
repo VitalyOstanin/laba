@@ -8,6 +8,15 @@
 
   let { children } = $props();
 
+  onMount(() => {
+    // Surface otherwise-silent async failures in the webview console.
+    const onRejection = (e: PromiseRejectionEvent) => {
+      console.error("Unhandled promise rejection:", e.reason);
+    };
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => window.removeEventListener("unhandledrejection", onRejection);
+  });
+
   onMount(async () => {
     try {
       const s = await getSettings();
