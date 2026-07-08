@@ -5,5 +5,5 @@
 </script>
 
 {#if error}
-  <div class="banner error" role="alert">{t("error.prefix")}: {error}</div>
+  <div class="banner error" role="alert">{$t("error.prefix")}: {error}</div>
 {/if}

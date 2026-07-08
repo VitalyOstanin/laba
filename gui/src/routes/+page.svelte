@@ -6,6 +6,7 @@
   import TaskColumn from "$lib/components/TaskColumn.svelte";
   import NotificationColumn from "$lib/components/NotificationColumn.svelte";
   import StatusBanner from "$lib/components/StatusBanner.svelte";
+  import { t } from "$lib/i18n";
 
   onMount(startPolling);
   onDestroy(stopPolling);
@@ -13,7 +14,12 @@
   const state = $derived($activeServer ? $byServer[$activeServer] : undefined);
 </script>
 
-<header class="topbar"><ServerSwitcher /></header>
+<header class="topbar">
+  <ServerSwitcher />
+  <a class="settings-link" href="/settings" aria-label={$t("nav.settings")}
+    >{$t("nav.settings")}</a
+  >
+</header>
 <StatusBanner error={state?.error ?? null} />
 <main class="cols">
   <NotificationColumn notifications={state?.notifications ?? []} />

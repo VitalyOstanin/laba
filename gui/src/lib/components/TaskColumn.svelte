@@ -8,11 +8,11 @@
   const shown = $derived(filterTasks(tasks, $filterText));
 </script>
 
-<section class="card" aria-label={t("col.tasks")}>
-  <header><h2>{t("col.tasks")}</h2></header>
+<section class="card" aria-label={$t("col.tasks")}>
+  <header><h2>{$t("col.tasks")}</h2></header>
   <FilterRow count={shown.length} />
   {#if shown.length === 0}
-    <p class="empty">{t("empty.tasks")}</p>
+    <p class="empty">{$t("empty.tasks")}</p>
   {:else}
     <ul class="list">
       {#each shown as task (task.id)}

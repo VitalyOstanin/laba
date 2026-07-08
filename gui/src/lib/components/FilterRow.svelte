@@ -8,8 +8,8 @@
 <div class="filterbar">
   <input
     type="search"
-    aria-label={t("filter.placeholder")}
-    placeholder={t("filter.placeholder")}
+    aria-label={$t("filter.placeholder")}
+    placeholder={$t("filter.placeholder")}
     bind:value={$filterText}
   />
   <span class="filtercount">{count}</span>

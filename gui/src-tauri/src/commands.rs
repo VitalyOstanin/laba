@@ -5,6 +5,7 @@ use serde_json::Value;
 use taskstream_core::backend;
 use taskstream_core::config::{default_config_path, Backend, Config};
 use taskstream_core::secrets::Secrets;
+use taskstream_core::settings::{default_settings_path, Settings};
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct ServerInfo {
@@ -22,8 +23,9 @@ fn backend_str(b: Backend) -> &'static str {
     }
 }
 
-/// Build the server list for the UI switcher (pure, testable).
-pub fn server_infos(cfg: &Config) -> Vec<ServerInfo> {
+/// Build the server list for the UI switcher (pure, testable). The effective
+/// poll interval reflects any per-server override in settings.
+pub fn server_infos(cfg: &Config, settings: &Settings) -> Vec<ServerInfo> {
     cfg.servers
         .iter()
         .map(|(name, p)| ServerInfo {
@@ -31,7 +33,7 @@ pub fn server_infos(cfg: &Config) -> Vec<ServerInfo> {
             base_url: p.base_url.clone(),
             backend: backend_str(p.backend).into(),
             is_default: cfg.default_server.as_deref() == Some(name.as_str()),
-            poll_secs: p.backend.default_poll_secs(),
+            poll_secs: settings.effective_poll_secs(name, p.backend),
         })
         .collect()
 }
@@ -40,9 +42,25 @@ fn load_cfg() -> Result<Config, String> {
     Config::load(&default_config_path()).map_err(|e| e.to_string())
 }
 
+fn load_settings() -> Result<Settings, String> {
+    Settings::load(&default_settings_path()).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub fn list_servers() -> Result<Vec<ServerInfo>, String> {
-    Ok(server_infos(&load_cfg()?))
+    Ok(server_infos(&load_cfg()?, &load_settings()?))
+}
+
+#[tauri::command]
+pub fn get_settings() -> Result<Settings, String> {
+    load_settings()
+}
+
+#[tauri::command]
+pub fn save_settings(settings: Settings) -> Result<(), String> {
+    settings
+        .save(&default_settings_path())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -121,7 +139,7 @@ mod tests {
 
     #[test]
     fn server_infos_lists_all_with_backend_and_default() {
-        let infos = server_infos(&cfg());
+        let infos = server_infos(&cfg(), &Settings::default());
         assert_eq!(infos.len(), 2);
         let work = infos.iter().find(|i| i.name == "work").unwrap();
         assert_eq!(work.backend, "openproject");
@@ -130,6 +148,18 @@ mod tests {
         let gh = infos.iter().find(|i| i.name == "gh").unwrap();
         assert_eq!(gh.backend, "github");
         assert!(!gh.is_default);
+        assert_eq!(gh.poll_secs, 900);
+    }
+
+    #[test]
+    fn server_infos_apply_poll_override() {
+        let mut settings = Settings::default();
+        settings.poll_override.insert("work".into(), 300);
+        let infos = server_infos(&cfg(), &settings);
+        let work = infos.iter().find(|i| i.name == "work").unwrap();
+        assert_eq!(work.poll_secs, 300);
+        // Non-overridden server keeps its backend default.
+        let gh = infos.iter().find(|i| i.name == "gh").unwrap();
         assert_eq!(gh.poll_secs, 900);
     }
 }

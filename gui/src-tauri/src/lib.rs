@@ -6,6 +6,15 @@ use tauri::{
     Manager,
 };
 
+/// Read the "hide to tray on close" preference, defaulting to true when
+/// settings cannot be read.
+fn minimize_to_tray() -> bool {
+    use taskstream_core::settings::{default_settings_path, Settings};
+    Settings::load(&default_settings_path())
+        .map(|s| s.minimize_to_tray)
+        .unwrap_or(true)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -30,17 +39,22 @@ pub fn run() {
                 .build(app)?;
             Ok(())
         })
-        // Closing the window hides it to the tray instead of quitting.
+        // Closing the window hides it to the tray unless the user turned that
+        // off in settings, in which case it quits.
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                let _ = window.hide();
-                api.prevent_close();
+                if minimize_to_tray() {
+                    let _ = window.hide();
+                    api.prevent_close();
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![
             commands::list_servers,
             commands::list_tasks,
             commands::list_notifications,
+            commands::get_settings,
+            commands::save_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

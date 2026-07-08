@@ -9,6 +9,7 @@ pub mod normalize;
 pub mod resolve;
 pub mod resources;
 pub mod secrets;
+pub mod settings;
 pub mod state;
 
 pub use error::Error;

@@ -1,6 +1,9 @@
-/* Theme tokens. The app follows the system light/dark preference; 3a has no
-   in-app toggle. Components are styled through these tokens only. */
-:root {
+/* Theme tokens. The app follows the system light/dark preference by default;
+   settings (3b) can force light or dark via a `data-theme` attribute on the
+   root, which overrides the media query. Components are styled through these
+   tokens only. */
+:root,
+:root[data-theme="light"] {
   --bg: #f4f5f7;
   --surface: #ffffff;
   --surface-2: #eceef1;
@@ -11,7 +14,9 @@
   --accent-text: #ffffff;
   --danger: #c0392b;
   --ok: #2e8b57;
+}
 
+:root {
   --radius: 8px;
   --gap: 12px;
 
@@ -23,8 +28,10 @@
   background: var(--bg);
 }
 
+/* Dark tokens: applied when the OS prefers dark and no explicit choice is set,
+   or when the user forces dark. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --bg: #16191d;
     --surface: #1f242a;
     --surface-2: #262c33;
@@ -38,6 +45,19 @@
   }
 }
 
+:root[data-theme="dark"] {
+  --bg: #16191d;
+  --surface: #1f242a;
+  --surface-2: #262c33;
+  --border: #333a42;
+  --text: #e6e9ed;
+  --text-dim: #9aa4b0;
+  --accent: #5a92cc;
+  --accent-text: #0f1216;
+  --danger: #e06254;
+  --ok: #57b989;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -49,9 +69,27 @@ body {
 }
 
 .topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+}
+
+.settings-link {
+  flex: none;
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.settings-link:hover {
+  color: var(--text);
+  background: var(--surface-2);
 }
 
 .server-switch {
@@ -206,4 +244,101 @@ body {
   padding: 18px 12px;
   color: var(--text-dim);
   text-align: center;
+}
+
+/* Settings screen */
+.settings {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px 14px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.settings-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.settings-head h1 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.settings-head .back {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.settings-head .saved {
+  color: var(--ok);
+  font-size: 12px;
+}
+
+.settings fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 12px 14px;
+}
+
+.settings legend {
+  padding: 0 6px;
+  color: var(--text-dim);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.settings .choices {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.settings .choices label,
+.settings .toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.settings .hint {
+  margin: 0 0 10px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.settings .poll-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings .poll-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings .poll-name {
+  flex: 1;
+}
+
+.settings .poll-list input[type="number"] {
+  width: 96px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
 }

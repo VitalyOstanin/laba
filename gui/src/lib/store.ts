@@ -1,5 +1,31 @@
 import { writable, derived } from "svelte/store";
-import type { ServerInfo, Task, Notification } from "./types";
+import type { ServerInfo, Task, Notification, Settings } from "./types";
+
+export const defaultSettings: Settings = {
+  theme: "system",
+  language: "system",
+  minimize_to_tray: true,
+  poll_override: {},
+};
+
+export const settings = writable<Settings>(defaultSettings);
+
+/**
+ * Return settings with the poll override for `name` set from a raw input value.
+ * A blank or non-positive value clears the override (server falls back to its
+ * backend default).
+ */
+export function setPollOverride(
+  s: Settings,
+  name: string,
+  raw: string,
+): Settings {
+  const n = parseInt(raw, 10);
+  const po = { ...s.poll_override };
+  if (Number.isFinite(n) && n > 0) po[name] = n;
+  else delete po[name];
+  return { ...s, poll_override: po };
+}
 
 export interface ServerState {
   tasks: Task[];
