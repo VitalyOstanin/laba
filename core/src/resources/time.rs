@@ -105,6 +105,19 @@ pub async fn list(
     Ok(Value::Array(out))
 }
 
+/// List the available time-entry activity types (`{id, name}`), for pickers.
+/// The activities endpoint is not paginated.
+pub async fn list_activities(client: &Client) -> Result<Value, Error> {
+    let payload = client
+        .request_json(reqwest::Method::GET, "time_entries/activities", None)
+        .await?;
+    let out: Vec<Value> = normalize::collection(&payload)
+        .iter()
+        .map(|e| json!({"id": e.get("id").cloned().unwrap_or(Value::Null), "name": e.get("name").cloned().unwrap_or(Value::Null)}))
+        .collect();
+    Ok(Value::Array(out))
+}
+
 /// Fetch a single time entry by id.
 pub async fn get(client: &Client, id: i64, raw: bool) -> Result<Value, Error> {
     let payload = client
@@ -392,6 +405,26 @@ mod tests {
                 && spent[..4].bytes().all(|b| b.is_ascii_digit()),
             "spentOn not YYYY-MM-DD: {spent}"
         );
+    }
+
+    #[tokio::test]
+    async fn list_activities_returns_id_and_name() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/v3/time_entries/activities"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "_embedded": {"elements": [
+                    {"id": 1, "name": "Development"},
+                    {"id": 2, "name": "Testing"}
+                ]}
+            })))
+            .mount(&server)
+            .await;
+        let c = client_for(&server, "te-activities");
+        let out = list_activities(&c).await.unwrap();
+        let arr = out.as_array().unwrap();
+        assert_eq!(arr.len(), 2);
+        assert_eq!(arr[0], json!({"id": 1, "name": "Development"}));
     }
 
     #[tokio::test]

@@ -39,6 +39,22 @@ export const en = {
   "timelog.notConfigured": "Set a timelog start date in settings.",
   "timelog.defaultHint": "Using the first-launch date — set real start dates in settings.",
   "timelog.excluded": "No time tracking:",
+  "timelog.candidates": "Log time onto",
+  "timelog.noCandidates": "No candidate tasks",
+  "timelog.logTime": "Log…",
+  "timelog.duration": "Duration",
+  "timelog.activity": "Activity",
+  "timelog.commentField": "Comment",
+  "timelog.log": "Log",
+  "notif.markAll": "Mark all read",
+  "notif.markRead": "Mark read",
+  "notif.markUnread": "Mark unread",
+  "notif.read": "Read",
+  "notif.unread": "Unread",
+  "task.comment": "Comment",
+  "task.commentPlaceholder": "Write a comment…",
+  "task.send": "Send",
+  "task.cancel": "Cancel",
 } as const;
 
 export type Key = keyof typeof en;

@@ -147,6 +147,28 @@ pub fn build_timeline(entries: &[(String, i64)], start: NaiveDate, today: NaiveD
     cells
 }
 
+/// A work package proposed for logging time, with how much is already logged in
+/// the window (requirement 15). Ranked least-logged first so under-logged tasks
+/// surface for filling gaps.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct Candidate {
+    pub server: String,
+    pub wp_id: i64,
+    pub subject: String,
+    pub logged_min: i64,
+}
+
+/// Rank candidates by least logged time first, then by work package id for a
+/// stable order.
+pub fn rank_candidates(mut candidates: Vec<Candidate>) -> Vec<Candidate> {
+    candidates.sort_by(|a, b| {
+        a.logged_min
+            .cmp(&b.logged_min)
+            .then_with(|| a.wp_id.cmp(&b.wp_id))
+    });
+    candidates
+}
+
 /// An empty, all-green status (no window configured or no data).
 pub fn empty_status() -> TimelogStatus {
     TimelogStatus {
@@ -359,6 +381,22 @@ mod tests {
         assert_eq!(s.planned_min, 480);
         assert_eq!(s.logged_min, 300);
         assert_eq!(s.status, Status::Yellow);
+    }
+
+    #[test]
+    fn rank_candidates_least_logged_first() {
+        let c = |server: &str, wp: i64, logged: i64| Candidate {
+            server: server.into(),
+            wp_id: wp,
+            subject: format!("wp{wp}"),
+            logged_min: logged,
+        };
+        let ranked = rank_candidates(vec![c("a", 3, 120), c("a", 1, 0), c("b", 2, 0)]);
+        // Least logged first; ties broken by wp id.
+        assert_eq!(
+            ranked.iter().map(|x| x.wp_id).collect::<Vec<_>>(),
+            vec![1, 2, 3]
+        );
     }
 
     #[test]

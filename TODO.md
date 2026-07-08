@@ -96,3 +96,14 @@ Backlog of ideas to evaluate. Not commitments.
       `plan_minutes`/`build_timeline` with a calendar lookup. Open questions:
       per-server locale/calendar (RF vs other countries), how to ship/update the
       calendar data, and letting the user override specific days.
+
+- [ ] Dashboard data virtualization: lazy-load tasks/notifications on scroll
+      (windowed/infinite rendering + paginated backend fetches instead of loading
+      whole lists), and evict off-screen / stale per-server data from memory
+      (the `byServer` store currently keeps every server's full lists resident).
+      Bound resident data by active server + viewport; drop or re-fetch on demand.
+
+- [ ] UI scaling setting: a user-adjustable interface zoom / scale factor
+      (e.g. font-size / rem base or a CSS zoom on the root), persisted in GUI
+      settings alongside theme and language, with sensible steps and a reset.
+      Consider honoring the OS/display scale as the default.

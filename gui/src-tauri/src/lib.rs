@@ -56,6 +56,12 @@ pub fn run() {
             commands::get_settings,
             commands::save_settings,
             commands::get_timelog,
+            commands::set_notification_read,
+            commands::mark_all_read,
+            commands::add_comment,
+            commands::list_activities,
+            commands::create_time_entry,
+            commands::pick_candidates,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

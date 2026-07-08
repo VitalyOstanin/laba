@@ -54,6 +54,24 @@ pub async fn unread(client: &Client, id: i64) -> Result<Value, Error> {
     Ok(json!({ "unread": id }))
 }
 
+/// Mark every currently-unread notification as read. Returns the count marked.
+pub async fn read_all(client: &Client) -> Result<Value, Error> {
+    let list = list(client, 1, None, false).await?;
+    let mut count = 0;
+    if let Value::Array(items) = &list {
+        for n in items {
+            let unread = n.get("read").and_then(|v| v.as_bool()) != Some(true);
+            if unread {
+                if let Some(id) = n.get("id").and_then(|v| v.as_i64()) {
+                    read(client, id).await?;
+                    count += 1;
+                }
+            }
+        }
+    }
+    Ok(json!({ "read": count }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -117,6 +135,38 @@ mod tests {
         let c = client_for(&server, "notification-read");
         let out = read(&c, 7).await.unwrap();
         assert_eq!(out, json!({"read": 7}));
+    }
+
+    #[tokio::test]
+    async fn read_all_marks_only_unread() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/v3/notifications"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "_embedded": {"elements": [
+                    {"id": 1, "reason": "mentioned", "readIAN": false},
+                    {"id": 2, "reason": "assigned", "readIAN": true},
+                    {"id": 3, "reason": "watched", "readIAN": false}
+                ]}
+            })))
+            .mount(&server)
+            .await;
+        // Only the two unread ids are read; the already-read one is not.
+        Mock::given(method("POST"))
+            .and(path("/api/v3/notifications/1/read_ian"))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(1)
+            .mount(&server)
+            .await;
+        Mock::given(method("POST"))
+            .and(path("/api/v3/notifications/3/read_ian"))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let c = client_for(&server, "notification-read-all");
+        let out = read_all(&c).await.unwrap();
+        assert_eq!(out, json!({"read": 2}));
     }
 
     #[tokio::test]

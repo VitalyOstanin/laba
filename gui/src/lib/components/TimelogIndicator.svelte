@@ -3,6 +3,7 @@
   import { fmtMinutes, fmtSigned } from "../format";
   import { timelog } from "../store";
   import TimelogPanel from "./TimelogPanel.svelte";
+  import TimelogCandidates from "./TimelogCandidates.svelte";
 
   let open = $state(false);
 
@@ -42,6 +43,7 @@
 
     {#if open && tl.configured}
       <TimelogPanel timeline={tl.timeline} />
+      <TimelogCandidates suggestMin={tl.status.today_deficit_min} />
     {/if}
   </section>
 {/if}

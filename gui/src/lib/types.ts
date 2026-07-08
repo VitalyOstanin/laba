@@ -59,3 +59,15 @@ export interface TimelogResult {
   start_is_default: boolean;
   excluded: string[];
 }
+
+export interface Activity {
+  id: number;
+  name: string;
+}
+
+export interface Candidate {
+  server: string;
+  wp_id: number;
+  subject: string;
+  logged_min: number;
+}

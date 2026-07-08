@@ -23,6 +23,12 @@ impl Backend {
         matches!(self, Backend::OpenProject)
     }
 
+    /// Whether logging time supports selecting an activity type (OpenProject
+    /// time-entry activities). Drives the activity picker in the log-time form.
+    pub fn supports_time_activities(self) -> bool {
+        matches!(self, Backend::OpenProject)
+    }
+
     /// Default polling interval in seconds. GitHub is polled less often because
     /// `gh` shares the account's stricter API rate limit.
     pub fn default_poll_secs(self) -> u64 {
@@ -196,6 +202,8 @@ mod tests {
     fn backend_capabilities() {
         assert!(Backend::OpenProject.supports_timelog());
         assert!(!Backend::Github.supports_timelog());
+        assert!(Backend::OpenProject.supports_time_activities());
+        assert!(!Backend::Github.supports_time_activities());
         assert_eq!(Backend::OpenProject.default_poll_secs(), 120);
         assert_eq!(Backend::Github.default_poll_secs(), 900);
     }

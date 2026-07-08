@@ -37,6 +37,12 @@ export function stopPolling(): void {
   timelogTimer = undefined;
 }
 
+/** Refresh a single server now (after a write action). */
+export async function refreshServer(name: string): Promise<void> {
+  const s = get(servers).find((x) => x.name === name);
+  if (s) await pollOnce(s);
+}
+
 /** Refresh the aggregate timelog; keep the last value on failure. */
 export async function refreshTimelog(): Promise<void> {
   try {

@@ -3,9 +3,10 @@
 use serde::Serialize;
 use serde_json::Value;
 use taskstream_core::backend;
+use std::collections::HashMap;
 use taskstream_core::client::Client;
 use taskstream_core::config::{default_config_path, Backend, Config};
-use taskstream_core::resources::time;
+use taskstream_core::resources::{comment, notification, time};
 use taskstream_core::secrets::Secrets;
 use taskstream_core::settings::{default_settings_path, Settings, TimelogStart};
 use taskstream_core::timelog::{self, DayCell, TimelogStatus};
@@ -220,6 +221,167 @@ pub async fn list_notifications(server: String) -> Result<Vec<Value>, String> {
     backend::list_notifications(&profile, token.as_deref())
         .await
         .map_err(|e| e.to_string())
+}
+
+/// Build an OpenProject client for a write action. Errors clearly if the server
+/// is unknown, not an OpenProject backend, or has no token.
+fn op_client(server: &str) -> Result<Client, String> {
+    let cfg = load_cfg()?;
+    let p = cfg
+        .servers
+        .get(server)
+        .ok_or_else(|| format!("unknown server '{server}'"))?
+        .clone();
+    if p.backend != Backend::OpenProject {
+        return Err(format!(
+            "server '{server}' backend does not support this action"
+        ));
+    }
+    let token = token_for(server, p.backend)?.ok_or_else(|| format!("no token for '{server}'"))?;
+    Client::new("", &p, token, None).map_err(|e| e.to_string())
+}
+
+/// Toggle a notification's read state (requirement 17).
+#[tauri::command]
+pub async fn set_notification_read(server: String, id: i64, read: bool) -> Result<(), String> {
+    let client = op_client(&server)?;
+    let r = if read {
+        notification::read(&client, id).await
+    } else {
+        notification::unread(&client, id).await
+    };
+    r.map(|_| ()).map_err(|e| e.to_string())
+}
+
+/// Mark all notifications on a server as read (requirement 6). Returns the count.
+#[tauri::command]
+pub async fn mark_all_read(server: String) -> Result<u64, String> {
+    let client = op_client(&server)?;
+    let v = notification::read_all(&client)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(v.get("read").and_then(|x| x.as_u64()).unwrap_or(0))
+}
+
+/// Add a comment to a work package (requirement 4).
+#[tauri::command]
+pub async fn add_comment(server: String, work_package: i64, text: String) -> Result<(), String> {
+    let client = op_client(&server)?;
+    comment::create(&client, work_package, &text, false)
+        .await
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+/// List a server's time-entry activity types for the log-time form.
+#[tauri::command]
+pub async fn list_activities(server: String) -> Result<Value, String> {
+    let client = op_client(&server)?;
+    time::list_activities(&client)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Log time against a work package (requirement 20). `duration` accepts human
+/// formats (`1h30m`, `90m`). `activity` is an optional activity type name.
+#[tauri::command]
+pub async fn create_time_entry(
+    server: String,
+    work_package: i64,
+    duration: String,
+    comment: Option<String>,
+    activity: Option<String>,
+) -> Result<(), String> {
+    let client = op_client(&server)?;
+    time::create(
+        &client,
+        work_package,
+        None,
+        Some(&duration),
+        None,
+        comment.as_deref(),
+        activity.as_deref(),
+        false,
+    )
+    .await
+    .map(|_| ())
+    .map_err(|e| e.to_string())
+}
+
+/// Rank my tasks across timelog-capable, enabled servers by least logged time in
+/// each server's window, to surface under-logged tasks for time entry
+/// (requirements 15/19).
+#[tauri::command]
+pub async fn pick_candidates() -> Result<Vec<timelog::Candidate>, String> {
+    let cfg = load_cfg()?;
+    let settings = load_settings()?;
+    let today = timelog::fmt(timelog::today_local());
+    let mut candidates: Vec<timelog::Candidate> = Vec::new();
+
+    for (name, p) in &cfg.servers {
+        if settings.disabled_servers.contains(name) || !p.backend.supports_timelog() {
+            continue;
+        }
+        let since = settings
+            .timelog_start
+            .get(name)
+            .map(|t| t.date.clone())
+            .unwrap_or_else(|| today.clone());
+        let token = match token_for(name, p.backend)? {
+            Some(t) => t,
+            None => continue,
+        };
+        let client = match Client::new("", p, token.clone(), None) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+
+        // Logged minutes per work package in the window.
+        let mut logged: HashMap<i64, i64> = HashMap::new();
+        if let Ok(Value::Array(tes)) = time::list(
+            &client,
+            Some("me"),
+            None,
+            None,
+            Some(&since),
+            Some(&today),
+            1,
+            None,
+            false,
+        )
+        .await
+        {
+            for te in &tes {
+                if let (Some(wp), Some(h)) = (
+                    te.get("workPackageId").and_then(|v| v.as_i64()),
+                    te.get("hours").and_then(|v| v.as_f64()),
+                ) {
+                    *logged.entry(wp).or_insert(0) += timelog::minutes_from_hours(h);
+                }
+            }
+        }
+
+        let tasks = match backend::list_tasks(p, Some(&token)).await {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+        for t in &tasks {
+            if let Some(wp) = t.get("id").and_then(|v| v.as_i64()) {
+                candidates.push(timelog::Candidate {
+                    server: name.clone(),
+                    wp_id: wp,
+                    subject: t
+                        .get("subject")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    logged_min: *logged.get(&wp).unwrap_or(&0),
+                });
+            }
+        }
+    }
+
+    Ok(timelog::rank_candidates(candidates))
 }
 
 /// OpenProject servers need a token from the keyring/file secret store; GitHub
