@@ -40,6 +40,16 @@ Backlog of ideas to evaluate. Not commitments.
       present) and frontend component/unit tests. Verify the exact `tauri-driver`
       setup against the pinned Tauri version at implementation time.
 
+## Documentation
+
+- [ ] Produce polished, eye-catching screenshots for the README (dashboard,
+      settings, work-log timeline with candidate tasks). Drive them from **mocked
+      data** (a demo/fixture mode so no live servers are needed), showing **both
+      backends together — an OpenProject server and a public GitHub server**. Use
+      neutral, fictional sample data only — no real project/domain terms. Consider
+      a light/dark pair and a short animated capture of the log-time flow.
+      Implies a mock/demo data source the app can render for captures.
+
 ## Observability / debugging
 
 - [ ] Request tracing in `core`: add `tracing` + `tracing-subscriber` driven by
