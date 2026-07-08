@@ -1,0 +1,209 @@
+/* Theme tokens. The app follows the system light/dark preference; 3a has no
+   in-app toggle. Components are styled through these tokens only. */
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #eceef1;
+  --border: #d8dbe0;
+  --text: #1b1f24;
+  --text-dim: #5b636e;
+  --accent: #3b6ea5;
+  --accent-text: #ffffff;
+  --danger: #c0392b;
+  --ok: #2e8b57;
+
+  --radius: 8px;
+  --gap: 12px;
+
+  font-family:
+    "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16191d;
+    --surface: #1f242a;
+    --surface-2: #262c33;
+    --border: #333a42;
+    --text: #e6e9ed;
+    --text-dim: #9aa4b0;
+    --accent: #5a92cc;
+    --accent-text: #0f1216;
+    --danger: #e06254;
+    --ok: #57b989;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.topbar {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.server-switch {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.server-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.server-switch button[aria-current="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.server-switch .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+
+.server-switch .dot.err {
+  background: var(--danger);
+}
+
+.server-switch .bk {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(127, 127, 127, 0.18);
+}
+
+.banner.error {
+  margin: 10px 14px 0;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  background: rgba(192, 57, 43, 0.08);
+}
+
+.cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+  padding: var(--gap) 14px;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.card > header {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.card > header h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.filterbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.filterbar input {
+  flex: 1;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.filterbar .filtercount {
+  min-width: 1.5em;
+  text-align: right;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list > li {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.list > li:last-child {
+  border-bottom: none;
+}
+
+.list .id {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.list .subject {
+  flex: 1;
+}
+
+.list .status,
+.list .reason {
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.empty {
+  margin: 0;
+  padding: 18px 12px;
+  color: var(--text-dim);
+  text-align: center;
+}
