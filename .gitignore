@@ -10,6 +10,8 @@ Cargo.lock.orig
 # Node (Tauri frontend, if used)
 node_modules
 dist
+# pnpm may materialize a project-local store when run in a container
+.pnpm-store/
 
 # Local working artifacts
 docs/superpowers/

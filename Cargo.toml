@@ -1,5 +1,9 @@
 [workspace]
-members = ["core", "cli"]
+members = ["core", "cli", "gui/src-tauri"]
+# `gui` needs webkit2gtk and is built/tested only in the Tauri container
+# (scripts/tauri-container.sh). Keep host-side `cargo build`/`test`/`nextest`
+# (without `--workspace`) scoped to the pure-Rust crates.
+default-members = ["core", "cli"]
 resolver = "2"
 
 [workspace.package]
