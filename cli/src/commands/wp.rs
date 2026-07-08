@@ -1,4 +1,5 @@
 use clap::Subcommand;
+use taskstream_core::config::Backend;
 use taskstream_core::error::Error;
 use taskstream_core::resources::work_packages::{self, WpFields, WpListParams};
 
@@ -95,6 +96,20 @@ pub enum WpCmd {
 }
 
 pub async fn run(cmd: WpCmd, g: &Globals) -> Result<(), Error> {
+    let (_name, profile) = super::load_profile(g)?;
+    if profile.backend == Backend::Github {
+        // First slice: `list` maps to my open issues and pull requests; filters
+        // are not applied yet. Other subcommands need write/detail APIs github
+        // doesn't provide here.
+        return match cmd {
+            WpCmd::List { .. } => {
+                let tasks = super::build_github(&profile).list_my_tasks()?;
+                crate::output::emit(&serde_json::Value::Array(tasks), g.human);
+                Ok(())
+            }
+            _ => super::require_openproject(&profile, "this 'wp' subcommand"),
+        };
+    }
     let (_name, client) = super::build_client(g)?;
     let raw = g.raw;
     let out = match cmd {

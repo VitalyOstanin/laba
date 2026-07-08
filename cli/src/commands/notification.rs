@@ -1,4 +1,5 @@
 use clap::Subcommand;
+use taskstream_core::config::Backend;
 use taskstream_core::error::Error;
 use taskstream_core::resources::notification;
 
@@ -20,6 +21,17 @@ pub enum NotificationCmd {
 }
 
 pub async fn run(cmd: NotificationCmd, g: &Globals) -> Result<(), Error> {
+    let (_name, profile) = super::load_profile(g)?;
+    if profile.backend == Backend::Github {
+        return match cmd {
+            NotificationCmd::List { .. } => {
+                let items = super::build_github(&profile).list_notifications()?;
+                crate::output::emit(&serde_json::Value::Array(items), g.human);
+                Ok(())
+            }
+            _ => super::require_openproject(&profile, "'notification read/unread'"),
+        };
+    }
     let (_name, client) = super::build_client(g)?;
     let raw = g.raw;
     let out = match cmd {

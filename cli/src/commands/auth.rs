@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use clap::Subcommand;
 use taskstream_core::client::Client;
-use taskstream_core::config::Config;
+use taskstream_core::config::{Backend, Config};
 use taskstream_core::error::Error;
 use taskstream_core::secrets::Secrets;
 
@@ -43,6 +43,11 @@ pub async fn run(
     match cmd {
         AuthCmd::Login { with_token } => {
             let name = active_server(&cfg, server_flag)?;
+            if cfg.servers[&name].backend == Backend::Github {
+                return Err(Error::Usage(
+                    "the github backend authenticates via gh; run 'gh auth login' instead".into(),
+                ));
+            }
             let token = if let Some(t) = token_flag {
                 t.to_owned()
             } else if with_token {
