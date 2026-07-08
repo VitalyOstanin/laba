@@ -16,3 +16,6 @@ ADR that supersedes the old one.
 | [0006](0006-error-code-mapping-and-output.md) | Error code mapping and output formats | Accepted |
 | [0007](0007-per-server-stable-entity-cache.md) | Per-server two-tier cache of stable entities | Accepted |
 | [0008](0008-drop-auth-import.md) | Drop the `auth import` command | Accepted |
+| [0009](0009-token-input-stdin-only.md) | Token input via stdin or `--token` only, no interactive prompt | Accepted |
+| [0010](0010-webview-content-security-policy.md) | Restrictive Content-Security-Policy for the webview | Accepted |
+| [0011](0011-reqwest-ring-crypto-provider.md) | Stay on reqwest 0.12 with the ring rustls provider | Accepted |
