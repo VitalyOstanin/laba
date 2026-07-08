@@ -88,7 +88,12 @@ pub fn parse_human_duration(s: &str) -> Result<f64, Error> {
             "invalid duration: {s:?} (expected e.g. 1h30m, 90m, 1.5h)"
         ))
     };
-    let lower = s.to_lowercase();
+    // Whitespace between components is allowed and ignored ("5h 12m", "1h 30m").
+    let lower: String = s
+        .to_lowercase()
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
     let mut rest = lower.as_str();
     let mut hours = 0.0;
     let mut minutes = 0.0;
@@ -182,6 +187,12 @@ mod tests {
         assert!(approx(parse_human_duration("1.5h").unwrap(), 1.5));
         assert!(approx(parse_human_duration("2h").unwrap(), 2.0));
         assert!(approx(parse_human_duration("45m").unwrap(), 0.75));
+        assert!(approx(
+            parse_human_duration("5h 12m").unwrap(),
+            5.0 + 12.0 / 60.0
+        ));
+        assert!(approx(parse_human_duration("1h 30m").unwrap(), 1.5));
+        assert!(approx(parse_human_duration(" 90m ").unwrap(), 1.5));
         assert!(approx(parse_human_duration("1H30M").unwrap(), 1.5));
     }
 
