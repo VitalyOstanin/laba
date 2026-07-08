@@ -8,6 +8,27 @@ Backlog of ideas to evaluate. Not commitments.
       surface new/unread items as system notifications (freedesktop/`org.freedesktop.Notifications`
       on Linux, native on macOS/Windows), with click-through to the item.
 
+## Dates / timezone
+
+- [ ] Work out timezone handling for dates and times. Today only the `spentOn`
+      default uses the machine's local date (`chrono::Local::now`); API datetimes
+      (`createdAt`/`updatedAt`, notification times) pass through as opaque ISO 8601
+      strings with no conversion. Decide and document: which timezone defines the
+      "today" / day boundary for the timelog plan (requirements 13-16, 21) —
+      user-local, per-server, or UTC — especially when aggregating across servers
+      in different zones. Timezone also matters for **displaying** timestamps:
+      render API datetimes in the user's zone (with a configurable override),
+      consistently across CLI `--human` output and the GUI.
+
+## UX
+
+- [ ] Work out UX consistency conventions and apply them across the app. Example:
+      a single, predictable reaction to ESC across screens and input fields
+      (e.g. ESC clears/blurs a focused input, then closes the current
+      panel/dialog, then falls back to the window's default) rather than ad-hoc
+      per-widget behavior. Cover other cross-cutting interactions (Enter to
+      submit, focus order, unsaved-changes prompts) in the same convention.
+
 ## Observability / debugging
 
 - [ ] Request tracing in `core`: add `tracing` + `tracing-subscriber` driven by
