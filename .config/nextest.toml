@@ -1,0 +1,5 @@
+[profile.default]
+# Kill hung tests (and their child processes) instead of blocking the runner.
+slow-timeout = { period = "30s", terminate-after = 2 }
+# Bound parallelism — tests spin up mock servers and file I/O.
+test-threads = 4
