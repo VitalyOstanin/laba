@@ -19,6 +19,10 @@ Backlog of ideas to evaluate. Not commitments.
       in different zones. Timezone also matters for **displaying** timestamps:
       render API datetimes in the user's zone (with a configurable override),
       consistently across CLI `--human` output and the GUI.
+- [ ] Add a setting for the first day of the week: an explicit choice (e.g.
+      Monday/Sunday) or `auto`, which derives it from the system locale. This
+      affects week-based grouping and any "this week" ranges in the timelog and
+      dashboards.
 
 ## UX
 
