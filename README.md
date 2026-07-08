@@ -26,4 +26,4 @@ built on [Tauri](https://tauri.app/) with a shared Rust core.
 
 ## License
 
-To be determined.
+MIT. See [LICENSE](LICENSE).

@@ -29,6 +29,7 @@ export const ru: Dict = {
   "settings.timelog": "Начало учёта по серверам (ГГГГ-ММ-ДД)",
   "settings.timelog.hint": "Каждый сервер считается от своей даты; план — от самой ранней.",
   "settings.timelog.auto": "авто — задайте реальную дату начала",
+  "server.switcher": "Активный сервер",
   "server.off": "выкл",
   "server.disabled": "отключён",
   "timelog.title": "Учёт времени",

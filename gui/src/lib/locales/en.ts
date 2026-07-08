@@ -27,6 +27,7 @@ export const en = {
   "settings.timelog": "Timelog start per server (YYYY-MM-DD)",
   "settings.timelog.hint": "Each server counts from its own start; the plan runs from the earliest.",
   "settings.timelog.auto": "auto — set your real start date",
+  "server.switcher": "Active server",
   "server.off": "off",
   "server.disabled": "disabled",
   "timelog.title": "Time logged",

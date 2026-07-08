@@ -10,5 +10,8 @@ export default defineConfig({
     environment: "jsdom",
     include: ["src/**/*.test.ts"],
     setupFiles: ["./vitest-setup.ts"],
+    // Cap worker parallelism so the suite never saturates the host CPU
+    // (shared machine, may run alongside other builds).
+    maxWorkers: 4,
   },
 });

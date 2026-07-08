@@ -3,7 +3,7 @@
   import { t } from "../i18n";
 </script>
 
-<div class="server-switch" role="group" aria-label="Active server">
+<div class="server-switch" role="group" aria-label={$t("server.switcher")}>
   {#each $servers as s (s.name)}
     <button
       type="button"
