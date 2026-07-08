@@ -6,5 +6,6 @@ pub mod error;
 pub mod normalize;
 pub mod resolve;
 pub mod secrets;
+pub mod state;
 
 pub use error::Error;
