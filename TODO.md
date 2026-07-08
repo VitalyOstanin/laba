@@ -33,6 +33,37 @@ Backlog of ideas to evaluate. Not commitments.
       per-widget behavior. Cover other cross-cutting interactions (Enter to
       submit, focus order, unsaved-changes prompts) in the same convention.
 
+## Dependencies
+
+- [ ] Evaluate `reqwest` 0.12 -> 0.13. Deferred deliberately: 0.13 switches the
+      default rustls crypto provider to `aws-lc-rs` (needs cmake + a C toolchain
+      to build `aws-lc-sys`), which conflicts with building `core`/`cli` on the
+      host without build toolchains. Staying on ring requires `rustls-no-provider`
+      + a direct `rustls` dependency + installing a process `CryptoProvider` in
+      every entrypoint (CLI + GUI), with a latent runtime-panic risk on the first
+      HTTPS call that the http-only wiremock tests do not cover. reqwest 0.12 is
+      actively maintained (0.12.28), so the upgrade is low value for the risk.
+      Revisit if 0.12 stops receiving fixes or ring support is dropped.
+- [ ] Evaluate `keyring` 3 -> 4 (breaking): review the API/feature diff before
+      bumping; the current feature set (`async-secret-service`, `async-io`,
+      `crypto-rust`, `apple-native`, `windows-native`) may have changed.
+
+## Deferred review follow-ups
+
+- [ ] NFC-normalize names before matching in `core/src/resolve.rs` (canonical
+      Unicode equivalence). Needs a `unicode-normalization` dependency — evaluate
+      whether the edge case justifies it.
+- [ ] Design-token consistency in `gui/src/app.css`: replace the remaining
+      literal `rgba(...)` values with tokens and regularize the spacing / radius /
+      font-size scale.
+- [ ] Clean up leftover `.part` download temp files on SIGINT/SIGTERM: needs a
+      process-wide registry of in-flight temp paths plus a cross-platform signal
+      handler. Currently self-corrects (unique pid+counter names, cleaned on the
+      normal error paths).
+- [ ] Run the GUI e2e (wdio) suite in CI: requires webkit2gtk + tauri-driver +
+      xvfb on the runner. The unit (vitest) + svelte-check job is wired; e2e stays
+      local/container for now (`npm run test:e2e`).
+
 ## UI testing
 
 - [ ] End-to-end UI tests via the official Tauri WebDriver path: `tauri-driver`
