@@ -24,8 +24,6 @@ pub enum AuthCmd {
     Token,
     /// Remove the stored token for the active server.
     Logout,
-    /// Import url + token from an existing taskstream-cli config.
-    Import(super::import::ImportArgs),
 }
 
 fn active_server(cfg: &Config, flag: Option<&str>) -> Result<String, Error> {
@@ -43,7 +41,6 @@ pub async fn run(
     let secrets = Secrets::new(Secrets::default_fallback_path());
 
     match cmd {
-        AuthCmd::Import(args) => super::import::run(args, &path).await,
         AuthCmd::Login { with_token } => {
             let name = active_server(&cfg, server_flag)?;
             let token = if let Some(t) = token_flag {

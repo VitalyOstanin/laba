@@ -15,3 +15,4 @@ ADR that supersedes the old one.
 | [0005](0005-distribution-github-releases.md) | Distribution via GitHub Releases; podman for local Linux builds | Accepted |
 | [0006](0006-error-code-mapping-and-output.md) | Error code mapping and output formats | Accepted |
 | [0007](0007-per-server-stable-entity-cache.md) | Per-server two-tier cache of stable entities | Accepted |
+| [0008](0008-drop-auth-import.md) | Drop the `auth import` command | Accepted |

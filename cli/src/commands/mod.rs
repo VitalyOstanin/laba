@@ -3,7 +3,6 @@ pub mod attachment;
 pub mod auth;
 pub mod cache;
 pub mod comment;
-pub mod import;
 pub mod notification;
 pub mod relation;
 pub mod server;
