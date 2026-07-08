@@ -5,6 +5,7 @@ pub mod config;
 pub mod duration;
 pub mod error;
 pub mod github;
+pub mod holidays;
 pub mod normalize;
 pub mod resolve;
 pub mod resources;

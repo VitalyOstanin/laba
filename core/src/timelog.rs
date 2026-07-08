@@ -9,13 +9,16 @@
 //! - Surplus (logged above plan) is tracked and surfaced as a distinct status,
 //!   so "exactly filled" is told apart from "overlogged" (requirement 25).
 //!
-//! Plan: 8h (480 min) per weekday, 0 on weekends, from a start date up to and
-//! including today. Per-day shortfall is `max(0, plan - logged)`; overlog on one
-//! day never offsets another day's shortfall. Fully-filled past weeks (zero
-//! weekly shortfall) are dropped from the displayed plan/logged totals; the
-//! current week is always kept.
+//! Plan: 8h (480 min) per working day, 0 otherwise, from a start date up to and
+//! including today. A working day follows the Russian work calendar
+//! ([`crate::holidays`]): Mon-Fri that are not public holidays, plus any
+//! government-decreed transferred workday (a weekend day declared working).
+//! Per-day shortfall is `max(0, plan - logged)`; overlog on one day never
+//! offsets another day's shortfall. Fully-filled past weeks (zero weekly
+//! shortfall) are dropped from the displayed plan/logged totals; the current
+//! week is always kept.
 
-use chrono::{Datelike, Duration, NaiveDate, Weekday};
+use chrono::{Datelike, Duration, NaiveDate};
 
 /// Planned minutes for a full weekday.
 pub const DAILY_NORM_MINUTES: i64 = 8 * 60;
@@ -96,15 +99,11 @@ pub fn window(start: Option<&str>) -> Option<(NaiveDate, NaiveDate)> {
     Some((start, today_local()))
 }
 
-fn is_weekend(date: NaiveDate) -> bool {
-    matches!(date.weekday(), Weekday::Sat | Weekday::Sun)
-}
-
 fn plan_minutes(date: NaiveDate) -> i64 {
-    if is_weekend(date) {
-        0
-    } else {
+    if crate::holidays::HolidayCalendar::global().is_workday(date) {
         DAILY_NORM_MINUTES
+    } else {
+        0
     }
 }
 
@@ -366,6 +365,15 @@ mod tests {
     fn weekend_has_no_plan() {
         // 2026-07-11 is Saturday.
         let s = compute_status(&[], d("2026-07-11"), d("2026-07-11"));
+        assert_eq!(s.planned_min, 0);
+        assert_eq!(s.status, Status::Green);
+    }
+
+    #[test]
+    fn public_holiday_weekday_has_no_plan() {
+        // 2026-01-07 is a Wednesday but an RF public holiday: no plan, so an
+        // empty log is still green rather than a deficit.
+        let s = compute_status(&[], d("2026-01-07"), d("2026-01-07"));
         assert_eq!(s.planned_min, 0);
         assert_eq!(s.status, Status::Green);
     }

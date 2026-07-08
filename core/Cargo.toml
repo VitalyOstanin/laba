@@ -26,6 +26,11 @@ futures-util = "0.3"
 # Local date for the default spentOn on time-entry create.
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
+[build-dependencies]
+# Compile holidays_ru.json into static arrays (build.rs).
+serde_json = { workspace = true }
+chrono = { version = "0.4", default-features = false }
+
 [dev-dependencies]
 # In-process HTTP mock server for client tests without a live OpenProject.
 wiremock = "0.6"

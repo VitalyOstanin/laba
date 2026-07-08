@@ -118,19 +118,15 @@ Backlog of ideas to evaluate. Not commitments.
       work into the cross-backend timelog. Public and self-hosted (custom base URL)
       instances, multiple YouTrack servers.
 
-- [ ] Timelog plan: account for a public-holiday and transferred-workday
-      calendar. The current plan in `core/src/timelog.rs` (`plan_minutes`) is
-      naive: 8h on every Mon-Fri, 0 on Sat/Sun. It ignores public holidays
-      (a holiday weekday should carry 0 plan) and government-decreed workday
-      transfers (a Saturday declared a workday should carry a plan). Reference
-      implementation to follow: `markdown-org-extract` — `src/holidays.rs`
-      (`HolidayCalendar::is_workday`, `workdays_between_exclusive`, binary search
-      over sorted holiday/workday arrays) backed by `holidays_ru.json` (per-year
-      `holidays`/`workdays` arrays of YYYY-MM-DD, compiled in via build.rs; RF
-      decree facts, not copyrightable). Replace the weekday check in
-      `plan_minutes`/`build_timeline` with a calendar lookup. Open questions:
-      per-server locale/calendar (RF vs other countries), how to ship/update the
-      calendar data, and letting the user override specific days.
+- [ ] Timelog calendar: locale/override follow-ups. The RF public-holiday and
+      transferred-workday calendar is implemented (`core/src/holidays.rs`,
+      `holidays_ru.json` compiled via `build.rs`; `plan_minutes` uses
+      `HolidayCalendar::is_workday`). Remaining open questions: selecting a
+      calendar by locale or per server (RF vs other countries) instead of the
+      single RF default; how to ship and update the calendar data for future
+      years; and letting the user override specific days (mark a given date
+      working or non-working). Also revisit the fully-filled-week drop and
+      `monday_of` week boundary if a first-day-of-week setting lands.
 
 - [ ] Dashboard data virtualization: lazy-load tasks/notifications on scroll
       (windowed/infinite rendering + paginated backend fetches instead of loading
