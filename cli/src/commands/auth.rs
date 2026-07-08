@@ -9,9 +9,11 @@ use taskstream_core::secrets::Secrets;
 
 #[derive(Debug, Subcommand)]
 pub enum AuthCmd {
-    /// Store a token for a server (reads token from --token, stdin, or prompt).
+    /// Store a token for a server. Read the token from stdin (--with-token) or
+    /// from the global --token flag. There is no interactive prompt: piping the
+    /// token via stdin keeps it out of the process list and shell history.
     Login {
-        /// Read the token from stdin instead of prompting.
+        /// Read the token from stdin.
         #[arg(long)]
         with_token: bool,
     },
@@ -57,10 +59,15 @@ pub async fn run(
                     .map_err(|e| Error::Io(e.to_string()))?;
                 s.trim().to_owned()
             } else {
-                rpassword_prompt()?
+                return Err(Error::Usage(
+                    "provide the token via stdin (--with-token) or --token".into(),
+                ));
             };
+            if token.is_empty() {
+                return Err(Error::Usage("empty token".into()));
+            }
             secrets.set(&name, &token)?;
-            println!("token stored for '{name}'");
+            eprintln!("token stored for '{name}'");
             Ok(())
         }
         AuthCmd::Token => {
@@ -74,7 +81,7 @@ pub async fn run(
         AuthCmd::Logout => {
             let name = active_server(&cfg, server_flag)?;
             secrets.delete(&name)?;
-            println!("logged out of '{name}'");
+            eprintln!("logged out of '{name}'");
             Ok(())
         }
         AuthCmd::Status { offline } => {
@@ -100,14 +107,4 @@ pub async fn run(
             Ok(())
         }
     }
-}
-
-/// Prompt for a token on stderr without echo (simple fallback without extra deps).
-fn rpassword_prompt() -> Result<String, Error> {
-    eprint!("Token: ");
-    let mut s = String::new();
-    std::io::stdin()
-        .read_line(&mut s)
-        .map_err(|e| Error::Io(e.to_string()))?;
-    Ok(s.trim().to_owned())
 }
