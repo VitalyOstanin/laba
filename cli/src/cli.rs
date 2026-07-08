@@ -25,6 +25,12 @@ pub struct Cli {
     /// Max retries for idempotent requests.
     #[arg(long, global = true, env = "OPENPROJECT_RETRIES", default_value_t = 3)]
     pub retries: u32,
+    /// Human-friendly output instead of JSON.
+    #[arg(long, global = true)]
+    pub human: bool,
+    /// Raw API response without normalization.
+    #[arg(long, global = true)]
+    pub raw: bool,
 
     #[command(subcommand)]
     pub command: Command,
@@ -38,4 +44,7 @@ pub enum Command {
     /// Authentication.
     #[command(subcommand)]
     Auth(crate::commands::auth::AuthCmd),
+    /// Manage cached stable entities.
+    #[command(subcommand)]
+    Cache(crate::commands::cache::CacheCmd),
 }

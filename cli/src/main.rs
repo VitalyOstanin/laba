@@ -5,6 +5,7 @@ use taskstream_core::Error;
 
 mod cli;
 mod commands;
+mod output;
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -29,6 +30,9 @@ async fn run() -> Result<(), Error> {
                 cli.token.as_deref(),
             )
             .await
+        }
+        cli::Command::Cache(cmd) => {
+            commands::cache::run(cmd, &cli.config, cli.server.as_deref(), cli.human).await
         }
     }
 }
