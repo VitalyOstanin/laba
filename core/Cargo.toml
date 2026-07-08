@@ -1,0 +1,28 @@
+[package]
+name = "taskstream-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "OpenProject API v3 client library (config, auth, transport)."
+
+[dependencies]
+# Async HTTP transport with SOCKS5 + streaming; rustls to avoid a system OpenSSL build dep.
+reqwest = { workspace = true }
+tokio = { workspace = true }
+# Config and API payload (de)serialization.
+serde = { workspace = true }
+serde_json = { workspace = true }
+# System keyring for token storage (Secret Service / macOS Keychain / Windows Credential Manager).
+keyring = { workspace = true }
+# Typed error variants with Display.
+thiserror = { workspace = true }
+
+[dev-dependencies]
+# In-process HTTP mock server for client tests without a live OpenProject.
+wiremock = "0.6"
+# Temp dirs for config/secrets file tests.
+tempfile = "3"
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "fs", "test-util"] }
