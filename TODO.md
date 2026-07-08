@@ -47,6 +47,10 @@ Backlog of ideas to evaluate. Not commitments.
 - [ ] Evaluate `keyring` 3 -> 4 (breaking): review the API/feature diff before
       bumping; the current feature set (`async-secret-service`, `async-io`,
       `crypto-rust`, `apple-native`, `windows-native`) may have changed.
+- [ ] TypeScript 5.6 -> 7: deferred. `@sveltejs/kit` (2.69.2) still declares a
+      `typescript` peer of `^5.3.3 || ^6.0.0` — TS 7 (the native compiler line)
+      is not yet in range, and there is no stable TS 6. Bump once kit validates
+      TS 7. (vite 8 and vite-plugin-svelte 7 were taken; only TS was held back.)
 
 ## Deferred review follow-ups
 
