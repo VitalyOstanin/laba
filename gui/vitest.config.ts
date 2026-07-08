@@ -1,10 +1,14 @@
 import { defineConfig } from "vitest/config";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { svelteTesting } from "@testing-library/svelte/vite";
 
-// Unit tests for pure TS modules (locales, store). Component tests (Task 6)
-// switch the environment to jsdom and add the Svelte plugin.
+// jsdom + the Svelte plugin so both pure-TS unit tests (locales, store) and
+// component tests (@testing-library/svelte) run under one config.
 export default defineConfig({
+  plugins: [svelte(), svelteTesting()],
   test: {
-    environment: "node",
+    environment: "jsdom",
     include: ["src/**/*.test.ts"],
+    setupFiles: ["./vitest-setup.ts"],
   },
 });
