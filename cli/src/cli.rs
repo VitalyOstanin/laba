@@ -10,6 +10,16 @@ EXAMPLES:
 #[derive(Debug, Parser)]
 #[command(name = "taskstream", version, after_long_help = AFTER_LONG_HELP)]
 pub struct Cli {
+    #[command(flatten)]
+    pub globals: Globals,
+
+    #[command(subcommand)]
+    pub command: Command,
+}
+
+/// Global flags shared by every subcommand.
+#[derive(Debug, clap::Args)]
+pub struct Globals {
     /// Server profile to use (overrides OPENPROJECT_SERVER and the default).
     #[arg(long, global = true, env = "OPENPROJECT_SERVER")]
     pub server: Option<String>,
@@ -31,9 +41,6 @@ pub struct Cli {
     /// Raw API response without normalization.
     #[arg(long, global = true)]
     pub raw: bool,
-
-    #[command(subcommand)]
-    pub command: Command,
 }
 
 #[derive(Debug, Subcommand)]
@@ -47,4 +54,24 @@ pub enum Command {
     /// Manage cached stable entities.
     #[command(subcommand)]
     Cache(crate::commands::cache::CacheCmd),
+    /// Work packages.
+    #[command(subcommand)]
+    Wp(crate::commands::wp::WpCmd),
+    /// Comments (work package activities).
+    #[command(subcommand)]
+    Comment(crate::commands::comment::CommentCmd),
+    /// Attachments.
+    #[command(subcommand)]
+    Attachment(crate::commands::attachment::AttachmentCmd),
+    /// Relations between work packages.
+    #[command(subcommand)]
+    Relation(crate::commands::relation::RelationCmd),
+    /// Time entries.
+    #[command(subcommand)]
+    Time(crate::commands::time::TimeCmd),
+    /// Notifications.
+    #[command(subcommand)]
+    Notification(crate::commands::notification::NotificationCmd),
+    /// Raw API passthrough.
+    Api(crate::commands::api::ApiArgs),
 }
