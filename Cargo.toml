@@ -12,7 +12,8 @@ authors = ["Vitaly Ostanin <vitaly.ostanin@gmail.com>"]
 
 [workspace.dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs"] }
-reqwest = { version = "0.12", default-features = false, features = ["json", "socks", "stream", "rustls-tls"] }
+# `multipart` adds multipart upload of attachment files.
+reqwest = { version = "0.12", default-features = false, features = ["json", "socks", "stream", "rustls-tls", "multipart"] }
 serde = { version = "1", features = ["derive"] }
 # preserve object key order for stable --human column output.
 serde_json = { version = "1", features = ["preserve_order"] }

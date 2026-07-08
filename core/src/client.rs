@@ -544,6 +544,353 @@ fn is_retriable(e: &Error) -> bool {
     false
 }
 
+/// Size and SHA-256 of a downloaded attachment body.
+#[derive(Debug)]
+pub struct DownloadInfo {
+    pub bytes: u64,
+    pub sha256: String,
+}
+
+/// Monotonic counter used to make temporary download file names unique within
+/// a process without pulling in a random-number crate.
+static DOWNLOAD_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Guess an attachment content-type from its file name extension. Covers the
+/// common cases; anything unknown falls back to `application/octet-stream`.
+fn guess_content_type(name: &str) -> &'static str {
+    let ext = name.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
+    match ext.as_str() {
+        "txt" | "log" => "text/plain",
+        "csv" => "text/csv",
+        "html" | "htm" => "text/html",
+        "json" => "application/json",
+        "xml" => "application/xml",
+        "pdf" => "application/pdf",
+        "zip" => "application/zip",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "svg" => "image/svg+xml",
+        "doc" => "application/msword",
+        "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "xls" => "application/vnd.ms-excel",
+        "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        _ => "application/octet-stream",
+    }
+}
+
+impl Client {
+    /// GET `path` and stream the response body in chunks into `dest`, computing
+    /// the total size and SHA-256 as it writes. Non-2xx maps to `Error::Api`.
+    pub async fn stream_download(
+        &self,
+        path: &str,
+        dest: &mut impl std::io::Write,
+    ) -> Result<DownloadInfo, Error> {
+        use futures_util::StreamExt;
+        use sha2::{Digest, Sha256};
+
+        let url = self.resolve_url(path)?;
+        let resp = self
+            .http
+            .request(reqwest::Method::GET, &url)
+            .basic_auth("apikey", Some(&self.token))
+            .header(reqwest::header::ACCEPT, "application/octet-stream")
+            .send()
+            .await
+            .map_err(|e| Error::Api(format!("request {url}: {e}")))?;
+        let status = resp.status();
+        if !status.is_success() {
+            let text = resp.text().await.unwrap_or_default();
+            let msg = serde_json::from_str::<serde_json::Value>(&text)
+                .ok()
+                .and_then(|v| v.get("message").and_then(|m| m.as_str()).map(str::to_owned))
+                .unwrap_or(text);
+            return Err(Error::Api(format!("HTTP {}: {msg}", status.as_u16())));
+        }
+        let mut hasher = Sha256::new();
+        let mut total: u64 = 0;
+        let mut stream = resp.bytes_stream();
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|e| Error::Api(format!("read body: {e}")))?;
+            hasher.update(&chunk);
+            total += chunk.len() as u64;
+            dest.write_all(&chunk)
+                .map_err(|e| Error::Io(format!("write download: {e}")))?;
+        }
+        Ok(DownloadInfo {
+            bytes: total,
+            sha256: format!("{:x}", hasher.finalize()),
+        })
+    }
+
+    /// Stream a download into a temporary file in `output`'s directory, then
+    /// atomically rename it into place. If `max_bytes` is set and exceeded, the
+    /// transfer is aborted, the temporary file removed, and `Error::Usage`
+    /// returned.
+    pub async fn download_to_path(
+        &self,
+        path: &str,
+        output: &std::path::Path,
+        max_bytes: Option<u64>,
+    ) -> Result<DownloadInfo, Error> {
+        use futures_util::StreamExt;
+        use sha2::{Digest, Sha256};
+        use std::io::Write;
+
+        let url = self.resolve_url(path)?;
+        let dir = output.parent().unwrap_or_else(|| std::path::Path::new("."));
+        let final_name = output
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("download");
+        let counter = DOWNLOAD_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let tmp = dir.join(format!(
+            ".{final_name}.{}.{counter}.part",
+            std::process::id()
+        ));
+
+        let resp = self
+            .http
+            .request(reqwest::Method::GET, &url)
+            .basic_auth("apikey", Some(&self.token))
+            .header(reqwest::header::ACCEPT, "application/octet-stream")
+            .send()
+            .await
+            .map_err(|e| Error::Api(format!("request {url}: {e}")))?;
+        let status = resp.status();
+        if !status.is_success() {
+            let text = resp.text().await.unwrap_or_default();
+            let msg = serde_json::from_str::<serde_json::Value>(&text)
+                .ok()
+                .and_then(|v| v.get("message").and_then(|m| m.as_str()).map(str::to_owned))
+                .unwrap_or(text);
+            return Err(Error::Api(format!("HTTP {}: {msg}", status.as_u16())));
+        }
+
+        let mut file =
+            std::fs::File::create(&tmp).map_err(|e| Error::Io(format!("create temp file: {e}")))?;
+        let mut hasher = Sha256::new();
+        let mut total: u64 = 0;
+        let mut stream = resp.bytes_stream();
+        while let Some(chunk) = stream.next().await {
+            let chunk = match chunk {
+                Ok(c) => c,
+                Err(e) => {
+                    drop(file);
+                    let _ = std::fs::remove_file(&tmp);
+                    return Err(Error::Api(format!("read body: {e}")));
+                }
+            };
+            total += chunk.len() as u64;
+            if let Some(limit) = max_bytes {
+                if total > limit {
+                    drop(file);
+                    let _ = std::fs::remove_file(&tmp);
+                    return Err(Error::Usage(format!(
+                        "attachment exceeds max-bytes {limit}"
+                    )));
+                }
+            }
+            hasher.update(&chunk);
+            if let Err(e) = file.write_all(&chunk) {
+                drop(file);
+                let _ = std::fs::remove_file(&tmp);
+                return Err(Error::Io(format!("write download: {e}")));
+            }
+        }
+        if let Err(e) = file.sync_all() {
+            drop(file);
+            let _ = std::fs::remove_file(&tmp);
+            return Err(Error::Io(format!("flush download: {e}")));
+        }
+        drop(file);
+        std::fs::rename(&tmp, output).map_err(|e| {
+            let _ = std::fs::remove_file(&tmp);
+            Error::Io(format!("rename download: {e}"))
+        })?;
+        Ok(DownloadInfo {
+            bytes: total,
+            sha256: format!("{:x}", hasher.finalize()),
+        })
+    }
+
+    /// Upload a file as an attachment on `wp_id` via a multipart POST. The
+    /// content type is taken from `content_type`, else guessed from the name,
+    /// else `application/octet-stream`. Returns the parsed attachment JSON.
+    pub async fn upload_attachment(
+        &self,
+        wp_id: i64,
+        file_path: &std::path::Path,
+        file_name: Option<&str>,
+        description: Option<&str>,
+        content_type: Option<&str>,
+    ) -> Result<serde_json::Value, Error> {
+        let name = file_name
+            .map(str::to_owned)
+            .or_else(|| {
+                file_path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .map(str::to_owned)
+            })
+            .unwrap_or_else(|| "file".to_owned());
+        let ctype = content_type
+            .map(str::to_owned)
+            .unwrap_or_else(|| guess_content_type(&name).to_owned());
+        let data = std::fs::read(file_path)
+            .map_err(|e| Error::Io(format!("read {}: {e}", file_path.display())))?;
+
+        let mut metadata = serde_json::json!({ "fileName": name });
+        if let Some(desc) = description {
+            metadata["description"] = serde_json::json!({ "raw": desc });
+        }
+        let metadata_text = serde_json::to_string(&metadata)
+            .map_err(|e| Error::Internal(format!("encode metadata: {e}")))?;
+
+        let metadata_part = reqwest::multipart::Part::text(metadata_text)
+            .mime_str("application/json")
+            .map_err(|e| Error::Internal(format!("metadata part: {e}")))?;
+        let file_part = reqwest::multipart::Part::bytes(data)
+            .file_name(name.clone())
+            .mime_str(&ctype)
+            .map_err(|e| Error::Usage(format!("invalid content-type '{ctype}': {e}")))?;
+        let form = reqwest::multipart::Form::new()
+            .part("metadata", metadata_part)
+            .part("file", file_part);
+
+        let url = self.resolve_url(&format!("work_packages/{wp_id}/attachments"))?;
+        let resp = self
+            .http
+            .request(reqwest::Method::POST, &url)
+            .basic_auth("apikey", Some(&self.token))
+            .header(reqwest::header::ACCEPT, "application/json")
+            .multipart(form)
+            .send()
+            .await
+            .map_err(|e| Error::Api(format!("request {url}: {e}")))?;
+        let status = resp.status();
+        let text = resp
+            .text()
+            .await
+            .map_err(|e| Error::Api(format!("read body: {e}")))?;
+        if !status.is_success() {
+            let msg = serde_json::from_str::<serde_json::Value>(&text)
+                .ok()
+                .and_then(|v| v.get("message").and_then(|m| m.as_str()).map(str::to_owned))
+                .unwrap_or_else(|| text.clone());
+            return Err(Error::Api(format!("HTTP {}: {msg}", status.as_u16())));
+        }
+        serde_json::from_str(&text).map_err(|e| Error::Api(format!("parse json: {e}")))
+    }
+}
+
+#[cfg(test)]
+mod attachment_tests {
+    use super::*;
+    use sha2::{Digest, Sha256};
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    fn profile_for(url: &str) -> ServerProfile {
+        ServerProfile {
+            base_url: url.into(),
+            timeout: 30,
+            verify_ssl: true,
+            proxy: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn download_to_path_writes_file_with_hash() {
+        let body = b"hello attachment body".to_vec();
+        let expected = format!("{:x}", Sha256::digest(&body));
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/v3/attachments/1/content"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(body.clone()))
+            .mount(&server)
+            .await;
+        let c = Client::new(
+            "test",
+            &profile_for(&server.uri()),
+            "t".into(),
+            Some("none"),
+        )
+        .unwrap();
+        let tmp = tempfile::tempdir().unwrap();
+        let out = tmp.path().join("out.bin");
+        let info = c
+            .download_to_path("attachments/1/content", &out, None)
+            .await
+            .unwrap();
+        assert_eq!(info.bytes, body.len() as u64);
+        assert_eq!(info.sha256, expected);
+        assert_eq!(std::fs::read(&out).unwrap(), body);
+    }
+
+    #[tokio::test]
+    async fn download_to_path_max_bytes_aborts_and_cleans_up() {
+        let body = vec![0u8; 4096];
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/v3/attachments/2/content"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(body))
+            .mount(&server)
+            .await;
+        let c = Client::new(
+            "test",
+            &profile_for(&server.uri()),
+            "t".into(),
+            Some("none"),
+        )
+        .unwrap();
+        let tmp = tempfile::tempdir().unwrap();
+        let out = tmp.path().join("big.bin");
+        let err = c
+            .download_to_path("attachments/2/content", &out, Some(16))
+            .await
+            .unwrap_err();
+        assert_eq!(err.exit_code(), 2);
+        assert!(!out.exists());
+        let leftover: Vec<_> = std::fs::read_dir(tmp.path())
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name().to_string_lossy().ends_with(".part"))
+            .collect();
+        assert!(leftover.is_empty(), "leftover .part files: {leftover:?}");
+    }
+
+    #[tokio::test]
+    async fn upload_attachment_posts_multipart_and_parses_response() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/api/v3/work_packages/5/attachments"))
+            .respond_with(
+                ResponseTemplate::new(201)
+                    .set_body_json(serde_json::json!({"id": 42, "fileName": "note.txt"})),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+        let c = Client::new(
+            "test",
+            &profile_for(&server.uri()),
+            "t".into(),
+            Some("none"),
+        )
+        .unwrap();
+        let tmp = tempfile::tempdir().unwrap();
+        let file = tmp.path().join("note.txt");
+        std::fs::write(&file, b"content").unwrap();
+        let v = c
+            .upload_attachment(5, &file, None, Some("a note"), None)
+            .await
+            .unwrap();
+        assert_eq!(v["id"], 42);
+    }
+}
+
 #[cfg(test)]
 mod retry_tests {
     use super::*;

@@ -19,6 +19,10 @@ serde_json = { workspace = true }
 keyring = { workspace = true }
 # Typed error variants with Display.
 thiserror = { workspace = true }
+# SHA-256 checksum of downloaded attachment content.
+sha2 = "0.10"
+# Stream the response body in chunks.
+futures-util = "0.3"
 
 [dev-dependencies]
 # In-process HTTP mock server for client tests without a live OpenProject.
