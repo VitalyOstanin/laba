@@ -23,6 +23,8 @@ thiserror = { workspace = true }
 sha2 = "0.10"
 # Stream the response body in chunks.
 futures-util = "0.3"
+# Local date for the default spentOn on time-entry create.
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 [dev-dependencies]
 # In-process HTTP mock server for client tests without a live OpenProject.

@@ -78,6 +78,43 @@ pub fn iso8601_to_hours(value: &str) -> Option<f64> {
     Some(days * 24.0 + hours + minutes / 60.0 + seconds / 3600.0)
 }
 
+/// Parse a human duration ("1h30m", "90m", "1.5h", "2h", "45m") into fractional hours.
+/// At least one of the hours/minutes components is required; a bare number without
+/// an h/m suffix is rejected (use decimal hours via the --hours flag instead).
+/// Case-insensitive on the suffixes.
+pub fn parse_human_duration(s: &str) -> Result<f64, Error> {
+    let err = || {
+        Error::Usage(format!(
+            "invalid duration: {s:?} (expected e.g. 1h30m, 90m, 1.5h)"
+        ))
+    };
+    let lower = s.to_lowercase();
+    let mut rest = lower.as_str();
+    let mut hours = 0.0;
+    let mut minutes = 0.0;
+    let mut any = false;
+
+    if let Some((num, tail)) = take_number(rest) {
+        if let Some(after) = tail.strip_prefix('h') {
+            hours = num;
+            rest = after;
+            any = true;
+        }
+    }
+    if let Some((num, tail)) = take_number(rest) {
+        if let Some(after) = tail.strip_prefix('m') {
+            minutes = num;
+            rest = after;
+            any = true;
+        }
+    }
+
+    if !any || !rest.is_empty() {
+        return Err(err());
+    }
+    Ok(hours + minutes / 60.0)
+}
+
 /// Consume a leading decimal number (`\d+(\.\d+)?`) from `s`.
 ///
 /// Returns the parsed value and the remaining string, or [`None`] if `s` does
@@ -136,5 +173,22 @@ mod tests {
         assert!(approx(iso8601_to_hours("P1DT2H").unwrap(), 26.0));
         assert_eq!(iso8601_to_hours(""), None);
         assert_eq!(iso8601_to_hours("garbage"), None);
+    }
+
+    #[test]
+    fn parse_human_duration_examples() {
+        assert!(approx(parse_human_duration("1h30m").unwrap(), 1.5));
+        assert!(approx(parse_human_duration("90m").unwrap(), 1.5));
+        assert!(approx(parse_human_duration("1.5h").unwrap(), 1.5));
+        assert!(approx(parse_human_duration("2h").unwrap(), 2.0));
+        assert!(approx(parse_human_duration("45m").unwrap(), 0.75));
+        assert!(approx(parse_human_duration("1H30M").unwrap(), 1.5));
+    }
+
+    #[test]
+    fn parse_human_duration_rejects_invalid() {
+        for s in ["90", "1h30", "", "abc", "h", "m", "1m30h"] {
+            assert!(parse_human_duration(s).is_err(), "expected error for {s:?}");
+        }
     }
 }

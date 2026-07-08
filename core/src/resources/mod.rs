@@ -5,4 +5,5 @@
 pub mod attachment;
 pub mod comment;
 pub mod relation;
+pub mod time;
 pub mod work_packages;
