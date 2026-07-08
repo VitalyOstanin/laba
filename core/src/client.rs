@@ -182,11 +182,7 @@ impl Client {
             .await
             .map_err(|e| Error::Api(format!("read body: {e}")))?;
         if !status.is_success() {
-            let msg = serde_json::from_str::<serde_json::Value>(&text)
-                .ok()
-                .and_then(|v| v.get("message").and_then(|m| m.as_str()).map(str::to_owned))
-                .unwrap_or_else(|| text.clone());
-            return Err(Error::Api(format!("HTTP {}: {msg}", status.as_u16())));
+            return Err(api_error(status, text));
         }
         if text.is_empty() {
             return Ok(serde_json::Value::Null);
@@ -261,11 +257,7 @@ impl Client {
             .await
             .map_err(|e| Error::Api(format!("read body: {e}")))?;
         if !status.is_success() {
-            let msg = serde_json::from_str::<serde_json::Value>(&text)
-                .ok()
-                .and_then(|v| v.get("message").and_then(|m| m.as_str()).map(str::to_owned))
-                .unwrap_or_else(|| text.clone());
-            return Err(Error::Api(format!("HTTP {}: {msg}", status.as_u16())));
+            return Err(api_error(status, text));
         }
         if text.is_empty() {
             return Ok(serde_json::Value::Null);
@@ -274,8 +266,8 @@ impl Client {
     }
 
     /// Fetch all elements of a HAL collection, following `pageSize`/`offset`
-    /// pagination (200 per page). Stops when the collected count reaches the
-    /// reported `total` or a page returns no elements.
+    /// pagination (`PAGE_SIZE` per page). Stops when the collected count reaches
+    /// the reported `total` or a page returns no elements.
     pub async fn collect(
         &self,
         path: &str,
@@ -285,7 +277,7 @@ impl Client {
         let mut offset: u64 = 1;
         loop {
             let mut q: Vec<(String, String)> = query.to_vec();
-            q.push(("pageSize".to_string(), "200".to_string()));
+            q.push(("pageSize".to_string(), PAGE_SIZE.to_string()));
             q.push(("offset".to_string(), offset.to_string()));
             let payload = self
                 .request_json_query(reqwest::Method::GET, path, &q, None)
@@ -627,6 +619,9 @@ mod exec_tests {
 
 const MAX_RETRY_SLEEP: Duration = Duration::from_secs(60);
 
+/// HAL collection page size for `collect` pagination.
+const PAGE_SIZE: u32 = 200;
+
 impl Client {
     /// Retry idempotent GETs on 429/5xx, honoring Retry-After (capped),
     /// with exponential backoff. `retries` is the max extra attempts.
@@ -644,7 +639,8 @@ impl Client {
                     if !retriable || attempt >= retries {
                         return Err(e);
                     }
-                    let backoff = Duration::from_millis(200u64 << attempt).min(MAX_RETRY_SLEEP);
+                    let base = Duration::from_millis(200u64 << attempt).min(MAX_RETRY_SLEEP);
+                    let backoff = jitter(base);
                     eprintln!(
                         "taskstream: retrying after error ({}), attempt {}",
                         e,
@@ -658,13 +654,53 @@ impl Client {
     }
 }
 
+/// Build an `Error::Api` for a non-2xx response, using the server's `message`
+/// field from a JSON body when present, else the raw body text.
+fn api_error(status: reqwest::StatusCode, body: String) -> Error {
+    let msg = serde_json::from_str::<serde_json::Value>(&body)
+        .ok()
+        .and_then(|v| v.get("message").and_then(|m| m.as_str()).map(str::to_owned))
+        .unwrap_or(body);
+    Error::Api(format!("HTTP {}: {msg}", status.as_u16()))
+}
+
+/// Apply "equal jitter" to a backoff duration: keep half fixed and randomize
+/// the other half, so concurrent clients do not retry in lockstep (thundering
+/// herd). The random fraction is derived from the process clock to avoid a
+/// random-number crate dependency.
+fn jitter(base: Duration) -> Duration {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.subsec_nanos())
+        .unwrap_or(0);
+    let frac = nanos as f64 / 1_000_000_000.0; // [0, 1)
+    base.mul_f64(0.5 + 0.5 * frac)
+}
+
 fn is_retriable(e: &Error) -> bool {
     if let Error::Api(msg) = e {
-        return msg.contains("HTTP 429")
+        // Retriable server statuses.
+        if msg.contains("HTTP 429")
             || msg.contains("HTTP 500")
             || msg.contains("HTTP 502")
             || msg.contains("HTTP 503")
-            || msg.contains("HTTP 504");
+            || msg.contains("HTTP 504")
+        {
+            return true;
+        }
+        // Transient transport failures surface as `request <url>: <reqwest err>`
+        // before any HTTP status is known. Match the common transient causes;
+        // a permanent error (e.g. invalid URL) is already rejected earlier.
+        if msg.starts_with("request ")
+            && (msg.contains("timed out")
+                || msg.contains("timeout")
+                || msg.contains("connect")
+                || msg.contains("connection")
+                || msg.contains("dns")
+                || msg.contains("reset"))
+        {
+            return true;
+        }
     }
     false
 }
@@ -727,11 +763,7 @@ impl Client {
         let status = resp.status();
         if !status.is_success() {
             let text = resp.text().await.unwrap_or_default();
-            let msg = serde_json::from_str::<serde_json::Value>(&text)
-                .ok()
-                .and_then(|v| v.get("message").and_then(|m| m.as_str()).map(str::to_owned))
-                .unwrap_or(text);
-            return Err(Error::Api(format!("HTTP {}: {msg}", status.as_u16())));
+            return Err(api_error(status, text));
         }
         let mut hasher = Sha256::new();
         let mut total: u64 = 0;
@@ -786,11 +818,7 @@ impl Client {
         let status = resp.status();
         if !status.is_success() {
             let text = resp.text().await.unwrap_or_default();
-            let msg = serde_json::from_str::<serde_json::Value>(&text)
-                .ok()
-                .and_then(|v| v.get("message").and_then(|m| m.as_str()).map(str::to_owned))
-                .unwrap_or(text);
-            return Err(Error::Api(format!("HTTP {}: {msg}", status.as_u16())));
+            return Err(api_error(status, text));
         }
 
         let mut file =
@@ -900,11 +928,7 @@ impl Client {
             .await
             .map_err(|e| Error::Api(format!("read body: {e}")))?;
         if !status.is_success() {
-            let msg = serde_json::from_str::<serde_json::Value>(&text)
-                .ok()
-                .and_then(|v| v.get("message").and_then(|m| m.as_str()).map(str::to_owned))
-                .unwrap_or_else(|| text.clone());
-            return Err(Error::Api(format!("HTTP {}: {msg}", status.as_u16())));
+            return Err(api_error(status, text));
         }
         serde_json::from_str(&text).map_err(|e| Error::Api(format!("parse json: {e}")))
     }

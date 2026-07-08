@@ -153,10 +153,12 @@ mod tests {
     fn save_then_load_roundtrips() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("gui-settings.json");
-        let mut s = Settings::default();
-        s.theme = Theme::Dark;
-        s.language = Lang::Ru;
-        s.minimize_to_tray = false;
+        let mut s = Settings {
+            theme: Theme::Dark,
+            language: Lang::Ru,
+            minimize_to_tray: false,
+            ..Settings::default()
+        };
         s.poll_override.insert("work".into(), 300);
         s.timelog_start.insert(
             "work".into(),
