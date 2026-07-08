@@ -14,7 +14,6 @@ use std::path::PathBuf;
 use taskstream_core::client::Client;
 use taskstream_core::config::{default_config_path, Backend, Config, ServerProfile};
 use taskstream_core::error::Error;
-use taskstream_core::github::{GhCli, GithubBackend};
 use taskstream_core::secrets::Secrets;
 
 use crate::cli::Globals;
@@ -45,14 +44,6 @@ pub fn require_openproject(profile: &ServerProfile, what: &str) -> Result<(), Er
              (read-only: 'wp list', 'notification list')"
         ))),
     }
-}
-
-/// Build the read-only GitHub backend from the profile's host (`base_url` is the
-/// GitHub host, e.g. `github.com` or an enterprise host).
-pub fn build_github(profile: &ServerProfile) -> GithubBackend<GhCli> {
-    GithubBackend::new(GhCli {
-        host: profile.base_url.clone(),
-    })
 }
 
 /// Build a [`Client`] from the global flags: resolve the active server, load its

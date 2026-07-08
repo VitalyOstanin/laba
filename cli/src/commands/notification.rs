@@ -25,7 +25,7 @@ pub async fn run(cmd: NotificationCmd, g: &Globals) -> Result<(), Error> {
     if profile.backend == Backend::Github {
         return match cmd {
             NotificationCmd::List { .. } => {
-                let items = super::build_github(&profile).list_notifications()?;
+                let items = taskstream_core::backend::list_notifications(&profile, None).await?;
                 crate::output::emit(&serde_json::Value::Array(items), g.human);
                 Ok(())
             }

@@ -103,7 +103,7 @@ pub async fn run(cmd: WpCmd, g: &Globals) -> Result<(), Error> {
         // doesn't provide here.
         return match cmd {
             WpCmd::List { .. } => {
-                let tasks = super::build_github(&profile).list_my_tasks()?;
+                let tasks = taskstream_core::backend::list_tasks(&profile, None).await?;
                 crate::output::emit(&serde_json::Value::Array(tasks), g.human);
                 Ok(())
             }

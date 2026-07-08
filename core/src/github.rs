@@ -218,16 +218,26 @@ impl<R: GhRunner> GithubBackend<R> {
     }
 }
 
+/// Test-only fake `gh` runner, shared with the `backend` facade tests.
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
+pub mod tests_support {
+    use super::{Error, GhRunner};
 
     /// Fake runner returning canned fixtures keyed by the leading args.
-    struct FakeGh {
+    pub struct FakeGh {
         issues: Vec<u8>,
         prs: Vec<u8>,
         notifications: Vec<u8>,
+    }
+
+    impl FakeGh {
+        pub fn new(issues: Vec<u8>, prs: Vec<u8>, notifications: Vec<u8>) -> Self {
+            Self {
+                issues,
+                prs,
+                notifications,
+            }
+        }
     }
 
     impl GhRunner for FakeGh {
@@ -240,6 +250,13 @@ mod tests {
             }
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::tests_support::FakeGh;
+    use super::*;
+    use serde_json::json;
 
     #[test]
     fn normalize_issue_maps_shared_shape() {
@@ -299,21 +316,21 @@ mod tests {
 
     #[test]
     fn list_my_tasks_merges_issues_and_prs() {
-        let fake = FakeGh {
-            issues: json!([{
+        let fake = FakeGh::new(
+            json!([{
                 "number": 1, "title": "I1", "state": "open",
                 "repository": {"nameWithOwner": "acme/app"}, "assignees": [{"login": "me"}]
             }])
             .to_string()
             .into_bytes(),
-            prs: json!([{
+            json!([{
                 "number": 2, "title": "P2", "state": "open",
                 "repository": {"nameWithOwner": "acme/app"}, "assignees": []
             }])
             .to_string()
             .into_bytes(),
-            notifications: b"[]".to_vec(),
-        };
+            b"[]".to_vec(),
+        );
         let out = GithubBackend::new(fake).list_my_tasks().unwrap();
         assert_eq!(out.len(), 2);
         assert_eq!(out[0]["type"], json!("Issue"));
@@ -324,17 +341,17 @@ mod tests {
 
     #[test]
     fn list_notifications_normalizes() {
-        let fake = FakeGh {
-            issues: b"[]".to_vec(),
-            prs: b"[]".to_vec(),
-            notifications: json!([{
+        let fake = FakeGh::new(
+            b"[]".to_vec(),
+            b"[]".to_vec(),
+            json!([{
                 "id": "1", "reason": "assign",
                 "subject": {"title": "T", "type": "PullRequest", "url": "u"},
                 "repository": {"full_name": "acme/app"}, "updated_at": "2026-07-02T00:00:00Z"
             }])
             .to_string()
             .into_bytes(),
-        };
+        );
         let out = GithubBackend::new(fake).list_notifications().unwrap();
         assert_eq!(out.len(), 1);
         assert_eq!(out[0]["subject"], json!("T"));
