@@ -49,6 +49,10 @@ Backlog of ideas to evaluate. Not commitments.
       neutral, fictional sample data only — no real project/domain terms. Consider
       a light/dark pair and a short animated capture of the log-time flow.
       Implies a mock/demo data source the app can render for captures.
+- [ ] Record a short demo video (screencast) in addition to the screenshots:
+      walk through the dashboard, the work-log timeline, and logging time from a
+      candidate task. Drive it from the same mocked demo data (OpenProject +
+      public GitHub), neutral fictional content only.
 
 ## Observability / debugging
 
