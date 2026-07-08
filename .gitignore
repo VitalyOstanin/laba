@@ -1,0 +1,20 @@
+# Rust
+/target
+**/target
+Cargo.lock.orig
+
+# Tauri
+/gui/dist
+/gui/src-tauri/target
+
+# Node (Tauri frontend, if used)
+node_modules
+dist
+
+# Local working artifacts
+docs/superpowers/
+docs/reviews/
+
+# OS / editor
+.DS_Store
+*.swp
