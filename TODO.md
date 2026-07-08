@@ -29,6 +29,17 @@ Backlog of ideas to evaluate. Not commitments.
       per-widget behavior. Cover other cross-cutting interactions (Enter to
       submit, focus order, unsaved-changes prompts) in the same convention.
 
+## UI testing
+
+- [ ] End-to-end UI tests via the official Tauri WebDriver path: `tauri-driver`
+      driving the built native app through WebdriverIO (or Selenium). This runs
+      the real webview + Rust backend + native window, not a browser-only mock.
+      Platform drivers: WebKitWebDriver on Linux, the Edge WebView2 driver on
+      Windows (macOS has no official WebDriver support yet); run headless in CI
+      under xvfb. Keep the fast layers alongside it: Rust/CLI logic tests (already
+      present) and frontend component/unit tests. Verify the exact `tauri-driver`
+      setup against the pinned Tauri version at implementation time.
+
 ## Observability / debugging
 
 - [ ] Request tracing in `core`: add `tracing` + `tracing-subscriber` driven by
