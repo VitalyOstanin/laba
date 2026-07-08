@@ -4140,6 +4140,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "taskstream-core",
  "tauri",
  "tauri-build",
  "tauri-plugin-opener",

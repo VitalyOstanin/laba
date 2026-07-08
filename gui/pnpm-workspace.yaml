@@ -1,4 +1,0 @@
-# esbuild ships a platform binary via a build script; pnpm blocks build scripts
-# by default, so allow this one (needed by vite).
-allowBuilds:
-  esbuild: true
