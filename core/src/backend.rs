@@ -4,6 +4,7 @@
 //! single place. Returns the shared normalized task/notification shape as
 //! `Vec<Value>`.
 
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::client::Client;
@@ -11,6 +12,96 @@ use crate::config::{Backend, ServerProfile};
 use crate::error::Error;
 use crate::github::{GhCli, GhRunner, GithubBackend};
 use crate::resources::{notification, work_packages};
+
+/// Default page size for the paged list APIs.
+pub const PAGE_SIZE: i64 = 50;
+
+/// One page of normalized items plus the cursor for the next page.
+///
+/// `next_offset` is a backend-specific opaque cursor the caller passes back to
+/// fetch the following page: for OpenProject it is the next 1-based page number,
+/// and `None` once the collection is exhausted. The GitHub backend returns the
+/// whole collection in a single page (`next_offset: None`) because `gh` has no
+/// clean cursor across the client-merged issue/PR stream.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Page {
+    pub items: Vec<Value>,
+    pub next_offset: Option<i64>,
+}
+
+/// Next 1-based page number, or `None` when the pages fetched so far cover the
+/// whole collection. `page` is the 1-based page just fetched.
+fn next_page(page: i64, page_size: i64, total: i64) -> Option<i64> {
+    if page.max(1) * page_size < total {
+        Some(page + 1)
+    } else {
+        None
+    }
+}
+
+/// One page of my open tasks for a server, normalized, plus the next cursor.
+/// OpenProject paginates by `page` (1-based); GitHub returns everything on the
+/// first page and `None` thereafter.
+pub async fn list_tasks_page(
+    profile: &ServerProfile,
+    token: Option<&str>,
+    page: i64,
+    page_size: i64,
+) -> Result<Page, Error> {
+    match profile.backend {
+        Backend::OpenProject => {
+            let client = openproject_client(profile, token)?;
+            let params = work_packages::WpListParams {
+                assignee: Some("me".into()),
+                open: true,
+                offset: page.max(1),
+                limit: Some(page_size),
+                ..Default::default()
+            };
+            let (items, total) = work_packages::list_page(&client, params, false).await?;
+            Ok(Page {
+                items: as_array(items),
+                next_offset: next_page(page, page_size, total),
+            })
+        }
+        Backend::Github => {
+            let host = profile.base_url.clone();
+            let items = run_blocking(move || github_tasks(GhCli { host })).await?;
+            Ok(Page {
+                items,
+                next_offset: None,
+            })
+        }
+    }
+}
+
+/// One page of my notifications for a server, normalized, plus the next cursor.
+pub async fn list_notifications_page(
+    profile: &ServerProfile,
+    token: Option<&str>,
+    page: i64,
+    page_size: i64,
+) -> Result<Page, Error> {
+    match profile.backend {
+        Backend::OpenProject => {
+            let client = openproject_client(profile, token)?;
+            let (items, total) =
+                notification::list_page(&client, page.max(1), Some(page_size), false).await?;
+            Ok(Page {
+                items: as_array(items),
+                next_offset: next_page(page, page_size, total),
+            })
+        }
+        Backend::Github => {
+            let host = profile.base_url.clone();
+            let items = run_blocking(move || github_notifications(GhCli { host })).await?;
+            Ok(Page {
+                items,
+                next_offset: None,
+            })
+        }
+    }
+}
 
 /// My open tasks for a server, normalized. OpenProject requires a token; GitHub
 /// authenticates through `gh` and ignores it.
@@ -116,6 +207,37 @@ mod tests {
         let out = github_notifications(fake).unwrap();
         assert_eq!(out.len(), 1);
         assert_eq!(out[0]["subject"], json!("T"));
+    }
+
+    #[test]
+    fn next_page_stops_when_pages_cover_total() {
+        // page 1 of 50 with total 50: exhausted.
+        assert_eq!(next_page(1, 50, 50), None);
+        // page 1 of 50 with total 51: one more page.
+        assert_eq!(next_page(1, 50, 51), Some(2));
+        // page 2 of 50 with total 120: still more.
+        assert_eq!(next_page(2, 50, 120), Some(3));
+        // page 3 of 50 with total 120: exhausted (150 >= 120).
+        assert_eq!(next_page(3, 50, 120), None);
+        // empty collection: no next page.
+        assert_eq!(next_page(1, 50, 0), None);
+    }
+
+    #[test]
+    fn github_tasks_page_is_single_page() {
+        let issues =
+            json!([{"number":1,"title":"I1","state":"open","repository":{"nameWithOwner":"acme/app"},"assignees":[]}])
+                .to_string()
+                .into_bytes();
+        let fake = FakeGh::new(issues, b"[]".to_vec(), b"[]".to_vec());
+        let items = github_tasks(fake).unwrap();
+        // The page facade wraps the same items with no further cursor.
+        let page = Page {
+            items,
+            next_offset: None,
+        };
+        assert_eq!(page.items.len(), 1);
+        assert_eq!(page.next_offset, None);
     }
 
     #[tokio::test]

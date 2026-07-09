@@ -17,6 +17,28 @@ fn paging_query(offset: i64, limit: Option<i64>) -> Vec<(String, String)> {
     q
 }
 
+/// Fetch one page of notifications (newest first) and the reported total.
+/// `offset` is the 1-based page number.
+pub async fn list_page(
+    client: &Client,
+    offset: i64,
+    limit: Option<i64>,
+    raw: bool,
+) -> Result<(Value, i64), Error> {
+    let mut q = paging_query(offset, limit);
+    q.push(("sortBy".to_string(), json!([["id", "desc"]]).to_string()));
+    let payload = client
+        .request_json_query(reqwest::Method::GET, "notifications", &q, None)
+        .await?;
+    let total = payload.get("total").and_then(|t| t.as_i64()).unwrap_or(0);
+    let elements = normalize::collection(&payload);
+    if raw {
+        return Ok((Value::Array(elements), total));
+    }
+    let out: Vec<Value> = elements.iter().map(normalize::notification).collect();
+    Ok((Value::Array(out), total))
+}
+
 /// List notifications, newest first. Returns normalized notifications unless
 /// `raw` is set, in which case the raw collection elements are returned.
 pub async fn list(
@@ -25,17 +47,8 @@ pub async fn list(
     limit: Option<i64>,
     raw: bool,
 ) -> Result<Value, Error> {
-    let mut q = paging_query(offset, limit);
-    q.push(("sortBy".to_string(), json!([["id", "desc"]]).to_string()));
-    let payload = client
-        .request_json_query(reqwest::Method::GET, "notifications", &q, None)
-        .await?;
-    let elements = normalize::collection(&payload);
-    if raw {
-        return Ok(Value::Array(elements));
-    }
-    let out: Vec<Value> = elements.iter().map(normalize::notification).collect();
-    Ok(Value::Array(out))
+    let (page, _total) = list_page(client, offset, limit, raw).await?;
+    Ok(page)
 }
 
 /// Mark a notification as read.
@@ -121,6 +134,26 @@ mod tests {
         assert_eq!(arr[0]["id"], json!(3));
         assert_eq!(arr[0]["read"], json!(false));
         assert_eq!(arr[0]["wpId"], json!(9));
+    }
+
+    #[tokio::test]
+    async fn list_page_returns_reported_total() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/v3/notifications"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "total": 7,
+                "_embedded": {"elements": [
+                    {"id": 3, "reason": "mentioned", "readIAN": false}
+                ]}
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let c = client_for(&server, "notification-list-page");
+        let (page, total) = list_page(&c, 1, Some(50), false).await.unwrap();
+        assert_eq!(total, 7);
+        assert_eq!(page.as_array().unwrap().len(), 1);
     }
 
     #[tokio::test]

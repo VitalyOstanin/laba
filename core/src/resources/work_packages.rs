@@ -188,9 +188,14 @@ async fn build_links_and_body(
     Ok(Value::Object(body))
 }
 
-/// List work packages by filters. With `include_past`, also merges in work
-/// packages the user was previously assigned to (requires `--assignee`).
-pub async fn list(client: &Client, params: WpListParams, raw: bool) -> Result<Value, Error> {
+/// Fetch one page of the filtered work-package list and the reported total.
+/// Only the paged (non-`include_past`) path; the `include_past` aggregation in
+/// [`list`] is not paginated. `params.offset` is the 1-based page number.
+pub async fn list_page(
+    client: &Client,
+    params: WpListParams,
+    raw: bool,
+) -> Result<(Value, i64), Error> {
     let project_id = match &params.project {
         Some(p) => Some(resolve::project_id(client, p).await?),
         None => None,
@@ -203,30 +208,51 @@ pub async fn list(client: &Client, params: WpListParams, raw: bool) -> Result<Va
         Some(t) => Some(resolve::type_id(client, t).await?),
         None => None,
     };
-
-    if !params.include_past {
-        let assignee_id = match &params.assignee {
-            Some(a) => Some(resolve::resolve_principal_id(client, a).await?),
-            None => None,
-        };
-        let filters = make_filters(
-            &project_id,
-            &status_id,
-            params.open,
-            &type_id,
-            &assignee_id,
-            &params.subject,
-        );
-        let mut q = paging_query(params.offset, params.limit);
-        if !filters.is_empty() {
-            q.push(("filters".to_string(), filters_json(&filters)?));
-        }
-        let payload = client
-            .request_json_query(reqwest::Method::GET, "work_packages", &q, None)
-            .await?;
-        let elements = embedded_elements(&payload);
-        return render_elements(client, elements, raw).await;
+    let assignee_id = match &params.assignee {
+        Some(a) => Some(resolve::resolve_principal_id(client, a).await?),
+        None => None,
+    };
+    let filters = make_filters(
+        &project_id,
+        &status_id,
+        params.open,
+        &type_id,
+        &assignee_id,
+        &params.subject,
+    );
+    let mut q = paging_query(params.offset, params.limit);
+    if !filters.is_empty() {
+        q.push(("filters".to_string(), filters_json(&filters)?));
     }
+    let payload = client
+        .request_json_query(reqwest::Method::GET, "work_packages", &q, None)
+        .await?;
+    let total = payload.get("total").and_then(|t| t.as_i64()).unwrap_or(0);
+    let elements = embedded_elements(&payload);
+    let rendered = render_elements(client, elements, raw).await?;
+    Ok((rendered, total))
+}
+
+/// List work packages by filters. With `include_past`, also merges in work
+/// packages the user was previously assigned to (requires `--assignee`).
+pub async fn list(client: &Client, params: WpListParams, raw: bool) -> Result<Value, Error> {
+    if !params.include_past {
+        let (page, _total) = list_page(client, params, raw).await?;
+        return Ok(page);
+    }
+
+    let project_id = match &params.project {
+        Some(p) => Some(resolve::project_id(client, p).await?),
+        None => None,
+    };
+    let status_id = match &params.status {
+        Some(s) => Some(resolve::status_id(client, s).await?),
+        None => None,
+    };
+    let type_id = match &params.type_ {
+        Some(t) => Some(resolve::type_id(client, t).await?),
+        None => None,
+    };
 
     // include_past path.
     let assignee = params
@@ -451,6 +477,30 @@ mod tests {
         assert_eq!(arr.len(), 1);
         assert_eq!(arr[0]["id"], json!(1));
         assert!(arr[0].get("customFields").is_some());
+    }
+
+    #[tokio::test]
+    async fn list_page_returns_reported_total() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/v3/work_packages"))
+            .and(query_param("pageSize", "2"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "total": 5,
+                "_embedded": {"elements": [wp_element(1), wp_element(2)]}
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let c = client_for(&server, "wp-list-page");
+        let params = WpListParams {
+            offset: 1,
+            limit: Some(2),
+            ..Default::default()
+        };
+        let (page, total) = list_page(&c, params, true).await.unwrap();
+        assert_eq!(total, 5);
+        assert_eq!(page.as_array().unwrap().len(), 2);
     }
 
     #[tokio::test]
