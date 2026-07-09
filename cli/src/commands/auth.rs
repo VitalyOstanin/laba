@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use clap::Subcommand;
 use taskstream_core::client::Client;
-use taskstream_core::config::{Backend, Config};
+use taskstream_core::config::{Backend, Config, ServerProfile};
 use taskstream_core::error::Error;
 use taskstream_core::secrets::Secrets;
 
@@ -48,6 +48,90 @@ fn identity(me: &serde_json::Value) -> Option<String> {
         .or_else(|| me.get("id").map(|v| v.to_string()))
 }
 
+/// Read the login token from `--token` or, with `--with-token`, from stdin.
+/// There is no interactive prompt, so one of the two must be supplied.
+fn read_login_token(token_flag: Option<&str>, with_token: bool) -> Result<String, Error> {
+    if let Some(t) = token_flag {
+        Ok(t.to_owned())
+    } else if with_token {
+        let mut s = String::new();
+        std::io::stdin()
+            .read_to_string(&mut s)
+            .map_err(|e| Error::Io(e.to_string()))?;
+        Ok(s.trim().to_owned())
+    } else {
+        Err(Error::Usage(
+            "provide the token via stdin (--with-token) or --token".into(),
+        ))
+    }
+}
+
+/// The name of an existing server on the same base URL authenticated as the same
+/// account `id`, if any. Profiles whose identity cannot be confirmed (missing or
+/// expired token, unreachable host) cannot prove a duplicate and are skipped.
+async fn duplicate_server(
+    cfg: &Config,
+    secrets: &Secrets,
+    name: &str,
+    profile: &ServerProfile,
+    id: &str,
+) -> Result<Option<String>, Error> {
+    for (other, op) in &cfg.servers {
+        if other == name || op.base_url != profile.base_url {
+            continue;
+        }
+        let Some(other_token) = secrets.get(other)? else {
+            continue;
+        };
+        let oc = Client::new(other, op, other_token, None)?;
+        if let Ok(other_me) = oc.get_json_retrying("users/me", 1).await {
+            if identity(&other_me).as_deref() == Some(id) {
+                return Ok(Some(other.clone()));
+            }
+        }
+    }
+    Ok(None)
+}
+
+/// Validate a token against `users/me` and store it, rejecting a duplicate
+/// (another profile with the same base URL and account) unless `force`.
+async fn login(
+    cfg: &Config,
+    secrets: &Secrets,
+    name: &str,
+    token_flag: Option<&str>,
+    with_token: bool,
+    force: bool,
+) -> Result<(), Error> {
+    let profile = &cfg.servers[name];
+    if profile.backend == Backend::Github {
+        return Err(Error::Usage(
+            "the github backend authenticates via gh; run 'gh auth login' instead".into(),
+        ));
+    }
+    let token = read_login_token(token_flag, with_token)?;
+    if token.is_empty() {
+        return Err(Error::Usage("empty token".into()));
+    }
+    // Validate the token and read the account identity, needed to detect a
+    // duplicate (same base URL + same user).
+    let client = Client::new(name, profile, token.clone(), None)?;
+    let me = client.get_json_retrying("users/me", 3).await?;
+    if !force {
+        if let Some(id) = identity(&me) {
+            if let Some(other) = duplicate_server(cfg, secrets, name, profile, &id).await? {
+                return Err(Error::Usage(format!(
+                    "user '{id}' at {} is already authenticated as server '{other}'; use --force to add anyway",
+                    profile.base_url
+                )));
+            }
+        }
+    }
+    secrets.set(name, &token)?;
+    eprintln!("token stored for '{name}'");
+    Ok(())
+}
+
 pub async fn run(
     cmd: AuthCmd,
     config_flag: &Option<PathBuf>,
@@ -61,58 +145,7 @@ pub async fn run(
     match cmd {
         AuthCmd::Login { with_token, force } => {
             let name = active_server(&cfg, server_flag)?;
-            let profile = &cfg.servers[&name];
-            if profile.backend == Backend::Github {
-                return Err(Error::Usage(
-                    "the github backend authenticates via gh; run 'gh auth login' instead".into(),
-                ));
-            }
-            let token = if let Some(t) = token_flag {
-                t.to_owned()
-            } else if with_token {
-                let mut s = String::new();
-                std::io::stdin()
-                    .read_to_string(&mut s)
-                    .map_err(|e| Error::Io(e.to_string()))?;
-                s.trim().to_owned()
-            } else {
-                return Err(Error::Usage(
-                    "provide the token via stdin (--with-token) or --token".into(),
-                ));
-            };
-            if token.is_empty() {
-                return Err(Error::Usage("empty token".into()));
-            }
-            // Validate the token and read the account identity. The identity is
-            // needed to reject a duplicate (same base URL + same user).
-            let client = Client::new(&name, profile, token.clone(), None)?;
-            let me = client.get_json_retrying("users/me", 3).await?;
-            if !force {
-                if let Some(id) = identity(&me) {
-                    for (other, op) in &cfg.servers {
-                        if other == &name || op.base_url != profile.base_url {
-                            continue;
-                        }
-                        let Some(other_token) = secrets.get(other)? else {
-                            continue;
-                        };
-                        let oc = Client::new(other, op, other_token, None)?;
-                        // A failed identity fetch for another profile (expired
-                        // token, unreachable) cannot confirm a duplicate — skip it.
-                        if let Ok(other_me) = oc.get_json_retrying("users/me", 1).await {
-                            if identity(&other_me).as_deref() == Some(id.as_str()) {
-                                return Err(Error::Usage(format!(
-                                    "user '{id}' at {} is already authenticated as server '{other}'; use --force to add anyway",
-                                    profile.base_url
-                                )));
-                            }
-                        }
-                    }
-                }
-            }
-            secrets.set(&name, &token)?;
-            eprintln!("token stored for '{name}'");
-            Ok(())
+            login(&cfg, &secrets, &name, token_flag, with_token, force).await
         }
         AuthCmd::Token => {
             let name = active_server(&cfg, server_flag)?;

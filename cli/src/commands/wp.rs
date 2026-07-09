@@ -1,5 +1,7 @@
 use clap::Subcommand;
-use taskstream_core::config::Backend;
+use serde_json::Value;
+use taskstream_core::client::Client;
+use taskstream_core::config::{Backend, ServerProfile};
 use taskstream_core::error::Error;
 use taskstream_core::resources::work_packages::{self, WpFields, WpListParams};
 
@@ -95,23 +97,23 @@ pub enum WpCmd {
     Delete { id: i64 },
 }
 
-pub async fn run(cmd: WpCmd, g: &Globals) -> Result<(), Error> {
-    let (_name, profile) = super::load_profile(g)?;
-    if profile.backend == Backend::Github {
-        // First slice: `list` maps to my open issues and pull requests; filters
-        // are not applied yet. Other subcommands need write/detail APIs github
-        // doesn't provide here.
-        return match cmd {
-            WpCmd::List { .. } => {
-                let tasks = taskstream_core::backend::list_tasks(&profile, None).await?;
-                crate::output::emit(&serde_json::Value::Array(tasks), g.human);
-                Ok(())
-            }
-            _ => super::require_openproject(&profile, "this 'wp' subcommand"),
-        };
+/// GitHub backend: only `list` is supported (my open issues and pull requests,
+/// filters not applied yet); other subcommands need write/detail APIs the github
+/// path does not provide.
+async fn run_github(cmd: WpCmd, profile: &ServerProfile, g: &Globals) -> Result<(), Error> {
+    match cmd {
+        WpCmd::List { .. } => {
+            let tasks = taskstream_core::backend::list_tasks(profile, None).await?;
+            crate::output::emit(&Value::Array(tasks), g.human);
+            Ok(())
+        }
+        _ => super::require_openproject(profile, "this 'wp' subcommand"),
     }
-    let (_name, client) = super::build_client(g)?;
-    let raw = g.raw;
+}
+
+/// Dispatch an OpenProject `wp` subcommand to its resource operation, returning
+/// the JSON value to emit.
+async fn run_openproject(cmd: WpCmd, client: &Client, raw: bool) -> Result<Value, Error> {
     let out = match cmd {
         WpCmd::List {
             project,
@@ -135,16 +137,16 @@ pub async fn run(cmd: WpCmd, g: &Globals) -> Result<(), Error> {
                 offset,
                 limit,
             };
-            work_packages::list(&client, params, raw).await?
+            work_packages::list(client, params, raw).await?
         }
-        WpCmd::Get { id } => work_packages::get(&client, id, raw).await?,
+        WpCmd::Get { id } => work_packages::get(client, id, raw).await?,
         WpCmd::Search {
             text,
             offset,
             limit,
-        } => work_packages::search(&client, &text, offset, limit, raw).await?,
+        } => work_packages::search(client, &text, offset, limit, raw).await?,
         WpCmd::Query { id, offset, limit } => {
-            work_packages::query(&client, id, offset, limit, raw).await?
+            work_packages::query(client, id, offset, limit, raw).await?
         }
         WpCmd::Create {
             project,
@@ -170,7 +172,7 @@ pub async fn run(cmd: WpCmd, g: &Globals) -> Result<(), Error> {
                 assignee,
                 parent,
             };
-            work_packages::create(&client, fields, raw).await?
+            work_packages::create(client, fields, raw).await?
         }
         WpCmd::Update {
             id,
@@ -196,10 +198,20 @@ pub async fn run(cmd: WpCmd, g: &Globals) -> Result<(), Error> {
                 assignee,
                 parent,
             };
-            work_packages::update(&client, id, fields, raw).await?
+            work_packages::update(client, id, fields, raw).await?
         }
-        WpCmd::Delete { id } => work_packages::delete(&client, id).await?,
+        WpCmd::Delete { id } => work_packages::delete(client, id).await?,
     };
+    Ok(out)
+}
+
+pub async fn run(cmd: WpCmd, g: &Globals) -> Result<(), Error> {
+    let (_name, profile) = super::load_profile(g)?;
+    if profile.backend == Backend::Github {
+        return run_github(cmd, &profile, g).await;
+    }
+    let (_name, client) = super::build_client(g)?;
+    let out = run_openproject(cmd, &client, g.raw).await?;
     crate::output::emit(&out, g.human);
     Ok(())
 }

@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use taskstream_core::backend;
 use taskstream_core::client::Client;
-use taskstream_core::config::{default_config_path, Backend, Config};
+use taskstream_core::config::{default_config_path, Backend, Config, ServerProfile};
 use taskstream_core::resources::{comment, notification, time};
 use taskstream_core::secrets::Secrets;
 use taskstream_core::settings::{default_settings_path, Settings, TimelogStart};
@@ -88,6 +88,56 @@ pub struct TimelogResult {
     pub excluded: Vec<String>,
 }
 
+/// Fetch one server's time entries in `[since, today]` as `(day, minutes)`
+/// pairs. Timelog is best-effort across servers: an unauthenticated server, a
+/// client that fails to build, or a failed request yields an empty vec (logged),
+/// never an error. Only `token_for` failures propagate, aborting the command.
+async fn server_time_minutes(
+    name: &str,
+    p: &ServerProfile,
+    since: &str,
+    today: &str,
+) -> Result<Vec<(String, i64)>, String> {
+    let token = match token_for(name, p.backend)? {
+        Some(t) => t,
+        None => return Ok(Vec::new()),
+    };
+    let client = match Client::new("", p, token, None) {
+        Ok(c) => c,
+        Err(e) => {
+            log::warn!("timelog skipped server '{name}': {e}");
+            return Ok(Vec::new());
+        }
+    };
+    let list = time::list_all(
+        &client,
+        Some("me"),
+        None,
+        None,
+        Some(since),
+        Some(today),
+        false,
+    )
+    .await;
+    let arr = match list {
+        Ok(Value::Array(arr)) => arr,
+        Ok(_) => return Ok(Vec::new()),
+        Err(e) => {
+            log::warn!("timelog fetch failed for server '{name}': {e}");
+            return Ok(Vec::new());
+        }
+    };
+    let mut out = Vec::new();
+    for te in arr {
+        let day = te.get("spentOn").and_then(|v| v.as_str()).unwrap_or("");
+        let hours = te.get("hours").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        if !day.is_empty() {
+            out.push((day.to_string(), timelog::minutes_from_hours(hours)));
+        }
+    }
+    Ok(out)
+}
+
 /// Aggregate my logged time across timelog-capable servers and compute the
 /// work-log status and timeline. Each server contributes entries from its own
 /// start date; the aggregate plan runs from the earliest start (requirement 21).
@@ -138,42 +188,7 @@ pub async fn get_timelog() -> Result<TimelogResult, String> {
             starts.push(since.clone());
         }
 
-        let token = match token_for(name, p.backend)? {
-            Some(t) => t,
-            None => continue,
-        };
-        let client = match Client::new("", p, token, None) {
-            Ok(c) => c,
-            Err(e) => {
-                log::warn!("timelog skipped server '{name}': {e}");
-                continue;
-            }
-        };
-        let list = time::list_all(
-            &client,
-            Some("me"),
-            None,
-            None,
-            Some(&since),
-            Some(&today),
-            false,
-        )
-        .await;
-        let arr = match list {
-            Ok(Value::Array(arr)) => arr,
-            Ok(_) => continue,
-            Err(e) => {
-                log::warn!("timelog fetch failed for server '{name}': {e}");
-                continue;
-            }
-        };
-        for te in arr {
-            let day = te.get("spentOn").and_then(|v| v.as_str()).unwrap_or("");
-            let hours = te.get("hours").and_then(|v| v.as_f64()).unwrap_or(0.0);
-            if !day.is_empty() {
-                entries.push((day.to_string(), timelog::minutes_from_hours(hours)));
-            }
-        }
+        entries.extend(server_time_minutes(name, p, &since, &today).await?);
     }
 
     if dirty {
