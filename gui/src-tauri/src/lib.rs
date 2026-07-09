@@ -15,6 +15,30 @@ fn minimize_to_tray() -> bool {
         .unwrap_or(true)
 }
 
+/// Localized `(show, quit)` labels for the tray menu, mirroring the frontend
+/// `tray.show`/`tray.quit` keys. The native tray is built in Rust at startup,
+/// before the webview locale exists, so the two strings are duplicated here.
+/// `Lang::System` follows the `LANG`/`LC_ALL` environment, defaulting to English.
+fn tray_labels() -> (&'static str, &'static str) {
+    use taskstream_core::settings::{default_settings_path, Lang, Settings};
+    let lang = Settings::load(&default_settings_path())
+        .map(|s| s.language)
+        .unwrap_or_default();
+    let ru = match lang {
+        Lang::Ru => true,
+        Lang::En => false,
+        Lang::System => std::env::var("LC_ALL")
+            .or_else(|_| std::env::var("LANG"))
+            .map(|v| v.to_lowercase().starts_with("ru"))
+            .unwrap_or(false),
+    };
+    if ru {
+        ("Показать", "Выход")
+    } else {
+        ("Show", "Quit")
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -35,8 +59,9 @@ pub fn run() {
             if let Some(w) = app.get_webview_window("main") {
                 w.open_devtools();
             }
-            let show = MenuItem::with_id(app, "show", "Show", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let (show_label, quit_label) = tray_labels();
+            let show = MenuItem::with_id(app, "show", show_label, true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", quit_label, true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
             let _tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
