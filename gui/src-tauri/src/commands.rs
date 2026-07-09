@@ -183,7 +183,8 @@ pub async fn get_timelog() -> Result<TimelogResult, String> {
 
     // ISO dates sort lexicographically, so the min string is the earliest start.
     let earliest = starts.iter().min().cloned();
-    match earliest.and_then(|s| timelog::compute(&entries, &s).map(|r| (s, r))) {
+    let first_day = settings.week_start.first_weekday();
+    match earliest.and_then(|s| timelog::compute(&entries, &s, first_day).map(|r| (s, r))) {
         Some((start, (status, timeline))) => Ok(TimelogResult {
             configured: true,
             status,

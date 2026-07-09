@@ -33,6 +33,28 @@ pub enum Lang {
     Ru,
 }
 
+/// First day of the week, for week-based grouping (the timelog week boundary).
+///
+/// Deriving this from the system locale is deferred (needs CLDR/ICU week data);
+/// for now it is an explicit choice defaulting to Monday. See `TODO.md`.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum WeekStart {
+    #[default]
+    Monday,
+    Sunday,
+}
+
+impl WeekStart {
+    /// The corresponding `chrono` weekday, for timelog week grouping.
+    pub fn first_weekday(self) -> chrono::Weekday {
+        match self {
+            WeekStart::Monday => chrono::Weekday::Mon,
+            WeekStart::Sunday => chrono::Weekday::Sun,
+        }
+    }
+}
+
 /// Per-server timelog window start.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TimelogStart {
@@ -53,6 +75,9 @@ pub struct Settings {
     /// Hide to tray on window close instead of quitting.
     #[serde(default = "default_true")]
     pub minimize_to_tray: bool,
+    /// First day of the week for week-based grouping.
+    #[serde(default)]
+    pub week_start: WeekStart,
     /// Per-server poll interval overrides (seconds). Absent entries fall back to
     /// the server backend's default (see [`Backend::default_poll_secs`]).
     #[serde(default)]
@@ -87,6 +112,7 @@ impl Default for Settings {
             theme: Theme::default(),
             language: Lang::default(),
             minimize_to_tray: true,
+            week_start: WeekStart::default(),
             poll_override: BTreeMap::new(),
             timelog_start: BTreeMap::new(),
             disabled_servers: BTreeSet::new(),
@@ -186,6 +212,18 @@ mod tests {
         let mut s = Settings::default();
         s.poll_override.insert("work".into(), 0);
         assert_eq!(s.effective_poll_secs("work", Backend::OpenProject), 120);
+    }
+
+    #[test]
+    fn week_start_defaults_to_monday_and_maps_to_weekday() {
+        assert_eq!(WeekStart::default(), WeekStart::Monday);
+        assert_eq!(WeekStart::Monday.first_weekday(), chrono::Weekday::Mon);
+        assert_eq!(WeekStart::Sunday.first_weekday(), chrono::Weekday::Sun);
+        assert_eq!(Settings::default().week_start, WeekStart::Monday);
+        // Absent in older configs -> serde default (Monday).
+        let s: Settings = serde_json::from_str("{}").unwrap();
+        assert_eq!(s.week_start, WeekStart::Monday);
+        assert_eq!(serde_json::to_string(&WeekStart::Sunday).unwrap(), "\"sunday\"");
     }
 
     #[test]

@@ -13,6 +13,7 @@ export type Notification = Record<string, unknown>;
 
 export type Theme = "system" | "dark" | "light";
 export type Lang = "system" | "en" | "ru";
+export type WeekStart = "monday" | "sunday";
 
 export interface TimelogStart {
   date: string; // YYYY-MM-DD
@@ -23,6 +24,8 @@ export interface Settings {
   theme: Theme;
   language: Lang;
   minimize_to_tray: boolean;
+  // first day of the week for week-based grouping
+  week_start: WeekStart;
   // server name -> poll interval override in seconds
   poll_override: Record<string, number>;
   // server name -> timelog window start

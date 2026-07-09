@@ -11,6 +11,7 @@ export const defaultSettings: Settings = {
   theme: "system",
   language: "system",
   minimize_to_tray: true,
+  week_start: "monday",
   poll_override: {},
   timelog_start: {},
   disabled_servers: [],

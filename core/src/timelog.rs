@@ -18,7 +18,7 @@
 //! shortfall) are dropped from the displayed plan/logged totals; the current
 //! week is always kept.
 
-use chrono::{Datelike, Duration, NaiveDate};
+use chrono::{Datelike, Duration, NaiveDate, Weekday};
 
 /// Planned minutes for a full weekday.
 pub const DAILY_NORM_MINUTES: i64 = 8 * 60;
@@ -107,9 +107,13 @@ fn plan_minutes(date: NaiveDate) -> i64 {
     }
 }
 
-/// Local midnight of the Monday opening the week containing `date`.
-fn monday_of(date: NaiveDate) -> NaiveDate {
-    date - Duration::days(date.weekday().num_days_from_monday() as i64)
+/// The date opening the week containing `date`, given the configured first day
+/// of the week.
+fn week_start_of(date: NaiveDate, first_day: Weekday) -> NaiveDate {
+    let offset = (date.weekday().num_days_from_monday() as i64
+        - first_day.num_days_from_monday() as i64)
+        .rem_euclid(7);
+    date - Duration::days(offset)
 }
 
 /// Sum logged minutes per `spentOn` day.
@@ -184,22 +188,28 @@ pub fn empty_status() -> TimelogStatus {
 }
 
 /// Compute status and timeline from a string start date against today. Returns
-/// `None` when `start` is not a valid `YYYY-MM-DD` date.
-pub fn compute(entries: &[(String, i64)], start: &str) -> Option<(TimelogStatus, Vec<DayCell>)> {
+/// `None` when `start` is not a valid `YYYY-MM-DD` date. `first_day` sets the
+/// week boundary used to drop fully-filled past weeks.
+pub fn compute(
+    entries: &[(String, i64)],
+    start: &str,
+    first_day: Weekday,
+) -> Option<(TimelogStatus, Vec<DayCell>)> {
     let start = parse_date(start)?;
     let today = today_local();
     Some((
-        compute_status(entries, start, today),
+        compute_status(entries, start, today, first_day),
         build_timeline(entries, start, today),
     ))
 }
 
 /// Compute the work-log status. `start` after `today` yields an empty green
-/// result.
+/// result. `first_day` sets the week boundary for the fully-filled-week drop.
 pub fn compute_status(
     entries: &[(String, i64)],
     start: NaiveDate,
     today: NaiveDate,
+    first_day: Weekday,
 ) -> TimelogStatus {
     if start > today {
         return TimelogStatus {
@@ -213,13 +223,13 @@ pub fn compute_status(
     }
 
     let cells = build_timeline(entries, start, today);
-    let cur_week = monday_of(today);
+    let cur_week = week_start_of(today, first_day);
 
-    // Weekly shortfall keyed by that week's Monday, to judge "fully filled".
+    // Weekly shortfall keyed by that week's start day, to judge "fully filled".
     let mut week_deficit: std::collections::HashMap<NaiveDate, i64> = std::collections::HashMap::new();
     for c in &cells {
         let d = NaiveDate::parse_from_str(&c.date, DATE_FMT).expect("cell date is valid");
-        *week_deficit.entry(monday_of(d)).or_insert(0) += c.deficit_min;
+        *week_deficit.entry(week_start_of(d, first_day)).or_insert(0) += c.deficit_min;
     }
 
     let today_key = today.format(DATE_FMT).to_string();
@@ -232,7 +242,7 @@ pub fn compute_status(
 
     for c in &cells {
         let d = NaiveDate::parse_from_str(&c.date, DATE_FMT).expect("cell date is valid");
-        let week = monday_of(d);
+        let week = week_start_of(d, first_day);
         let is_current_week = week == cur_week;
         // Drop fully-filled past weeks; the current week is always counted.
         if !is_current_week && week_deficit.get(&week) == Some(&0) {
@@ -306,7 +316,7 @@ mod tests {
 
     #[test]
     fn start_after_today_is_empty_green() {
-        let s = compute_status(&[], d("2026-07-10"), d("2026-07-08"));
+        let s = compute_status(&[], d("2026-07-10"), d("2026-07-08"), Weekday::Mon);
         assert_eq!(s.status, Status::Green);
         assert_eq!(s.planned_min, 0);
     }
@@ -314,7 +324,7 @@ mod tests {
     #[test]
     fn single_full_weekday_is_green() {
         // 2026-07-08 is a Wednesday.
-        let s = compute_status(&[e("2026-07-08", 480)], d("2026-07-08"), d("2026-07-08"));
+        let s = compute_status(&[e("2026-07-08", 480)], d("2026-07-08"), d("2026-07-08"), Weekday::Mon);
         assert_eq!(s.status, Status::Green);
         assert_eq!(s.planned_min, 480);
         assert_eq!(s.logged_min, 480);
@@ -323,7 +333,7 @@ mod tests {
 
     #[test]
     fn shortfall_only_today_is_yellow() {
-        let s = compute_status(&[e("2026-07-08", 300)], d("2026-07-08"), d("2026-07-08"));
+        let s = compute_status(&[e("2026-07-08", 300)], d("2026-07-08"), d("2026-07-08"), Weekday::Mon);
         assert_eq!(s.status, Status::Yellow);
         assert_eq!(s.today_deficit_min, 180);
         assert_eq!(s.deficit_min, 180);
@@ -337,7 +347,7 @@ mod tests {
             e("2026-07-07", 480), // Tue full
             e("2026-07-08", 480), // Wed full (today)
         ];
-        let s = compute_status(&entries, d("2026-07-06"), d("2026-07-08"));
+        let s = compute_status(&entries, d("2026-07-06"), d("2026-07-08"), Weekday::Mon);
         assert_eq!(s.status, Status::Red);
         assert_eq!(s.today_deficit_min, 0);
         assert_eq!(s.deficit_min, 180);
@@ -345,7 +355,7 @@ mod tests {
 
     #[test]
     fn overlog_without_deficit_is_over() {
-        let s = compute_status(&[e("2026-07-08", 600)], d("2026-07-08"), d("2026-07-08"));
+        let s = compute_status(&[e("2026-07-08", 600)], d("2026-07-08"), d("2026-07-08"), Weekday::Mon);
         assert_eq!(s.status, Status::Over);
         assert_eq!(s.surplus_min, 120);
         assert_eq!(s.deficit_min, 0);
@@ -355,7 +365,7 @@ mod tests {
     fn overlog_does_not_offset_other_day_deficit() {
         // Mon overlogged, Wed (today) short: surplus does not cancel deficit.
         let entries = [e("2026-07-06", 600), e("2026-07-07", 480), e("2026-07-08", 300)];
-        let s = compute_status(&entries, d("2026-07-06"), d("2026-07-08"));
+        let s = compute_status(&entries, d("2026-07-06"), d("2026-07-08"), Weekday::Mon);
         assert_eq!(s.deficit_min, 180);
         assert_eq!(s.surplus_min, 120);
         assert_eq!(s.status, Status::Yellow); // deficit only today
@@ -364,7 +374,7 @@ mod tests {
     #[test]
     fn weekend_has_no_plan() {
         // 2026-07-11 is Saturday.
-        let s = compute_status(&[], d("2026-07-11"), d("2026-07-11"));
+        let s = compute_status(&[], d("2026-07-11"), d("2026-07-11"), Weekday::Mon);
         assert_eq!(s.planned_min, 0);
         assert_eq!(s.status, Status::Green);
     }
@@ -373,7 +383,7 @@ mod tests {
     fn public_holiday_weekday_has_no_plan() {
         // 2026-01-07 is a Wednesday but an RF public holiday: no plan, so an
         // empty log is still green rather than a deficit.
-        let s = compute_status(&[], d("2026-01-07"), d("2026-01-07"));
+        let s = compute_status(&[], d("2026-01-07"), d("2026-01-07"), Weekday::Mon);
         assert_eq!(s.planned_min, 0);
         assert_eq!(s.status, Status::Green);
     }
@@ -387,11 +397,21 @@ mod tests {
             entries.push(e(day, 480));
         }
         entries.push(e("2026-07-06", 300)); // current Mon, short
-        let s = compute_status(&entries, d("2026-06-29"), d("2026-07-06"));
+        let s = compute_status(&entries, d("2026-06-29"), d("2026-07-06"), Weekday::Mon);
         // Prev full week dropped: planned counts only the current Monday.
         assert_eq!(s.planned_min, 480);
         assert_eq!(s.logged_min, 300);
         assert_eq!(s.status, Status::Yellow);
+    }
+
+    #[test]
+    fn week_start_of_respects_first_day() {
+        // 2026-07-08 is a Wednesday.
+        assert_eq!(week_start_of(d("2026-07-08"), Weekday::Mon), d("2026-07-06"));
+        assert_eq!(week_start_of(d("2026-07-08"), Weekday::Sun), d("2026-07-05"));
+        // A boundary day maps to itself.
+        assert_eq!(week_start_of(d("2026-07-05"), Weekday::Sun), d("2026-07-05"));
+        assert_eq!(week_start_of(d("2026-07-06"), Weekday::Mon), d("2026-07-06"));
     }
 
     #[test]
@@ -412,11 +432,11 @@ mod tests {
 
     #[test]
     fn compute_rejects_bad_start_and_empty_status_is_green() {
-        assert!(compute(&[], "not-a-date").is_none());
+        assert!(compute(&[], "not-a-date", Weekday::Mon).is_none());
         assert_eq!(empty_status().status, Status::Green);
         assert_eq!(empty_status().planned_min, 0);
         // A valid start computes a (status, timeline) pair.
-        let (_, timeline) = compute(&[], &fmt(today_local())).unwrap();
+        let (_, timeline) = compute(&[], &fmt(today_local()), Weekday::Mon).unwrap();
         assert_eq!(timeline.len(), 1); // start == today
     }
 

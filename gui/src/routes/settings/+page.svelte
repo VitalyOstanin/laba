@@ -10,7 +10,7 @@
   import { saveSettings } from "$lib/api";
   import { applyTheme } from "$lib/theme";
   import { language, t } from "$lib/i18n";
-  import type { Theme, Lang } from "$lib/types";
+  import type { Theme, Lang, WeekStart } from "$lib/types";
 
   let saved = $state(false);
   let flash: ReturnType<typeof setTimeout> | undefined;
@@ -33,6 +33,10 @@
     settings.update((s) => ({ ...s, language: v }));
     void persist();
   }
+  function setWeekStart(v: WeekStart): void {
+    settings.update((s) => ({ ...s, week_start: v }));
+    void persist();
+  }
   function setTray(v: boolean): void {
     settings.update((s) => ({ ...s, minimize_to_tray: v }));
     void persist();
@@ -52,6 +56,7 @@
 
   const themes: Theme[] = ["system", "dark", "light"];
   const langs: Lang[] = ["system", "en", "ru"];
+  const weekStarts: WeekStart[] = ["monday", "sunday"];
 </script>
 
 <section class="settings" aria-label={$t("settings.title")}>
@@ -92,6 +97,24 @@
             onchange={() => setLang(lg)}
           />
           {$t(`settings.language.${lg}`)}
+        </label>
+      {/each}
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>{$t("settings.weekStart")}</legend>
+    <div class="choices">
+      {#each weekStarts as ws (ws)}
+        <label>
+          <input
+            type="radio"
+            name="week-start"
+            value={ws}
+            checked={$settings.week_start === ws}
+            onchange={() => setWeekStart(ws)}
+          />
+          {$t(`settings.weekStart.${ws}`)}
         </label>
       {/each}
     </div>
