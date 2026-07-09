@@ -5,6 +5,8 @@ import type { ServerInfo } from "./types";
 
 const timers = new Map<string, ReturnType<typeof setInterval>>();
 let timelogTimer: ReturnType<typeof setInterval> | undefined;
+let resumeHandler: (() => void) | undefined;
+let resuming = false;
 
 /** Aggregate timelog refresh interval (seconds). */
 const TIMELOG_INTERVAL_SECS = 120;
@@ -28,6 +30,13 @@ export async function startPolling(): Promise<void> {
     () => void refreshTimelog(),
     TIMELOG_INTERVAL_SECS * 1000,
   );
+
+  // setInterval timers are suspended while the system sleeps and resume only on
+  // the next tick, so data is stale for up to one interval after wake. Refresh
+  // immediately when the window regains focus or connectivity is restored.
+  resumeHandler = () => void refreshAll();
+  window.addEventListener("focus", resumeHandler);
+  window.addEventListener("online", resumeHandler);
 }
 
 export function stopPolling(): void {
@@ -35,6 +44,23 @@ export function stopPolling(): void {
   timers.clear();
   if (timelogTimer) clearInterval(timelogTimer);
   timelogTimer = undefined;
+  if (resumeHandler) {
+    window.removeEventListener("focus", resumeHandler);
+    window.removeEventListener("online", resumeHandler);
+    resumeHandler = undefined;
+  }
+}
+
+/** Refresh every enabled server and the aggregate timelog at once. */
+export async function refreshAll(): Promise<void> {
+  if (resuming) return;
+  resuming = true;
+  try {
+    const enabled = get(servers).filter((s) => s.enabled);
+    await Promise.all([...enabled.map((s) => pollOnce(s)), refreshTimelog()]);
+  } finally {
+    resuming = false;
+  }
 }
 
 /** Refresh a single server now (after a write action). */
