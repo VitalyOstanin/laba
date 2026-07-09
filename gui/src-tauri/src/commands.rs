@@ -209,7 +209,11 @@ pub async fn get_timelog() -> Result<TimelogResult, String> {
 }
 
 #[tauri::command]
-pub async fn list_tasks(server: String) -> Result<Vec<Value>, String> {
+pub async fn list_tasks(
+    server: String,
+    page: Option<i64>,
+    page_size: Option<i64>,
+) -> Result<backend::Page, String> {
     let cfg = load_cfg()?;
     let profile = cfg
         .servers
@@ -217,13 +221,22 @@ pub async fn list_tasks(server: String) -> Result<Vec<Value>, String> {
         .ok_or_else(|| format!("unknown server '{server}'"))?
         .clone();
     let token = token_for(&server, profile.backend)?;
-    backend::list_tasks(&profile, token.as_deref())
-        .await
-        .map_err(|e| e.to_string())
+    backend::list_tasks_page(
+        &profile,
+        token.as_deref(),
+        page.unwrap_or(1),
+        page_size.unwrap_or(backend::PAGE_SIZE),
+    )
+    .await
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn list_notifications(server: String) -> Result<Vec<Value>, String> {
+pub async fn list_notifications(
+    server: String,
+    page: Option<i64>,
+    page_size: Option<i64>,
+) -> Result<backend::Page, String> {
     let cfg = load_cfg()?;
     let profile = cfg
         .servers
@@ -231,9 +244,14 @@ pub async fn list_notifications(server: String) -> Result<Vec<Value>, String> {
         .ok_or_else(|| format!("unknown server '{server}'"))?
         .clone();
     let token = token_for(&server, profile.backend)?;
-    backend::list_notifications(&profile, token.as_deref())
-        .await
-        .map_err(|e| e.to_string())
+    backend::list_notifications_page(
+        &profile,
+        token.as_deref(),
+        page.unwrap_or(1),
+        page_size.unwrap_or(backend::PAGE_SIZE),
+    )
+    .await
+    .map_err(|e| e.to_string())
 }
 
 /// Build an OpenProject client for a write action. Errors clearly if the server
