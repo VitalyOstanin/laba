@@ -9,6 +9,12 @@
   } from "$lib/store";
   import { saveSettings } from "$lib/api";
   import { applyTheme } from "$lib/theme";
+  import {
+    applyUiScale,
+    clampUiScale,
+    DEFAULT_UI_SCALE,
+    UI_SCALE_STEP,
+  } from "$lib/scale";
   import { language, t } from "$lib/i18n";
   import type { Theme, Lang, WeekStart } from "$lib/types";
 
@@ -40,6 +46,15 @@
   function setTray(v: boolean): void {
     settings.update((s) => ({ ...s, minimize_to_tray: v }));
     void persist();
+  }
+  function setUiScale(scale: number): void {
+    const v = clampUiScale(scale);
+    settings.update((s) => ({ ...s, ui_scale: v }));
+    applyUiScale(v);
+    void persist();
+  }
+  function bumpUiScale(delta: number): void {
+    setUiScale(get(settings).ui_scale + delta);
   }
   function setTimezone(raw: string): void {
     const tz = raw.trim() === "" ? null : raw.trim();
@@ -136,6 +151,28 @@
       />
     </label>
     <p class="hint">{$t("settings.timezone.hint")}</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>{$t("settings.scale")}</legend>
+    <div class="scale-row">
+      <button
+        type="button"
+        class="scale-btn"
+        aria-label={$t("settings.scale.decrease")}
+        onclick={() => bumpUiScale(-UI_SCALE_STEP)}
+      >−</button>
+      <span class="scale-value" aria-live="polite">{$settings.ui_scale}%</span>
+      <button
+        type="button"
+        class="scale-btn"
+        aria-label={$t("settings.scale.increase")}
+        onclick={() => bumpUiScale(UI_SCALE_STEP)}
+      >+</button>
+      <button type="button" class="scale-reset" onclick={() => setUiScale(DEFAULT_UI_SCALE)}>
+        {$t("settings.scale.reset")}
+      </button>
+    </div>
   </fieldset>
 
   <fieldset>

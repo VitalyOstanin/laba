@@ -13,6 +13,7 @@ export const defaultSettings: Settings = {
   minimize_to_tray: true,
   week_start: "monday",
   timezone: null,
+  ui_scale: 100,
   poll_override: {},
   timelog_start: {},
   disabled_servers: [],

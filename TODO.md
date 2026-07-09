@@ -137,7 +137,8 @@ Backlog of ideas to evaluate. Not commitments.
       (the `byServer` store currently keeps every server's full lists resident).
       Bound resident data by active server + viewport; drop or re-fetch on demand.
 
-- [ ] UI scaling setting: a user-adjustable interface zoom / scale factor
-      (e.g. font-size / rem base or a CSS zoom on the root), persisted in GUI
-      settings alongside theme and language, with sensible steps and a reset.
-      Consider honoring the OS/display scale as the default.
+- [ ] UI scale: honor the OS/display scale as the default. The manual scale is
+      implemented (`Settings::ui_scale`, percent, clamped 50-200; applied by the
+      GUI to the root font size via `applyUiScale`, with −/+/reset on the settings
+      screen). Remaining: derive a sensible default from the OS/display scale
+      instead of a fixed 100 when the user has not chosen one.

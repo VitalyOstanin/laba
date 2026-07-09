@@ -660,3 +660,55 @@ body {
 .settings .auto-hint {
   color: var(--warn);
 }
+
+.settings .tz-field input {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  min-width: 220px;
+}
+
+.settings .scale-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings .scale-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.settings .scale-btn:hover {
+  background: var(--border);
+}
+
+.settings .scale-value {
+  min-width: 56px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings .scale-reset {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.settings .scale-reset:hover {
+  background: var(--border);
+}

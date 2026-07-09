@@ -28,6 +28,8 @@ export interface Settings {
   week_start: WeekStart;
   // IANA timezone name for the day boundary and datetime display; null = local
   timezone: string | null;
+  // interface scale in whole percent (100 = default)
+  ui_scale: number;
   // server name -> poll interval override in seconds
   poll_override: Record<string, number>;
   // server name -> timelog window start

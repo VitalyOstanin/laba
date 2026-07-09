@@ -27,6 +27,10 @@ export const ru: Dict = {
   "settings.timezone.placeholder": "Локальный (системный)",
   "settings.timezone.hint":
     "Имя IANA (например, Europe/Moscow) для границы дня и отображения дат. Пусто — локальная зона машины.",
+  "settings.scale": "Масштаб интерфейса",
+  "settings.scale.decrease": "Уменьшить масштаб",
+  "settings.scale.increase": "Увеличить масштаб",
+  "settings.scale.reset": "Сбросить",
   "settings.tray": "Сворачивать в трей при закрытии окна",
   "settings.poll": "Интервал опроса по серверам (секунды)",
   "settings.poll.hint": "Пусто — использовать значение по умолчанию бэкенда.",

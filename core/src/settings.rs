@@ -83,6 +83,10 @@ pub struct Settings {
     /// [`crate::datetime::Zone`].
     #[serde(default)]
     pub timezone: Option<String>,
+    /// Interface scale in whole percent (100 = default). Applied by the GUI to
+    /// the root font size. Clamp with [`clamp_ui_scale`] before use.
+    #[serde(default = "default_ui_scale")]
+    pub ui_scale: u32,
     /// Per-server poll interval overrides (seconds). Absent entries fall back to
     /// the server backend's default (see [`Backend::default_poll_secs`]).
     #[serde(default)]
@@ -111,6 +115,26 @@ fn default_true() -> bool {
     true
 }
 
+/// Default interface scale (percent).
+pub const DEFAULT_UI_SCALE: u32 = 100;
+/// Smallest / largest interface scale accepted (percent).
+pub const MIN_UI_SCALE: u32 = 50;
+pub const MAX_UI_SCALE: u32 = 200;
+
+fn default_ui_scale() -> u32 {
+    DEFAULT_UI_SCALE
+}
+
+/// Clamp an interface scale to `[MIN_UI_SCALE, MAX_UI_SCALE]`, mapping 0 (an
+/// absent/blank value) back to the default so the UI can never shrink to nothing.
+pub fn clamp_ui_scale(scale: u32) -> u32 {
+    if scale == 0 {
+        DEFAULT_UI_SCALE
+    } else {
+        scale.clamp(MIN_UI_SCALE, MAX_UI_SCALE)
+    }
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Settings {
@@ -119,6 +143,7 @@ impl Default for Settings {
             minimize_to_tray: true,
             week_start: WeekStart::default(),
             timezone: None,
+            ui_scale: DEFAULT_UI_SCALE,
             poll_override: BTreeMap::new(),
             timelog_start: BTreeMap::new(),
             disabled_servers: BTreeSet::new(),
@@ -234,6 +259,18 @@ mod tests {
             serde_json::to_string(&WeekStart::Sunday).unwrap(),
             "\"sunday\""
         );
+    }
+
+    #[test]
+    fn ui_scale_defaults_and_clamps() {
+        assert_eq!(Settings::default().ui_scale, DEFAULT_UI_SCALE);
+        // Absent in older configs -> serde default.
+        let s: Settings = serde_json::from_str("{}").unwrap();
+        assert_eq!(s.ui_scale, DEFAULT_UI_SCALE);
+        assert_eq!(clamp_ui_scale(0), DEFAULT_UI_SCALE);
+        assert_eq!(clamp_ui_scale(10), MIN_UI_SCALE);
+        assert_eq!(clamp_ui_scale(1000), MAX_UI_SCALE);
+        assert_eq!(clamp_ui_scale(125), 125);
     }
 
     #[test]

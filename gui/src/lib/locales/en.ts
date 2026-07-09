@@ -25,6 +25,10 @@ export const en = {
   "settings.timezone.placeholder": "Local (system)",
   "settings.timezone.hint":
     "IANA name (e.g. Europe/Moscow) for the day boundary and datetime display. Leave blank for the machine's local zone.",
+  "settings.scale": "Interface scale",
+  "settings.scale.decrease": "Decrease scale",
+  "settings.scale.increase": "Increase scale",
+  "settings.scale.reset": "Reset",
   "settings.tray": "Hide to tray when closing the window",
   "settings.poll": "Poll interval per server (seconds)",
   "settings.poll.hint": "Leave blank to use the backend default.",

@@ -4,6 +4,7 @@
   import { getSettings } from "$lib/api";
   import { settings } from "$lib/store";
   import { applyTheme } from "$lib/theme";
+  import { applyUiScale } from "$lib/scale";
   import { language } from "$lib/i18n";
 
   let { children } = $props();
@@ -22,6 +23,7 @@
       const s = await getSettings();
       settings.set(s);
       applyTheme(s.theme);
+      applyUiScale(s.ui_scale);
       language.set(s.language);
     } catch {
       // Keep defaults when settings cannot be loaded.
