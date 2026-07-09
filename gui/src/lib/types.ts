@@ -26,6 +26,8 @@ export interface Settings {
   minimize_to_tray: boolean;
   // first day of the week for week-based grouping
   week_start: WeekStart;
+  // IANA timezone name for the day boundary and datetime display; null = local
+  timezone: string | null;
   // server name -> poll interval override in seconds
   poll_override: Record<string, number>;
   // server name -> timelog window start

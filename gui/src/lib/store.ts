@@ -12,6 +12,7 @@ export const defaultSettings: Settings = {
   language: "system",
   minimize_to_tray: true,
   week_start: "monday",
+  timezone: null,
   poll_override: {},
   timelog_start: {},
   disabled_servers: [],

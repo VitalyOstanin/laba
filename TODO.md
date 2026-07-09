@@ -10,19 +10,22 @@ Backlog of ideas to evaluate. Not commitments.
 
 ## Dates / timezone
 
-- [ ] Work out timezone handling for dates and times. Today only the `spentOn`
-      default uses the machine's local date (`chrono::Local::now`); API datetimes
-      (`createdAt`/`updatedAt`, notification times) pass through as opaque ISO 8601
-      strings with no conversion. Decide and document: which timezone defines the
-      "today" / day boundary for the timelog plan (requirements 13-16, 21) —
-      user-local, per-server, or UTC — especially when aggregating across servers
-      in different zones. Timezone also matters for **displaying** timestamps:
-      render API datetimes in the user's zone (with a configurable override),
-      consistently across CLI `--human` output and the GUI.
-- [ ] Add a setting for the first day of the week: an explicit choice (e.g.
-      Monday/Sunday) or `auto`, which derives it from the system locale. This
-      affects week-based grouping and any "this week" ranges in the timelog and
-      dashboards.
+- [ ] Timezone display follow-ups. The day-boundary decision is settled and
+      implemented: a single configurable zone (`Settings::timezone`, IANA name,
+      default machine-local) drives the timelog "today"/day boundary and the GUI
+      log-time `spentOn` default, via `core::datetime::Zone`. Per-server zones were
+      rejected in favor of one override. Remaining: (1) render API datetimes
+      (`createdAt`/`updatedAt`, notification times) through `Zone::format_datetime`
+      once the GUI/CLI actually display them — no timestamp is shown today, so the
+      primitive exists but has no call site yet; (2) give the CLI a `--tz` /
+      `TASKSTREAM_TZ` override so its `spentOn` default and future datetime display
+      match the GUI (the CLI has no persisted settings, so it needs a flag/env).
+- [ ] First-day-of-week: add the `auto` (locale-derived) option. The explicit
+      Monday/Sunday choice is implemented (`Settings::week_start`, used by the
+      timelog week boundary via `week_start_of`). Deriving the first day from the
+      system locale needs CLDR/ICU week data and is deferred. When week-based
+      "this week" ranges land in the dashboard, route them through `week_start_of`
+      too.
 
 ## UX
 

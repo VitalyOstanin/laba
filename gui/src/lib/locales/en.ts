@@ -21,6 +21,10 @@ export const en = {
   "settings.weekStart": "First day of the week",
   "settings.weekStart.monday": "Monday",
   "settings.weekStart.sunday": "Sunday",
+  "settings.timezone": "Timezone",
+  "settings.timezone.placeholder": "Local (system)",
+  "settings.timezone.hint":
+    "IANA name (e.g. Europe/Moscow) for the day boundary and datetime display. Leave blank for the machine's local zone.",
   "settings.tray": "Hide to tray when closing the window",
   "settings.poll": "Poll interval per server (seconds)",
   "settings.poll.hint": "Leave blank to use the backend default.",

@@ -41,6 +41,11 @@
     settings.update((s) => ({ ...s, minimize_to_tray: v }));
     void persist();
   }
+  function setTimezone(raw: string): void {
+    const tz = raw.trim() === "" ? null : raw.trim();
+    settings.update((s) => ({ ...s, timezone: tz }));
+    void persist();
+  }
   function setPoll(name: string, raw: string): void {
     settings.update((s) => setPollOverride(s, name, raw));
     void persist();
@@ -118,6 +123,19 @@
         </label>
       {/each}
     </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>{$t("settings.timezone")}</legend>
+    <label class="tz-field">
+      <input
+        type="text"
+        placeholder={$t("settings.timezone.placeholder")}
+        value={$settings.timezone ?? ""}
+        onchange={(e) => setTimezone(e.currentTarget.value)}
+      />
+    </label>
+    <p class="hint">{$t("settings.timezone.hint")}</p>
   </fieldset>
 
   <fieldset>

@@ -2,6 +2,7 @@ pub mod backend;
 pub mod cache;
 pub mod client;
 pub mod config;
+pub mod datetime;
 pub mod duration;
 pub mod error;
 pub mod github;

@@ -25,6 +25,8 @@ sha2 = "0.10"
 futures-util = "0.3"
 # Local date for the default spentOn on time-entry create.
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
+# IANA timezone database for the configurable day-boundary/display zone.
+chrono-tz = { version = "0.10", default-features = false }
 
 [build-dependencies]
 # Compile holidays_ru.json into static arrays (build.rs).

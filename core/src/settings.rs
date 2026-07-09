@@ -78,6 +78,11 @@ pub struct Settings {
     /// First day of the week for week-based grouping.
     #[serde(default)]
     pub week_start: WeekStart,
+    /// IANA timezone name (e.g. `Europe/Moscow`) for the timelog day boundary and
+    /// datetime display. Absent/empty means the machine's local zone. See
+    /// [`crate::datetime::Zone`].
+    #[serde(default)]
+    pub timezone: Option<String>,
     /// Per-server poll interval overrides (seconds). Absent entries fall back to
     /// the server backend's default (see [`Backend::default_poll_secs`]).
     #[serde(default)]
@@ -113,6 +118,7 @@ impl Default for Settings {
             language: Lang::default(),
             minimize_to_tray: true,
             week_start: WeekStart::default(),
+            timezone: None,
             poll_override: BTreeMap::new(),
             timelog_start: BTreeMap::new(),
             disabled_servers: BTreeSet::new(),
@@ -220,10 +226,14 @@ mod tests {
         assert_eq!(WeekStart::Monday.first_weekday(), chrono::Weekday::Mon);
         assert_eq!(WeekStart::Sunday.first_weekday(), chrono::Weekday::Sun);
         assert_eq!(Settings::default().week_start, WeekStart::Monday);
-        // Absent in older configs -> serde default (Monday).
+        // Absent in older configs -> serde defaults (Monday, no timezone).
         let s: Settings = serde_json::from_str("{}").unwrap();
         assert_eq!(s.week_start, WeekStart::Monday);
-        assert_eq!(serde_json::to_string(&WeekStart::Sunday).unwrap(), "\"sunday\"");
+        assert_eq!(s.timezone, None);
+        assert_eq!(
+            serde_json::to_string(&WeekStart::Sunday).unwrap(),
+            "\"sunday\""
+        );
     }
 
     #[test]

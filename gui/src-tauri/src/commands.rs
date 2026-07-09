@@ -2,8 +2,8 @@
 
 use serde::Serialize;
 use serde_json::Value;
-use taskstream_core::backend;
 use std::collections::HashMap;
+use taskstream_core::backend;
 use taskstream_core::client::Client;
 use taskstream_core::config::{default_config_path, Backend, Config};
 use taskstream_core::resources::{comment, notification, time};
@@ -100,7 +100,9 @@ pub struct TimelogResult {
 pub async fn get_timelog() -> Result<TimelogResult, String> {
     let cfg = load_cfg()?;
     let mut settings = load_settings()?;
-    let today = timelog::fmt(timelog::today_local());
+    let zone = taskstream_core::datetime::Zone::resolve(settings.timezone.as_deref());
+    let today_date = zone.today();
+    let today = timelog::fmt(today_date);
 
     let mut entries: Vec<(String, i64)> = Vec::new();
     let mut excluded: Vec<String> = Vec::new();
@@ -184,7 +186,9 @@ pub async fn get_timelog() -> Result<TimelogResult, String> {
     // ISO dates sort lexicographically, so the min string is the earliest start.
     let earliest = starts.iter().min().cloned();
     let first_day = settings.week_start.first_weekday();
-    match earliest.and_then(|s| timelog::compute(&entries, &s, first_day).map(|r| (s, r))) {
+    match earliest
+        .and_then(|s| timelog::compute(&entries, &s, today_date, first_day).map(|r| (s, r)))
+    {
         Some((start, (status, timeline))) => Ok(TimelogResult {
             configured: true,
             status,
@@ -302,12 +306,16 @@ pub async fn create_time_entry(
     activity: Option<String>,
 ) -> Result<(), String> {
     let client = op_client(&server)?;
+    // Default spentOn to "today" in the configured zone, matching the timelog
+    // day boundary (the UI does not offer a date field here).
+    let zone = taskstream_core::datetime::Zone::resolve(load_settings()?.timezone.as_deref());
+    let spent = timelog::fmt(zone.today());
     time::create(
         &client,
         work_package,
         None,
         Some(&duration),
-        None,
+        Some(&spent),
         comment.as_deref(),
         activity.as_deref(),
         false,
