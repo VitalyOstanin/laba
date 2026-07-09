@@ -32,7 +32,8 @@ export const ru: Dict = {
   "settings.scale.decrease": "Уменьшить масштаб",
   "settings.scale.increase": "Увеличить масштаб",
   "settings.scale.reset": "Сбросить",
-  "settings.scale.hint": "Горячие клавиши: Ctrl+= увеличить, Ctrl+- уменьшить, Ctrl+0 сброс.",
+  "settings.scale.hint":
+    "Горячие клавиши: Ctrl+= увеличить, Ctrl+- уменьшить, Ctrl+0 сброс.",
   "settings.tray": "Сворачивать в трей при закрытии окна",
   "settings.poll": "Интервал опроса по серверам (секунды)",
   "settings.poll.hint": "Пусто — использовать значение по умолчанию бэкенда.",
@@ -40,7 +41,8 @@ export const ru: Dict = {
   "settings.servers": "Серверы",
   "settings.server.enabled": "Включён",
   "settings.timelog": "Начало учёта по серверам (ГГГГ-ММ-ДД)",
-  "settings.timelog.hint": "Каждый сервер считается от своей даты; план — от самой ранней.",
+  "settings.timelog.hint":
+    "Каждый сервер считается от своей даты; план — от самой ранней.",
   "settings.timelog.auto": "авто — задайте реальную дату начала",
   "server.switcher": "Активный сервер",
   "server.off": "выкл",
@@ -53,7 +55,8 @@ export const ru: Dict = {
   "timelog.today": "сегодня",
   "timelog.timeline": "Таймлайн",
   "timelog.notConfigured": "Задайте дату начала учёта в настройках.",
-  "timelog.defaultHint": "Используется дата первого запуска — задайте реальные даты в настройках.",
+  "timelog.defaultHint":
+    "Используется дата первого запуска — задайте реальные даты в настройках.",
   "timelog.excluded": "Без учёта времени:",
   "timelog.candidates": "Списать время на",
   "timelog.noCandidates": "Нет задач-кандидатов",

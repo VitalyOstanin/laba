@@ -84,7 +84,8 @@
   <header class="settings-head">
     <a class="back" href="/">← {$t("nav.dashboard")}</a>
     <h1>{$t("settings.title")}</h1>
-    {#if saved}<span class="saved" role="status">{$t("settings.saved")}</span>{/if}
+    {#if saved}<span class="saved" role="status">{$t("settings.saved")}</span
+      >{/if}
   </header>
 
   <fieldset>
@@ -162,16 +163,20 @@
         type="button"
         class="scale-btn"
         aria-label={$t("settings.scale.decrease")}
-        onclick={() => bumpUiScale(-UI_SCALE_STEP)}
-      >−</button>
+        onclick={() => bumpUiScale(-UI_SCALE_STEP)}>−</button
+      >
       <span class="scale-value" aria-live="polite">{$settings.ui_scale}%</span>
       <button
         type="button"
         class="scale-btn"
         aria-label={$t("settings.scale.increase")}
-        onclick={() => bumpUiScale(UI_SCALE_STEP)}
-      >+</button>
-      <button type="button" class="scale-reset" onclick={() => setUiScale(DEFAULT_UI_SCALE)}>
+        onclick={() => bumpUiScale(UI_SCALE_STEP)}>+</button
+      >
+      <button
+        type="button"
+        class="scale-reset"
+        onclick={() => setUiScale(DEFAULT_UI_SCALE)}
+      >
         {$t("settings.scale.reset")}
       </button>
     </div>
@@ -226,7 +231,8 @@
                 type="date"
                 value={$settings.timelog_start[s.name]?.date ?? ""}
                 onchange={(e) => setStart(s.name, e.currentTarget.value)}
-                use:fieldKeys={() => $settings.timelog_start[s.name]?.date ?? ""}
+                use:fieldKeys={() =>
+                  $settings.timelog_start[s.name]?.date ?? ""}
               />
               {#if $settings.timelog_start[s.name]?.auto}
                 <span class="auto-hint">{$t("settings.timelog.auto")}</span>

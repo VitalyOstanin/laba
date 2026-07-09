@@ -61,11 +61,8 @@
   <header>
     <h2>{$t("col.notifications")}</h2>
     {#if canToggle}
-      <button
-        type="button"
-        class="linkbtn"
-        disabled={busy}
-        onclick={markAll}>{$t("notif.markAll")}</button
+      <button type="button" class="linkbtn" disabled={busy} onclick={markAll}
+        >{$t("notif.markAll")}</button
       >
     {/if}
   </header>
@@ -82,7 +79,9 @@
               type="button"
               class="linkbtn"
               disabled={busy}
-              title={unreadOf(n) ? $t("notif.markRead") : $t("notif.markUnread")}
+              title={unreadOf(n)
+                ? $t("notif.markRead")
+                : $t("notif.markUnread")}
               onclick={() => toggle(n)}
             >
               {unreadOf(n) ? $t("notif.read") : $t("notif.unread")}

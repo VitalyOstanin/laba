@@ -2,11 +2,7 @@
   import { onMount } from "svelte";
   import { t } from "../i18n";
   import { fmtMinutes } from "../format";
-  import {
-    pickCandidates,
-    listActivities,
-    createTimeEntry,
-  } from "../api";
+  import { pickCandidates, listActivities, createTimeEntry } from "../api";
   import { refreshServer, refreshTimelog } from "../poller";
   import type { Candidate, Activity } from "../types";
 
@@ -21,6 +17,9 @@
   let busy = $state(false);
 
   // Cache of activity types per server, loaded lazily when a form opens.
+  // Plain non-reactive map: it is never rendered directly, only read into the
+  // `activities` $state, so Svelte reactivity is intentionally not wanted here.
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity
   const activityCache = new Map<string, Activity[]>();
   let activities = $state<Activity[]>([]);
 

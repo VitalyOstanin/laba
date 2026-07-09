@@ -30,7 +30,8 @@ export const en = {
   "settings.scale.decrease": "Decrease scale",
   "settings.scale.increase": "Increase scale",
   "settings.scale.reset": "Reset",
-  "settings.scale.hint": "Shortcuts: Ctrl+= zoom in, Ctrl+- zoom out, Ctrl+0 reset.",
+  "settings.scale.hint":
+    "Shortcuts: Ctrl+= zoom in, Ctrl+- zoom out, Ctrl+0 reset.",
   "settings.tray": "Hide to tray when closing the window",
   "settings.poll": "Poll interval per server (seconds)",
   "settings.poll.hint": "Leave blank to use the backend default.",
@@ -38,7 +39,8 @@ export const en = {
   "settings.servers": "Servers",
   "settings.server.enabled": "Enabled",
   "settings.timelog": "Timelog start per server (YYYY-MM-DD)",
-  "settings.timelog.hint": "Each server counts from its own start; the plan runs from the earliest.",
+  "settings.timelog.hint":
+    "Each server counts from its own start; the plan runs from the earliest.",
   "settings.timelog.auto": "auto — set your real start date",
   "server.switcher": "Active server",
   "server.off": "off",
@@ -51,7 +53,8 @@ export const en = {
   "timelog.today": "today",
   "timelog.timeline": "Timeline",
   "timelog.notConfigured": "Set a timelog start date in settings.",
-  "timelog.defaultHint": "Using the first-launch date — set real start dates in settings.",
+  "timelog.defaultHint":
+    "Using the first-launch date — set real start dates in settings.",
   "timelog.excluded": "No time tracking:",
   "timelog.candidates": "Log time onto",
   "timelog.noCandidates": "No candidate tasks",

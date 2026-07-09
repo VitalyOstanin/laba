@@ -25,7 +25,10 @@
   <h3>{$t("timelog.timeline")}</h3>
   <ul class="timeline">
     {#each days as d (d.date)}
-      <li class={cellClass(d)} title={`${d.date}: ${fmtMinutes(d.logged_min)} / ${fmtMinutes(d.plan_min)}`}>
+      <li
+        class={cellClass(d)}
+        title={`${d.date}: ${fmtMinutes(d.logged_min)} / ${fmtMinutes(d.plan_min)}`}
+      >
         <span class="tl-date">{d.date.slice(5)}</span>
         <span class="tl-delta">{cellDelta(d)}</span>
       </li>

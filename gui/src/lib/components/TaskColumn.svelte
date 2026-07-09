@@ -91,10 +91,13 @@
                 type="button"
                 class="btn"
                 disabled={busy || !text.trim()}
-                onclick={() => submit(Number(task.id))}>{$t("task.send")}</button
+                onclick={() => submit(Number(task.id))}
+                >{$t("task.send")}</button
               >
-              <button type="button" class="linkbtn" onclick={() => (openId = null)}
-                >{$t("task.cancel")}</button
+              <button
+                type="button"
+                class="linkbtn"
+                onclick={() => (openId = null)}>{$t("task.cancel")}</button
               >
             </div>
           </li>
