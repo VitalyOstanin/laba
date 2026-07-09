@@ -23,6 +23,9 @@ pub enum ServerCmd {
         /// Mark this profile as the default.
         #[arg(long)]
         default: bool,
+        /// Replace an existing profile with the same name.
+        #[arg(long)]
+        force: bool,
     },
     /// Remove a server profile (and its stored token).
     Remove { name: String },
@@ -58,22 +61,35 @@ pub async fn run(cmd: ServerCmd, config_flag: &Option<PathBuf>) -> Result<(), Er
             timeout,
             verify_ssl,
             default,
+            force,
         } => {
-            cfg.servers.insert(
-                name.clone(),
-                ServerProfile {
-                    backend: Default::default(),
-                    base_url: url,
-                    timeout,
-                    verify_ssl,
-                    proxy,
-                },
-            );
+            if !force && cfg.servers.contains_key(&name) {
+                return Err(Error::Usage(format!(
+                    "server '{name}' already exists; use --force to replace it"
+                )));
+            }
+            let replaced = cfg
+                .servers
+                .insert(
+                    name.clone(),
+                    ServerProfile {
+                        backend: Default::default(),
+                        base_url: url,
+                        timeout,
+                        verify_ssl,
+                        proxy,
+                    },
+                )
+                .is_some();
             if default || cfg.default_server.is_none() {
                 cfg.default_server = Some(name.clone());
             }
             cfg.save(&path)?;
-            println!("added server '{name}'");
+            if replaced {
+                println!("replaced server '{name}'");
+            } else {
+                println!("added server '{name}'");
+            }
         }
         ServerCmd::Remove { name } => {
             if cfg.servers.remove(&name).is_none() {

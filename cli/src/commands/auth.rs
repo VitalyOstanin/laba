@@ -12,10 +12,17 @@ pub enum AuthCmd {
     /// Store a token for a server. Read the token from stdin (--with-token) or
     /// from the global --token flag. There is no interactive prompt: piping the
     /// token via stdin keeps it out of the process list and shell history.
+    ///
+    /// Login is online: the token is validated against `users/me` and the
+    /// resolved account is used to reject a duplicate (another profile with the
+    /// same base URL authenticated as the same user). Pass --force to add anyway.
     Login {
         /// Read the token from stdin.
         #[arg(long)]
         with_token: bool,
+        /// Add even if another profile is the same user on the same base URL.
+        #[arg(long)]
+        force: bool,
     },
     /// Show authentication status (optionally offline).
     Status {
@@ -32,6 +39,15 @@ fn active_server(cfg: &Config, flag: Option<&str>) -> Result<String, Error> {
     cfg.resolve_server_name(flag)
 }
 
+/// Stable account identity from a `users/me` payload: the login if present,
+/// otherwise the numeric id rendered as a string.
+fn identity(me: &serde_json::Value) -> Option<String> {
+    me.get("login")
+        .and_then(|v| v.as_str())
+        .map(str::to_owned)
+        .or_else(|| me.get("id").map(|v| v.to_string()))
+}
+
 pub async fn run(
     cmd: AuthCmd,
     config_flag: &Option<PathBuf>,
@@ -43,9 +59,10 @@ pub async fn run(
     let secrets = Secrets::new(Secrets::default_fallback_path());
 
     match cmd {
-        AuthCmd::Login { with_token } => {
+        AuthCmd::Login { with_token, force } => {
             let name = active_server(&cfg, server_flag)?;
-            if cfg.servers[&name].backend == Backend::Github {
+            let profile = &cfg.servers[&name];
+            if profile.backend == Backend::Github {
                 return Err(Error::Usage(
                     "the github backend authenticates via gh; run 'gh auth login' instead".into(),
                 ));
@@ -65,6 +82,33 @@ pub async fn run(
             };
             if token.is_empty() {
                 return Err(Error::Usage("empty token".into()));
+            }
+            // Validate the token and read the account identity. The identity is
+            // needed to reject a duplicate (same base URL + same user).
+            let client = Client::new(&name, profile, token.clone(), None)?;
+            let me = client.get_json_retrying("users/me", 3).await?;
+            if !force {
+                if let Some(id) = identity(&me) {
+                    for (other, op) in &cfg.servers {
+                        if other == &name || op.base_url != profile.base_url {
+                            continue;
+                        }
+                        let Some(other_token) = secrets.get(other)? else {
+                            continue;
+                        };
+                        let oc = Client::new(other, op, other_token, None)?;
+                        // A failed identity fetch for another profile (expired
+                        // token, unreachable) cannot confirm a duplicate — skip it.
+                        if let Ok(other_me) = oc.get_json_retrying("users/me", 1).await {
+                            if identity(&other_me).as_deref() == Some(id.as_str()) {
+                                return Err(Error::Usage(format!(
+                                    "user '{id}' at {} is already authenticated as server '{other}'; use --force to add anyway",
+                                    profile.base_url
+                                )));
+                            }
+                        }
+                    }
+                }
             }
             secrets.set(&name, &token)?;
             eprintln!("token stored for '{name}'");
@@ -106,5 +150,21 @@ pub async fn run(
             );
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::identity;
+    use serde_json::json;
+
+    #[test]
+    fn identity_prefers_login_then_falls_back_to_id() {
+        assert_eq!(
+            identity(&json!({"login": "alice", "id": 7})).as_deref(),
+            Some("alice"),
+        );
+        assert_eq!(identity(&json!({"id": 7})).as_deref(), Some("7"),);
+        assert_eq!(identity(&json!({})), None);
     }
 }
