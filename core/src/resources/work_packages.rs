@@ -281,7 +281,12 @@ pub async fn list(client: &Client, params: WpListParams, raw: bool) -> Result<Va
         .filter_map(|e| e.get("id").and_then(|v| v.as_i64()))
         .collect();
 
-    let history = state::load(client.base_url(), &uid);
+    let history = {
+        let (base, uid) = (client.base_url().to_owned(), uid.clone());
+        tokio::task::spawn_blocking(move || state::load(&base, &uid))
+            .await
+            .map_err(|e| Error::Io(format!("state load task failed: {e}")))?
+    };
     let union: Vec<i64> = history
         .iter()
         .copied()
@@ -289,7 +294,12 @@ pub async fn list(client: &Client, params: WpListParams, raw: bool) -> Result<Va
         .collect::<BTreeSet<i64>>()
         .into_iter()
         .collect();
-    state::save(client.base_url(), &uid, &union);
+    {
+        let (base, uid, ids) = (client.base_url().to_owned(), uid.clone(), union.clone());
+        tokio::task::spawn_blocking(move || state::save(&base, &uid, &ids))
+            .await
+            .map_err(|e| Error::Io(format!("state save task failed: {e}")))?;
+    }
 
     let past_only: Vec<i64> = history
         .iter()

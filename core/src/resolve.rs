@@ -48,7 +48,15 @@ async fn resolve_by_name(
     if is_ascii_digits(ref_) {
         return Ok(ref_.to_string());
     }
-    if let Some(id) = client.cache().get_resolve(kind, ref_) {
+    let cache = client.cache_arc();
+    let cached = {
+        let cache = std::sync::Arc::clone(&cache);
+        let (kind, name) = (kind.to_owned(), ref_.to_owned());
+        tokio::task::spawn_blocking(move || cache.get_resolve(&kind, &name))
+            .await
+            .map_err(|e| Error::Io(format!("cache task failed: {e}")))?
+    };
+    if let Some(id) = cached {
         return Ok(id);
     }
     let elements = client.collect(path, &[]).await?;
@@ -77,7 +85,10 @@ async fn resolve_by_name(
         1 => {
             let id = id_to_string(matches[0])
                 .ok_or_else(|| Error::Api(format!("{kind} {ref_:?} has no id")))?;
-            client.cache().put_resolve(kind, ref_, &id);
+            let (k, name, stored) = (kind.to_owned(), ref_.to_owned(), id.clone());
+            tokio::task::spawn_blocking(move || cache.put_resolve(&k, &name, &stored))
+                .await
+                .map_err(|e| Error::Io(format!("cache task failed: {e}")))?;
             Ok(id)
         }
         _ => Err(Error::Api(format!(

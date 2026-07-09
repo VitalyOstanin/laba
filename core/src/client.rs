@@ -1,5 +1,7 @@
+use std::sync::Arc;
 use std::time::Duration;
 
+use crate::cache::Cache;
 use crate::config::ServerProfile;
 use crate::error::Error;
 
@@ -10,7 +12,14 @@ pub struct Client {
     http: reqwest::Client,
     base_url: String,
     token: String,
-    cache: crate::cache::Cache,
+    /// Behind an `Arc` so cache file IO can be moved onto a blocking pool
+    /// (`spawn_blocking`) without borrowing `self` across the await.
+    cache: Arc<Cache>,
+}
+
+/// Map a `spawn_blocking` join failure (panic/cancel) onto our error type.
+fn join_err(e: tokio::task::JoinError) -> Error {
+    Error::Io(format!("cache task failed: {e}"))
 }
 
 impl Client {
@@ -47,7 +56,7 @@ impl Client {
             http,
             base_url: profile.base_url.trim_end_matches('/').to_owned(),
             token,
-            cache: crate::cache::Cache::for_server(server_name),
+            cache: Arc::new(Cache::for_server(server_name)),
         })
     }
 
@@ -55,8 +64,13 @@ impl Client {
         &self.base_url
     }
 
-    pub fn cache(&self) -> &crate::cache::Cache {
+    pub fn cache(&self) -> &Cache {
         &self.cache
+    }
+
+    /// A cloned `Arc` handle to the cache, for moving into `spawn_blocking`.
+    pub(crate) fn cache_arc(&self) -> Arc<Cache> {
+        Arc::clone(&self.cache)
     }
 
     /// Build an absolute API URL, collapsing any deployment-subpath API href
@@ -312,7 +326,14 @@ impl Client {
     /// A failed lookup returns `Ok(None)` and is not persisted to the file
     /// cache, so a transient error is not frozen.
     pub async fn user_name(&self, id: i64) -> Result<Option<String>, Error> {
-        if let Some(cached) = self.cache().get_user(id) {
+        let cache = self.cache_arc();
+        if let Some(cached) = tokio::task::spawn_blocking({
+            let cache = Arc::clone(&cache);
+            move || cache.get_user(id)
+        })
+        .await
+        .map_err(join_err)?
+        {
             return Ok(cached);
         }
         match self
@@ -321,7 +342,10 @@ impl Client {
         {
             Ok(v) => {
                 let name = v.get("name").and_then(|n| n.as_str()).map(str::to_owned);
-                self.cache().put_user(id, name.clone());
+                let stored = name.clone();
+                tokio::task::spawn_blocking(move || cache.put_user(id, stored))
+                    .await
+                    .map_err(join_err)?;
                 Ok(name)
             }
             Err(_) => Ok(None),
@@ -426,7 +450,17 @@ impl Client {
         &self,
         schema_href: &str,
     ) -> std::collections::HashMap<String, String> {
-        if let Some(cached) = self.cache().get_schema(schema_href) {
+        let cache = self.cache_arc();
+        let href = schema_href.to_owned();
+        let cached = tokio::task::spawn_blocking({
+            let cache = Arc::clone(&cache);
+            let href = href.clone();
+            move || cache.get_schema(&href)
+        })
+        .await
+        .ok()
+        .flatten();
+        if let Some(cached) = cached {
             return cached;
         }
         let schema = match self
@@ -447,7 +481,8 @@ impl Client {
                 }
             }
         }
-        self.cache().put_schema(schema_href, map.clone());
+        let stored = map.clone();
+        let _ = tokio::task::spawn_blocking(move || cache.put_schema(&href, stored)).await;
         map
     }
 }

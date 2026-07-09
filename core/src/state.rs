@@ -76,8 +76,13 @@ fn write_map(path: &Path, map: &BTreeMap<String, Vec<i64>>) -> std::io::Result<(
     }
     // BTreeMap serializes with sorted keys; two-space indent per the file format.
     let text = serde_json::to_string_pretty(map).map_err(std::io::Error::other)?;
-    std::fs::write(path, text)?;
-    set_file_mode_0600(path);
+    // Write to a per-process tmp file then rename, so a crash mid-write cannot
+    // leave a truncated history file behind.
+    let dir = path.parent().unwrap_or_else(|| Path::new("."));
+    let tmp = dir.join(format!(".assignee-history.json.tmp.{}", std::process::id()));
+    std::fs::write(&tmp, text)?;
+    set_file_mode_0600(&tmp);
+    std::fs::rename(&tmp, path)?;
     Ok(())
 }
 
