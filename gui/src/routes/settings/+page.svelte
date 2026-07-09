@@ -173,6 +173,7 @@
         {$t("settings.scale.reset")}
       </button>
     </div>
+    <p class="hint">{$t("settings.scale.hint")}</p>
   </fieldset>
 
   <fieldset>

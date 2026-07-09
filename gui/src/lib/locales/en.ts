@@ -29,6 +29,7 @@ export const en = {
   "settings.scale.decrease": "Decrease scale",
   "settings.scale.increase": "Increase scale",
   "settings.scale.reset": "Reset",
+  "settings.scale.hint": "Shortcuts: Ctrl+= zoom in, Ctrl+- zoom out, Ctrl+0 reset.",
   "settings.tray": "Hide to tray when closing the window",
   "settings.poll": "Poll interval per server (seconds)",
   "settings.poll.hint": "Leave blank to use the backend default.",

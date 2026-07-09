@@ -31,6 +31,7 @@ export const ru: Dict = {
   "settings.scale.decrease": "Уменьшить масштаб",
   "settings.scale.increase": "Увеличить масштаб",
   "settings.scale.reset": "Сбросить",
+  "settings.scale.hint": "Горячие клавиши: Ctrl+= увеличить, Ctrl+- уменьшить, Ctrl+0 сброс.",
   "settings.tray": "Сворачивать в трей при закрытии окна",
   "settings.poll": "Интервал опроса по серверам (секунды)",
   "settings.poll.hint": "Пусто — использовать значение по умолчанию бэкенда.",
