@@ -121,7 +121,6 @@ async function onActivate(name: string): Promise<void> {
  * failure old data and the last summary are kept and the error is recorded.
  */
 async function pollOnce(s: ServerInfo): Promise<void> {
-  const isActive = get(activeServer) === s.name;
   try {
     const [tasks, notifs] = await Promise.all([
       listTasks(s.name, 1),
@@ -129,7 +128,10 @@ async function pollOnce(s: ServerInfo): Promise<void> {
     ]);
     const unread = notifs.items.filter(unreadOf).length;
     summaries.update((m) => ({ ...m, [s.name]: { error: null, unread } }));
-    if (isActive) {
+    // Re-read after the await: the user may have switched servers while the
+    // requests were in flight. Deciding by the pre-await snapshot would let a
+    // stale poll leave resident arrays on a now-inactive server.
+    if (get(activeServer) === s.name) {
       byServer.update((by) => ({
         ...by,
         [s.name]: {
@@ -153,7 +155,7 @@ async function pollOnce(s: ServerInfo): Promise<void> {
       ...m,
       [s.name]: { error: String(e), unread: m[s.name]?.unread ?? 0 },
     }));
-    if (isActive) {
+    if (get(activeServer) === s.name) {
       byServer.update((by) => ({
         ...by,
         [s.name]: {
