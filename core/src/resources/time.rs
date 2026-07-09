@@ -57,20 +57,15 @@ fn today_local() -> String {
     chrono::Local::now().format("%Y-%m-%d").to_string()
 }
 
-/// List time entries, optionally filtered by user, project, work package and a
-/// spent-on date range.
-#[allow(clippy::too_many_arguments)]
-pub async fn list(
+/// Build the time-entry filter array shared by [`list`] and [`list_all`].
+async fn build_filters(
     client: &Client,
     user: Option<&str>,
     project: Option<&str>,
     work_package: Option<i64>,
     since: Option<&str>,
     until: Option<&str>,
-    offset: i64,
-    limit: Option<i64>,
-    raw: bool,
-) -> Result<Value, Error> {
+) -> Result<Vec<Value>, Error> {
     let mut filters: Vec<Value> = Vec::new();
     if let Some(p) = project {
         let pid = resolve::project_id(client, p).await?;
@@ -89,7 +84,33 @@ pub async fn list(
             until.unwrap_or(""),
         ]}}));
     }
+    Ok(filters)
+}
 
+/// Render collected elements to normalized time entries unless `raw`.
+fn render(elements: Vec<Value>, raw: bool) -> Value {
+    if raw {
+        return Value::Array(elements);
+    }
+    Value::Array(elements.iter().map(normalize::time_entry).collect())
+}
+
+/// List time entries, optionally filtered by user, project, work package and a
+/// spent-on date range. Returns a single page (`offset`/`limit`); callers that
+/// need the full set (e.g. timelog aggregation) must use [`list_all`].
+#[allow(clippy::too_many_arguments)]
+pub async fn list(
+    client: &Client,
+    user: Option<&str>,
+    project: Option<&str>,
+    work_package: Option<i64>,
+    since: Option<&str>,
+    until: Option<&str>,
+    offset: i64,
+    limit: Option<i64>,
+    raw: bool,
+) -> Result<Value, Error> {
+    let filters = build_filters(client, user, project, work_package, since, until).await?;
     let mut q = paging_query(offset, limit);
     if !filters.is_empty() {
         q.push(("filters".to_string(), filters_json(&filters)?));
@@ -97,12 +118,28 @@ pub async fn list(
     let payload = client
         .request_json_query(reqwest::Method::GET, "time_entries", &q, None)
         .await?;
-    let elements = normalize::collection(&payload);
-    if raw {
-        return Ok(Value::Array(elements));
+    Ok(render(normalize::collection(&payload), raw))
+}
+
+/// List every time entry matching the filters, following pagination across all
+/// pages. The timelog aggregation needs this: a single page silently undercounts
+/// logged time and produces false deficits.
+pub async fn list_all(
+    client: &Client,
+    user: Option<&str>,
+    project: Option<&str>,
+    work_package: Option<i64>,
+    since: Option<&str>,
+    until: Option<&str>,
+    raw: bool,
+) -> Result<Value, Error> {
+    let filters = build_filters(client, user, project, work_package, since, until).await?;
+    let mut q: Vec<(String, String)> = Vec::new();
+    if !filters.is_empty() {
+        q.push(("filters".to_string(), filters_json(&filters)?));
     }
-    let out: Vec<Value> = elements.iter().map(normalize::time_entry).collect();
-    Ok(Value::Array(out))
+    let elements = client.collect("time_entries", &q).await?;
+    Ok(render(elements, raw))
 }
 
 /// List the available time-entry activity types (`{id, name}`), for pickers.
@@ -267,6 +304,38 @@ mod tests {
             .and(path("/api/v3/time_entries"))
             .respond_with(ResponseTemplate::new(201).set_body_json(te_element(1)))
             .mount(server)
+    }
+
+    #[tokio::test]
+    async fn list_all_follows_pagination() {
+        let server = MockServer::start().await;
+        // Page 1 reports total 3 and returns two entries; page 2 returns the rest.
+        Mock::given(method("GET"))
+            .and(path("/api/v3/time_entries"))
+            .and(query_param("offset", "1"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "total": 3,
+                "_embedded": {"elements": [te_element(1), te_element(2)]}
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/api/v3/time_entries"))
+            .and(query_param("offset", "2"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "total": 3,
+                "_embedded": {"elements": [te_element(3)]}
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let c = client_for(&server, "te-list-all");
+        let out = list_all(&c, None, None, None, None, None, true)
+            .await
+            .unwrap();
+        // All three entries across both pages are collected, not just page one.
+        assert_eq!(out.as_array().unwrap().len(), 3);
     }
 
     #[tokio::test]

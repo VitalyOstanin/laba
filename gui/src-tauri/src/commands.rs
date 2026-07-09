@@ -149,15 +149,13 @@ pub async fn get_timelog() -> Result<TimelogResult, String> {
                 continue;
             }
         };
-        let list = time::list(
+        let list = time::list_all(
             &client,
             Some("me"),
             None,
             None,
             Some(&since),
             Some(&today),
-            1,
-            None,
             false,
         )
         .await;
