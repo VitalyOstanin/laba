@@ -22,7 +22,12 @@
   --gap: 12px;
 
   font-family:
-    "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    "Inter",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   font-size: 14px;
   line-height: 1.45;
   color: var(--text);
@@ -144,7 +149,7 @@ body {
   letter-spacing: 0.04em;
   padding: 1px 5px;
   border-radius: 4px;
-  background: rgba(127, 127, 127, 0.18);
+  background: color-mix(in srgb, var(--text-dim) 22%, transparent);
 }
 
 .server-switch button.off {
@@ -165,7 +170,7 @@ body {
   border-radius: var(--radius);
   border: 1px solid var(--danger);
   color: var(--danger);
-  background: rgba(192, 57, 43, 0.08);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
 }
 
 /* Timelog indicator */
@@ -281,14 +286,14 @@ body {
 
 .timelog-panel .timeline li.deficit {
   border-color: var(--danger);
-  background: rgba(192, 57, 43, 0.1);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
 }
 .timelog-panel .timeline li.deficit .tl-delta {
   color: var(--danger);
 }
 .timelog-panel .timeline li.surplus {
   border-color: var(--accent);
-  background: rgba(59, 110, 165, 0.1);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 .timelog-panel .timeline li.surplus .tl-delta {
   color: var(--accent);
