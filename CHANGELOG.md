@@ -3,7 +3,7 @@
 All notable changes to this project are documented here.
 The format follows Keep a Changelog and Semantic Versioning.
 
-## [0.1.0] - 2026-07-08
+## [Unreleased]
 
 ### Added
 - Cargo workspace: `core` library and `taskstream` CLI.

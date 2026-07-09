@@ -101,6 +101,17 @@ Backlog of ideas to evaluate. Not commitments.
       present) and frontend component/unit tests. Verify the exact `tauri-driver`
       setup against the pinned Tauri version at implementation time.
 
+## Branding
+
+- [ ] Replace the stock Tauri placeholder icon set in `gui/src-tauri/icons/`
+      with a real taskstream icon. The window/taskbar and the tray icon (the
+      tray uses `default_window_icon()` in `gui/src-tauri/src/lib.rs`) currently
+      show the default Tauri logo. Design a source icon, regenerate every size
+      via `tauri icon <source.png>`, and rebuild. The bundled `.desktop` and its
+      icon are produced by the bundler from these assets, so fixing the source
+      set fixes installed launchers too; the Linux window `app_id` is
+      `taskstream-gui` (StartupWMClass must match for dev `--no-bundle` runs).
+
 ## Documentation
 
 - [ ] Produce polished, eye-catching screenshots for the README (dashboard,
