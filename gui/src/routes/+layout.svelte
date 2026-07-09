@@ -2,6 +2,7 @@
   import "../app.css";
   import { onMount } from "svelte";
   import { get } from "svelte/store";
+  import { attachConsole } from "@tauri-apps/plugin-log";
   import { getSettings, saveSettings } from "$lib/api";
   import { settings } from "$lib/store";
   import { applyTheme } from "$lib/theme";
@@ -52,6 +53,15 @@
       window.removeEventListener("unhandledrejection", onRejection);
       window.removeEventListener("keydown", onKey);
     };
+  });
+
+  onMount(() => {
+    // Pipe Rust `log` records (Webview target) into the browser console.
+    let detach: (() => void) | undefined;
+    void attachConsole()
+      .then((d) => (detach = d))
+      .catch(() => {});
+    return () => detach?.();
   });
 
   onMount(async () => {

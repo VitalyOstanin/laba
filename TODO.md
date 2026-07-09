@@ -104,10 +104,12 @@ Backlog of ideas to evaluate. Not commitments.
       redacted. The same logging code serves both the CLI and the GUI backend,
       since both go through `core`. (`--raw` and the `api` passthrough already act
       as built-in diagnostics — compare raw vs normalized output.)
-- [ ] GUI (Tauri) debugging: expose the webview Chromium DevTools
-      (`open_devtools()` in debug builds / right-click Inspect) and wire
-      `tauri-plugin-log` to bridge Rust logs into the webview console. Verify the
-      exact API against the pinned Tauri version at implementation time.
+- [x] GUI (Tauri) debugging: webview DevTools open automatically in debug builds
+      (`open_devtools()` in `setup`, right-click Inspect also available), and
+      `tauri-plugin-log` bridges Rust `log` records to stdout and the webview
+      console (`attachConsole()` on the JS side, `log:default` capability). GUI
+      diagnostics use `log::warn!` instead of `eprintln!`. Follow-up: broader
+      `tracing` in `core` is tracked separately (observability item above).
 
 ## Backends / issue trackers
 

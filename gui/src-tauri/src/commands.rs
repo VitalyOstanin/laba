@@ -145,7 +145,7 @@ pub async fn get_timelog() -> Result<TimelogResult, String> {
         let client = match Client::new("", p, token, None) {
             Ok(c) => c,
             Err(e) => {
-                eprintln!("taskstream: timelog skipped server '{name}': {e}");
+                log::warn!("timelog skipped server '{name}': {e}");
                 continue;
             }
         };
@@ -165,7 +165,7 @@ pub async fn get_timelog() -> Result<TimelogResult, String> {
             Ok(Value::Array(arr)) => arr,
             Ok(_) => continue,
             Err(e) => {
-                eprintln!("taskstream: timelog fetch failed for server '{name}': {e}");
+                log::warn!("timelog fetch failed for server '{name}': {e}");
                 continue;
             }
         };
