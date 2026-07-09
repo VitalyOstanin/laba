@@ -1,0 +1,17 @@
+# cargo-audit / rustsec-audit-check configuration.
+#
+# The ignored advisories below are all in transitive dependencies pulled in by
+# the Tauri/GTK desktop stack (webkit2gtk-sys -> glib 0.18, macro crates ->
+# proc-macro-error). They are not reachable from our own code and cannot be
+# resolved without a major Tauri/GTK upgrade, which is tracked separately. Each
+# entry is revisited whenever the Tauri stack is bumped.
+[advisories]
+ignore = [
+    # glib 0.18: unsoundness in VariantStrIter Iterator/DoubleEndedIterator
+    # impls. We never construct a GVariant string iterator; pulled in via
+    # webkit2gtk -> glib. Fixed in glib >= 0.20 (needs a Tauri bump).
+    "RUSTSEC-2024-0429",
+    # proc-macro-error 1.0.4: unmaintained. Build-time only, transitive via the
+    # GTK macro crates. No runtime exposure; superseded by proc-macro-error2.
+    "RUSTSEC-2024-0370",
+]
