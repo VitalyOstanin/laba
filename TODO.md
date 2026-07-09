@@ -29,12 +29,19 @@ Backlog of ideas to evaluate. Not commitments.
 
 ## UX
 
-- [ ] Work out UX consistency conventions and apply them across the app. Example:
-      a single, predictable reaction to ESC across screens and input fields
-      (e.g. ESC clears/blurs a focused input, then closes the current
-      panel/dialog, then falls back to the window's default) rather than ad-hoc
-      per-widget behavior. Cover other cross-cutting interactions (Enter to
-      submit, focus order, unsaved-changes prompts) in the same convention.
+- [x] UX consistency conventions for keyboard/focus, applied across the app
+      (`gui/src/lib/keys.ts`): ESC in a focused text field discards the
+      in-progress edit and blurs, swallowing the event so a surrounding panel
+      does not also close (`fieldKeys` action; deferred-commit fields revert to
+      the store value, the search box clears); ESC with no field focused closes
+      the topmost transient surface (`onGlobalEscape`, currently the Timelog
+      expand panel); Enter in a single-line field commits and blurs (not while
+      IME-composing, not in a textarea); a consistent `:focus-visible` ring on
+      every control. Non-goal, documented deliberately: unsaved-changes prompts
+      — settings autosave on every change, so there is no pending unsaved state;
+      any future form that defers saving must add the prompt itself. Follow-up:
+      apply the same convention to new input surfaces and any future modal
+      dialogs as they land.
 
 ## Dependencies
 

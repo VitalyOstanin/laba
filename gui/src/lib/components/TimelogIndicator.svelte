@@ -2,12 +2,19 @@
   import { t } from "../i18n";
   import { fmtMinutes, fmtSigned } from "../format";
   import { timelog } from "../store";
+  import { onGlobalEscape } from "../keys";
   import TimelogPanel from "./TimelogPanel.svelte";
   import TimelogCandidates from "./TimelogCandidates.svelte";
 
   let open = $state(false);
 
   const tl = $derived($timelog);
+
+  // While expanded, ESC (outside a text field) collapses the panel.
+  $effect(() => {
+    if (!open) return;
+    return onGlobalEscape(() => (open = false));
+  });
 </script>
 
 {#if tl}

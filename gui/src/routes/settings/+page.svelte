@@ -16,6 +16,7 @@
     UI_SCALE_STEP,
   } from "$lib/scale";
   import { language, t } from "$lib/i18n";
+  import { fieldKeys } from "$lib/keys";
   import type { Theme, Lang, WeekStart } from "$lib/types";
 
   let saved = $state(false);
@@ -148,6 +149,7 @@
         placeholder={$t("settings.timezone.placeholder")}
         value={$settings.timezone ?? ""}
         onchange={(e) => setTimezone(e.currentTarget.value)}
+        use:fieldKeys={() => $settings.timezone ?? ""}
       />
     </label>
     <p class="hint">{$t("settings.timezone.hint")}</p>
@@ -214,6 +216,7 @@
               placeholder={String(s.poll_secs)}
               value={$settings.poll_override[s.name] ?? ""}
               oninput={(e) => setPoll(s.name, e.currentTarget.value)}
+              use:fieldKeys
             />
           </label>
           {#if s.backend !== "github"}
@@ -223,6 +226,7 @@
                 type="date"
                 value={$settings.timelog_start[s.name]?.date ?? ""}
                 onchange={(e) => setStart(s.name, e.currentTarget.value)}
+                use:fieldKeys={() => $settings.timelog_start[s.name]?.date ?? ""}
               />
               {#if $settings.timelog_start[s.name]?.auto}
                 <span class="auto-hint">{$t("settings.timelog.auto")}</span>
