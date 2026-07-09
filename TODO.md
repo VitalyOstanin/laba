@@ -152,11 +152,25 @@ Backlog of ideas to evaluate. Not commitments.
       working or non-working). Also revisit the fully-filled-week drop and
       `monday_of` week boundary if a first-day-of-week setting lands.
 
-- [ ] Dashboard data virtualization: lazy-load tasks/notifications on scroll
-      (windowed/infinite rendering + paginated backend fetches instead of loading
-      whole lists), and evict off-screen / stale per-server data from memory
-      (the `byServer` store currently keeps every server's full lists resident).
-      Bound resident data by active server + viewport; drop or re-fetch on demand.
+- [x] Dashboard data virtualization: implemented across all layers.
+      Core exposes a paged API — `backend::Page { items, next_offset }` with
+      `list_tasks_page`/`list_notifications_page` (`PAGE_SIZE` 50): OpenProject
+      paginates by 1-based page (`work_packages::list_page` /
+      `notification::list_page` return the reported `total`, and `next_offset`
+      is the next page or `None` at the end); the GitHub backend returns the
+      whole client-merged issue/PR stream in one page (`next_offset: None`),
+      because `gh` has no clean cursor across it. The tauri `list_tasks` /
+      `list_notifications` commands take `page`/`pageSize` and return `Page`.
+      The GUI keeps full arrays + page cursors resident only for the active
+      server (`byServer`); every other enabled server is evicted to a cheap
+      summary (`summaries`: error flag + unread count) that still feeds the
+      server-switcher dot and the aggregate unread count. Switching servers
+      loads the new one and evicts the old one's arrays. The columns window the
+      resident list (reveal one page at a time via an `onVisible` sentinel +
+      "Load more" fallback), then fetch the next backend page when the resident
+      page is exhausted (`loadMoreTasks` / `loadMoreNotifications`). Note: a
+      non-active server's unread summary reflects only its first page (up to
+      `PAGE_SIZE` unread); a full aggregate would need a count endpoint.
 
 - [ ] UI scale: honor the OS/display scale as the default. The manual scale is
       implemented (`Settings::ui_scale`, percent, clamped 50-200; applied by the

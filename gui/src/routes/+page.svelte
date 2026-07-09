@@ -1,7 +1,12 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { activeServer, byServer, servers } from "$lib/store";
-  import { startPolling, stopPolling } from "$lib/poller";
+  import {
+    startPolling,
+    stopPolling,
+    loadMoreTasks,
+    loadMoreNotifications,
+  } from "$lib/poller";
   import ServerSwitcher from "$lib/components/ServerSwitcher.svelte";
   import TaskColumn from "$lib/components/TaskColumn.svelte";
   import NotificationColumn from "$lib/components/NotificationColumn.svelte";
@@ -28,6 +33,13 @@
   <NotificationColumn
     notifications={state?.notifications ?? []}
     server={activeInfo}
+    hasMore={state?.notifCursor != null}
+    onLoadMore={() => $activeServer && loadMoreNotifications($activeServer)}
   />
-  <TaskColumn tasks={state?.tasks ?? []} server={activeInfo} />
+  <TaskColumn
+    tasks={state?.tasks ?? []}
+    server={activeInfo}
+    hasMore={state?.taskCursor != null}
+    onLoadMore={() => $activeServer && loadMoreTasks($activeServer)}
+  />
 </main>

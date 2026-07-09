@@ -4,6 +4,7 @@ export const en = {
   "filter.placeholder": "Filter tasks — id, subject, status, due…",
   "empty.tasks": "No tasks",
   "empty.notifications": "No notifications",
+  "list.loadMore": "Load more",
   "error.prefix": "Error",
   "tray.show": "Show",
   "tray.quit": "Quit",

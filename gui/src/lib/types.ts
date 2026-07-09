@@ -11,6 +11,14 @@ export interface ServerInfo {
 export type Task = Record<string, unknown>;
 export type Notification = Record<string, unknown>;
 
+// One page of items plus the cursor for the next page. `next_offset` is an
+// opaque backend cursor (OpenProject: next 1-based page number; null when the
+// collection is exhausted or the backend returns everything at once).
+export interface Page<T> {
+  items: T[];
+  next_offset: number | null;
+}
+
 export type Theme = "system" | "dark" | "light";
 export type Lang = "system" | "en" | "ru";
 export type WeekStart = "monday" | "sunday";

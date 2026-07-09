@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { filterTasks, totalUnread, type ByServer } from "./store";
+import {
+  filterTasks,
+  totalUnread,
+  summarize,
+  unreadIn,
+  type ServerState,
+  type ServerSummary,
+} from "./store";
 
 describe("filterTasks", () => {
   const tasks = [
@@ -13,18 +20,31 @@ describe("filterTasks", () => {
   });
 });
 
-describe("totalUnread", () => {
-  it("sums unread across servers (read !== true)", () => {
-    const byServer: ByServer = {
-      // OpenProject: read boolean present.
-      a: {
-        notifications: [{ read: false }, { read: true }],
-        tasks: [],
-        error: null,
-      },
-      // GitHub: no read field — counts as unread.
-      b: { notifications: [{ reason: "mention" }], tasks: [], error: null },
+describe("unread accounting (read !== true)", () => {
+  const state = (notifications: ServerState["notifications"]): ServerState => ({
+    notifications,
+    tasks: [],
+    error: null,
+    taskCursor: null,
+    notifCursor: null,
+  });
+
+  it("unreadIn counts everything not explicitly read", () => {
+    // OpenProject: read boolean present. GitHub: no read field = unread.
+    expect(unreadIn(state([{ read: false }, { read: true }]))).toBe(1);
+    expect(unreadIn(state([{ reason: "mention" }]))).toBe(1);
+  });
+
+  it("summarize reduces a state to error + unread", () => {
+    const s: ServerState = { ...state([{ read: false }]), error: "boom" };
+    expect(summarize(s)).toEqual({ error: "boom", unread: 1 });
+  });
+
+  it("totalUnread sums across server summaries", () => {
+    const sums: Record<string, ServerSummary> = {
+      a: { error: null, unread: 1 },
+      b: { error: null, unread: 1 },
     };
-    expect(totalUnread(byServer)).toBe(2);
+    expect(totalUnread(sums)).toBe(2);
   });
 });

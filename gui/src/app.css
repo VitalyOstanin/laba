@@ -522,6 +522,19 @@ body {
   border-bottom: none;
 }
 
+/* Bottom sentinel that drives incremental reveal / paged fetching. Zero-height
+   so it occupies no visual space; the IntersectionObserver fires as it nears. */
+.sentinel {
+  height: 1px;
+}
+
+.linkbtn.more {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: center;
+}
+
 .list .id {
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;

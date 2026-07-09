@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { servers, activeServer, byServer } from "../store";
+  import { servers, activeServer, summaries } from "../store";
   import { t } from "../i18n";
 </script>
 
@@ -16,7 +16,7 @@
       onclick={() => activeServer.set(s.name)}
     >
       {#if s.enabled}
-        <span class="dot" class:err={$byServer[s.name]?.error}></span>
+        <span class="dot" class:err={$summaries[s.name]?.error}></span>
       {/if}
       {s.name}
       <span class="bk {s.backend === 'github' ? 'gh' : 'op'}">

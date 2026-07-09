@@ -3,12 +3,32 @@
   import { unreadOf } from "../store";
   import { setNotificationRead, markAllRead } from "../api";
   import { refreshServer } from "../poller";
+  import { onVisible } from "../scroll";
   import type { Notification, ServerInfo } from "../types";
 
   let {
     notifications = [],
     server,
-  }: { notifications?: Notification[]; server?: ServerInfo } = $props();
+    hasMore = false,
+    onLoadMore = () => {},
+  }: {
+    notifications?: Notification[];
+    server?: ServerInfo;
+    hasMore?: boolean;
+    onLoadMore?: () => void;
+  } = $props();
+
+  // Windowed rendering: reveal a page at a time, then fetch the next backend
+  // page once the resident list is exhausted.
+  const PAGE = 50;
+  let limit = $state(PAGE);
+  const visible = $derived(notifications.slice(0, limit));
+  const canReveal = $derived(limit < notifications.length);
+
+  function loadMore(): void {
+    if (canReveal) limit = Math.min(limit + PAGE, notifications.length);
+    else if (hasMore) onLoadMore();
+  }
 
   // Read/unread actions exist only on OpenProject backends.
   const canToggle = $derived(server?.backend === "openproject");
@@ -53,7 +73,7 @@
     <p class="empty">{$t("empty.notifications")}</p>
   {:else}
     <ul class="list">
-      {#each notifications as n (n.id)}
+      {#each visible as n (n.id)}
         <li class="notif" class:unread={unreadOf(n)}>
           <span class="reason">{n.reason}</span>
           <span class="subject">{n.wpTitle ?? n.subject}</span>
@@ -71,5 +91,11 @@
         </li>
       {/each}
     </ul>
+    {#if canReveal || hasMore}
+      <div class="sentinel" use:onVisible={loadMore}></div>
+      <button type="button" class="linkbtn more" onclick={loadMore}>
+        {$t("list.loadMore")}
+      </button>
+    {/if}
   {/if}
 </section>

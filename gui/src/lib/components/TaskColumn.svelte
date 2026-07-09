@@ -3,11 +3,34 @@
   import { t } from "../i18n";
   import { addComment } from "../api";
   import { refreshServer } from "../poller";
+  import { onVisible } from "../scroll";
   import FilterRow from "./FilterRow.svelte";
   import type { Task, ServerInfo } from "../types";
 
-  let { tasks = [], server }: { tasks?: Task[]; server?: ServerInfo } = $props();
+  let {
+    tasks = [],
+    server,
+    hasMore = false,
+    onLoadMore = () => {},
+  }: {
+    tasks?: Task[];
+    server?: ServerInfo;
+    hasMore?: boolean;
+    onLoadMore?: () => void;
+  } = $props();
   const shown = $derived(filterTasks(tasks, $filterText));
+
+  // Windowed rendering: reveal rows a page at a time, then fetch the next
+  // backend page once the resident list is exhausted.
+  const PAGE = 50;
+  let limit = $state(PAGE);
+  const visible = $derived(shown.slice(0, limit));
+  const canReveal = $derived(limit < shown.length);
+
+  function loadMore(): void {
+    if (canReveal) limit = Math.min(limit + PAGE, shown.length);
+    else if (hasMore) onLoadMore();
+  }
 
   // Commenting exists only on OpenProject backends.
   const canComment = $derived(server?.backend === "openproject");
@@ -41,7 +64,7 @@
     <p class="empty">{$t("empty.tasks")}</p>
   {:else}
     <ul class="list">
-      {#each shown as task (task.id)}
+      {#each visible as task (task.id)}
         <li class="task">
           <span class="id">{task.id}</span>
           <span class="subject">{task.subject}</span>
@@ -78,5 +101,11 @@
         {/if}
       {/each}
     </ul>
+    {#if canReveal || hasMore}
+      <div class="sentinel" use:onVisible={loadMore}></div>
+      <button type="button" class="linkbtn more" onclick={loadMore}>
+        {$t("list.loadMore")}
+      </button>
+    {/if}
   {/if}
 </section>

@@ -6,6 +6,7 @@ export const ru: Dict = {
   "filter.placeholder": "Фильтр задач — id, тема, статус, срок…",
   "empty.tasks": "Задач нет",
   "empty.notifications": "Уведомлений нет",
+  "list.loadMore": "Показать ещё",
   "error.prefix": "Ошибка",
   "tray.show": "Показать",
   "tray.quit": "Выход",

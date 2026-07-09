@@ -3,6 +3,7 @@ import type {
   ServerInfo,
   Task,
   Notification,
+  Page,
   Settings,
   TimelogResult,
   Activity,
@@ -10,10 +11,17 @@ import type {
 } from "./types";
 
 export const listServers = (): Promise<ServerInfo[]> => invoke("list_servers");
-export const listTasks = (server: string): Promise<Task[]> =>
-  invoke("list_tasks", { server });
-export const listNotifications = (server: string): Promise<Notification[]> =>
-  invoke("list_notifications", { server });
+export const listTasks = (
+  server: string,
+  page?: number,
+  pageSize?: number,
+): Promise<Page<Task>> => invoke("list_tasks", { server, page, pageSize });
+export const listNotifications = (
+  server: string,
+  page?: number,
+  pageSize?: number,
+): Promise<Page<Notification>> =>
+  invoke("list_notifications", { server, page, pageSize });
 export const getSettings = (): Promise<Settings> => invoke("get_settings");
 export const saveSettings = (settings: Settings): Promise<void> =>
   invoke("save_settings", { settings });
