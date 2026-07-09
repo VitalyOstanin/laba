@@ -74,9 +74,21 @@ Backlog of ideas to evaluate. Not commitments.
       process-wide registry of in-flight temp paths plus a cross-platform signal
       handler. Currently self-corrects (unique pid+counter names, cleaned on the
       normal error paths).
-- [ ] Run the GUI e2e (wdio) suite in CI: requires webkit2gtk + tauri-driver +
-      xvfb on the runner. The unit (vitest) + svelte-check job is wired; e2e stays
-      local/container for now (`npm run test:e2e`).
+- [x] Run the GUI e2e (wdio) suite in CI: the `e2e` job runs the same
+      `ivangabriele/tauri` image (webkit2gtk + WebKitWebDriver + tauri-driver +
+      xvfb bundled) with `seccomp=unconfined` and `xvfb-run`. Root-caused a local
+      hang: under `scripts/tauri-container.sh` bash exec-optimized the sole
+      command into `xvfb-run`, making it PID 1, where its Xvfb-readiness SIGUSR1
+      handshake never releases the internal `wait`; fixed by running the
+      container with `--init`. (GitHub's container jobs are unaffected — the step
+      shell is not PID 1 there.)
+- [ ] Auth-login duplicate check: add an e2e test for rejecting a second profile
+      that is the same user (same base URL + `users/me` login/id) as an existing
+      one. Blocked on secrets isolation: `Secrets::default_fallback_path()`
+      derives from `default_config_path()` and ignores the `--config` flag, so a
+      test cannot point token storage at a temp dir. Either make the secrets
+      fallback honor the config dir / an env override, then test the rejection,
+      or cover it another way. The pure identity extraction is unit-tested.
 
 ## UI testing
 

@@ -51,3 +51,24 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+
+  e2e:
+    # WebdriverIO + tauri-driver smoke of the built app. Runs in the same image
+    # used locally (webkit2gtk + WebKitWebDriver + tauri-driver + xvfb bundled),
+    # so CI matches `scripts/tauri-container.sh`. seccomp is relaxed because the
+    # webkit/WebDriver sandbox needs syscalls the default profile blocks.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+      image: ivangabriele/tauri:debian-bookworm-22
+      options: --security-opt seccomp=unconfined
+    defaults:
+      run:
+        working-directory: gui
+    steps:
+      - uses: actions/checkout@v7
+      - uses: Swatinem/rust-cache@v2
+      - run: npm ci
+      # onPrepare builds the frontend and a release binary (embedded assets),
+      # then tauri-driver launches it through WebKitWebDriver under xvfb.
+      - run: xvfb-run -a npx wdio run wdio.conf.js

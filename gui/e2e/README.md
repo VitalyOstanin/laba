@@ -26,13 +26,19 @@ TAURI_E2E=1 scripts/tauri-container.sh 'cd gui && xvfb-run -a npx wdio run wdio.
 ```
 
 `TAURI_E2E=1` relaxes seccomp (needed by the webkit/WebDriver sandbox). The
-`onPrepare` hook in `wdio.conf.js` builds the frontend (`npm run build`) and the
-debug binary (`cargo build`); then `tauri-driver` launches the binary through
-`WebKitWebDriver`.
+`onPrepare` hook in `wdio.conf.js` builds the frontend (`npm run build`) and a
+release binary with embedded assets (`tauri build --no-bundle`); then
+`tauri-driver` launches the binary through `WebKitWebDriver`.
+
+`scripts/tauri-container.sh` runs the container with `--init`. That is required:
+without it bash exec-optimizes the sole command into `xvfb-run`, making it PID 1,
+where its Xvfb-readiness `SIGUSR1` handshake never releases the internal `wait`
+and the run hangs before launching wdio.
 
 ## How it works
 
 - `wdio.conf.js` — WebdriverIO config: the `tauri:options.application` capability
-  points at `src-tauri/target/debug/taskstream-gui`; `tauri-driver` is started in
-  `beforeSession` and killed in `afterSession`.
+  points at the workspace-root `target/release/taskstream-gui` (a release build,
+  so the embedded frontend assets are served instead of a dev server);
+  `tauri-driver` is started in `beforeSession` and killed in `afterSession`.
 - `e2e/*.test.js` — specs (mocha `describe`/`it`).

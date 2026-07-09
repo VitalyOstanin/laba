@@ -33,7 +33,14 @@ if [ "${TAURI_E2E:-0}" = "1" ]; then
   SECCOMP=(--security-opt seccomp=unconfined)
 fi
 
-exec podman run --rm \
+# --init runs a minimal init (catatonit) as PID 1. Without it, bash exec-optimizes
+# the container's sole command into itself, so a wrapped `xvfb-run` becomes PID 1
+# and its Xvfb-readiness handshake never completes: xvfb-run backgrounds Xvfb and
+# blocks on `wait`, which is only released by the SIGUSR1 Xvfb sends its parent
+# when ready — signal delivery to PID 1 does not release that `wait`, so the run
+# hangs before launching the command. With --init, xvfb-run runs as a non-PID-1
+# child and the handshake works.
+exec podman run --rm --init \
   "${SECCOMP[@]}" \
   -v "$REPO_ROOT":/work -w /work \
   -v taskstream-cargo:/usr/local/cargo/registry \
