@@ -9,6 +9,7 @@
     setServerPollSecs,
     setServerTimelogStart,
     setServerStatusColor,
+    setServerStatusFilters,
     renameServer,
     addServer,
   } from "$lib/api";
@@ -21,7 +22,14 @@
   } from "$lib/scale";
   import { language, t } from "$lib/i18n";
   import { fieldKeys } from "$lib/keys";
-  import type { Theme, Lang, WeekStart, StatusColorToken } from "$lib/types";
+  import type {
+    Theme,
+    Lang,
+    WeekStart,
+    StatusColorToken,
+    StatusFilter,
+    ServerInfo,
+  } from "$lib/types";
 
   let saved = $state(false);
   let flash: ReturnType<typeof setTimeout> | undefined;
@@ -136,6 +144,62 @@
   ): Promise<void> {
     await setServerStatusColor(name, status, null);
     await refreshServers();
+  }
+
+  // Per-server status-filter (task-tab) editor. Statuses are entered as a
+  // comma-separated list; the whole ordered filter list is saved on each change.
+  function parseStatuses(csv: string): string[] {
+    return csv
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s !== "");
+  }
+  async function saveFilters(
+    name: string,
+    filters: StatusFilter[],
+  ): Promise<void> {
+    await setServerStatusFilters(name, filters);
+    await refreshServers();
+  }
+  async function editFilterLabel(
+    s: ServerInfo,
+    i: number,
+    label: string,
+  ): Promise<void> {
+    await saveFilters(
+      s.name,
+      s.status_filters.map((f, j) => (j === i ? { ...f, label } : f)),
+    );
+  }
+  async function editFilterStatuses(
+    s: ServerInfo,
+    i: number,
+    csv: string,
+  ): Promise<void> {
+    await saveFilters(
+      s.name,
+      s.status_filters.map((f, j) =>
+        j === i ? { ...f, statuses: parseStatuses(csv) } : f,
+      ),
+    );
+  }
+  async function removeFilter(s: ServerInfo, i: number): Promise<void> {
+    await saveFilters(
+      s.name,
+      s.status_filters.filter((_, j) => j !== i),
+    );
+  }
+  let filterDraftLabel = $state<Record<string, string>>({});
+  let filterDraftStatuses = $state<Record<string, string>>({});
+  async function addFilter(s: ServerInfo): Promise<void> {
+    const label = (filterDraftLabel[s.name] ?? "").trim();
+    if (label === "") return;
+    await saveFilters(s.name, [
+      ...s.status_filters,
+      { label, statuses: parseStatuses(filterDraftStatuses[s.name] ?? "") },
+    ]);
+    filterDraftLabel[s.name] = "";
+    filterDraftStatuses[s.name] = "";
   }
 
   // Add-server form. GitHub needs no token (uses gh); OpenProject needs a token
@@ -403,6 +467,58 @@
               >
             </div>
           </div>
+          {#if s.supports_status_filters}
+            <div class="srv-colors">
+              <span class="srv-colors-title">{$t("settings.filters")}</span>
+              <span class="hint">{$t("settings.filters.hint")}</span>
+              {#each s.status_filters as f, i (i)}
+                <div class="srv-color-row">
+                  <input
+                    type="text"
+                    class="srv-color-input"
+                    placeholder={$t("settings.filters.label")}
+                    value={f.label}
+                    onchange={(e) =>
+                      editFilterLabel(s, i, e.currentTarget.value)}
+                  />
+                  <input
+                    type="text"
+                    class="srv-filter-statuses"
+                    placeholder={$t("settings.filters.statuses")}
+                    value={f.statuses.join(", ")}
+                    onchange={(e) =>
+                      editFilterStatuses(s, i, e.currentTarget.value)}
+                  />
+                  <button
+                    type="button"
+                    class="linkbtn"
+                    onclick={() => removeFilter(s, i)}
+                    >{$t("settings.statusColors.remove")}</button
+                  >
+                </div>
+              {/each}
+              <div class="srv-color-row">
+                <input
+                  type="text"
+                  class="srv-color-input"
+                  placeholder={$t("settings.filters.label")}
+                  bind:value={filterDraftLabel[s.name]}
+                />
+                <input
+                  type="text"
+                  class="srv-filter-statuses"
+                  placeholder={$t("settings.filters.statuses")}
+                  bind:value={filterDraftStatuses[s.name]}
+                  onkeydown={(e) => {
+                    if (e.key === "Enter") addFilter(s);
+                  }}
+                />
+                <button type="button" class="btn" onclick={() => addFilter(s)}
+                  >{$t("settings.statusColors.add")}</button
+                >
+              </div>
+            </div>
+          {/if}
         </li>
       {/each}
     </ul>

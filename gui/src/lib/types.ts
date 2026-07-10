@@ -19,6 +19,16 @@ export interface ServerInfo {
   has_notifications: boolean;
   // whether notification read state can be toggled from the app
   can_toggle_read: boolean;
+  // whether tasks have a workflow status worth filtering by (drives the tabs)
+  supports_status_filters: boolean;
+  // named status filters (label -> statuses) shown as task-list tabs
+  status_filters: StatusFilter[];
+}
+
+// A named task filter: a label plus the statuses it groups. Shown as a tab.
+export interface StatusFilter {
+  label: string;
+  statuses: string[];
 }
 
 // Semantic tint token for a task row; maps to a theme-aware CSS token in the UI.

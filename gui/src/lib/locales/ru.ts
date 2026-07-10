@@ -2,6 +2,8 @@ import type { Dict } from "./en";
 
 export const ru: Dict = {
   "col.tasks": "Мои задачи",
+  "tabs.all": "Все",
+  "tabs.aria": "Фильтр задач по статусу",
   "col.notifications": "Уведомления",
   "filter.placeholder": "Фильтр задач — id, тема, статус, срок…",
   "empty.tasks": "Задач нет",
@@ -54,6 +56,11 @@ export const ru: Dict = {
     "Работает через gh CLI — токен не нужен. URL — хост GitHub, например github.com.",
   "settings.addServer.openprojectHint":
     "Токен API задайте отдельно (keyring / CLI) после добавления.",
+  "settings.filters": "Табы фильтров по статусу",
+  "settings.filters.hint":
+    "Каждый таб группирует один или несколько статусов. Пусто — автосписок по одному табу на статус.",
+  "settings.filters.label": "Название таба",
+  "settings.filters.statuses": "Статусы (через запятую)",
   "settings.statusColors": "Цвета по статусам",
   "settings.statusColors.hint":
     "Тонировать строки задач по статусу. Вводите статус точно так, как его отдаёт сервер.",

@@ -53,6 +53,13 @@ impl Backend {
         matches!(self, Backend::OpenProject)
     }
 
+    /// Whether tasks carry a rich workflow status worth filtering by. Drives the
+    /// status-filter tabs in the GUI. OpenProject work packages do; GitHub issues
+    /// only have open/closed.
+    pub fn supports_status_filters(self) -> bool {
+        matches!(self, Backend::OpenProject)
+    }
+
     /// Default polling interval in seconds. GitHub is polled less often because
     /// `gh` shares the account's stricter API rate limit.
     pub fn default_poll_secs(self) -> u64 {
@@ -107,6 +114,17 @@ impl StatusColor {
     }
 }
 
+/// A named status filter, shown in the GUI as a task-list tab with a count.
+/// `statuses` is the set of workflow statuses the filter groups (one status, or
+/// a combination). Status strings are instance-specific, so this is user data
+/// (kept out of code/tests, which use fictional statuses).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct StatusFilter {
+    pub label: String,
+    #[serde(default)]
+    pub statuses: Vec<String>,
+}
+
 /// Per-server timelog window start.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TimelogStart {
@@ -155,6 +173,10 @@ pub struct ServerProfile {
     /// An unlisted status renders neutral.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub status_colors: BTreeMap<String, StatusColor>,
+    /// Named status filters shown as task-list tabs (label -> set of statuses).
+    /// Ordered. Empty means the GUI auto-derives one tab per status present.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub status_filters: Vec<StatusFilter>,
 }
 
 impl ServerProfile {
@@ -281,6 +303,10 @@ mod tests {
                     ("In progress".into(), StatusColor::Warn),
                     ("Under review".into(), StatusColor::Success),
                 ]),
+                status_filters: vec![StatusFilter {
+                    label: "Active".into(),
+                    statuses: vec!["In progress".into(), "Under review".into()],
+                }],
             },
         );
         cfg.save(&path).unwrap();
@@ -305,6 +331,7 @@ mod tests {
                     poll_secs: None,
                     timelog_start: None,
                     status_colors: Default::default(),
+                    status_filters: Vec::new(),
                 },
             );
         }
@@ -358,6 +385,7 @@ mod tests {
         assert_eq!(p.poll_secs, None);
         assert_eq!(p.timelog_start, None);
         assert!(p.status_colors.is_empty());
+        assert!(p.status_filters.is_empty());
         // No explicit poll_secs -> backend default.
         assert_eq!(p.effective_poll_secs(), 120);
     }
@@ -379,6 +407,21 @@ mod tests {
             !json.contains("status_colors"),
             "empty map must not serialize"
         );
+    }
+
+    #[test]
+    fn status_filters_parse_and_omit_when_empty() {
+        let p: ServerProfile = serde_json::from_str(
+            r#"{"base_url":"u","status_filters":[{"label":"Active","statuses":["A","B"]}]}"#,
+        )
+        .unwrap();
+        assert_eq!(p.status_filters.len(), 1);
+        assert_eq!(p.status_filters[0].label, "Active");
+        assert_eq!(p.status_filters[0].statuses, vec!["A", "B"]);
+        // Empty list is omitted from the serialized form.
+        let bare: ServerProfile = serde_json::from_str(r#"{"base_url":"u"}"#).unwrap();
+        let json = serde_json::to_string(&bare).unwrap();
+        assert!(!json.contains("status_filters"));
     }
 
     #[test]
@@ -427,6 +470,8 @@ mod tests {
         assert!(Backend::Github.supports_notifications());
         assert!(Backend::OpenProject.supports_notification_read_toggle());
         assert!(!Backend::Github.supports_notification_read_toggle());
+        assert!(Backend::OpenProject.supports_status_filters());
+        assert!(!Backend::Github.supports_status_filters());
         assert_eq!(Backend::OpenProject.default_poll_secs(), 120);
         assert_eq!(Backend::Github.default_poll_secs(), 900);
     }

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use taskstream_core::backend;
 use taskstream_core::client::Client;
 use taskstream_core::config::{
-    default_config_path, Backend, Config, ServerProfile, StatusColor, TimelogStart,
+    default_config_path, Backend, Config, ServerProfile, StatusColor, StatusFilter, TimelogStart,
 };
 use taskstream_core::resources::{comment, notification, time};
 use taskstream_core::secrets::Secrets;
@@ -39,6 +39,10 @@ pub struct ServerInfo {
     pub has_notifications: bool,
     /// Whether notification read state can be toggled from the app.
     pub can_toggle_read: bool,
+    /// Whether tasks have a workflow status worth filtering by (drives the tabs).
+    pub supports_status_filters: bool,
+    /// Named status filters (label -> statuses) shown as task-list tabs.
+    pub status_filters: Vec<StatusFilter>,
 }
 
 fn backend_str(b: Backend) -> &'static str {
@@ -70,6 +74,8 @@ pub fn server_infos(cfg: &Config) -> Vec<ServerInfo> {
                 .collect(),
             has_notifications: p.backend.supports_notifications(),
             can_toggle_read: p.backend.supports_notification_read_toggle(),
+            supports_status_filters: p.backend.supports_status_filters(),
+            status_filters: p.status_filters.clone(),
         })
         .collect()
 }
@@ -567,6 +573,7 @@ pub fn add_server(
                 poll_secs: None,
                 timelog_start: None,
                 status_colors: Default::default(),
+                status_filters: Vec::new(),
             },
         );
         if cfg.default_server.is_none() {
@@ -597,6 +604,21 @@ pub fn set_server_status_color(
                 profile.status_colors.remove(&status);
             }
         }
+        Ok(())
+    })
+}
+
+/// Replace a server's named status filters (the task-list tabs). The GUI builds
+/// the whole ordered list and sends it; an empty list clears them (the GUI then
+/// auto-derives one tab per status present).
+#[tauri::command]
+pub fn set_server_status_filters(name: String, filters: Vec<StatusFilter>) -> Result<(), String> {
+    with_config(|cfg| {
+        // Drop blank-labelled entries so an unfinished row never persists.
+        profile_mut(cfg, &name)?.status_filters = filters
+            .into_iter()
+            .filter(|f| !f.label.trim().is_empty())
+            .collect();
         Ok(())
     })
 }
@@ -665,6 +687,7 @@ mod tests {
                 poll_secs: None,
                 timelog_start: None,
                 status_colors: Default::default(),
+                status_filters: Vec::new(),
             },
         );
         servers.insert(
@@ -680,6 +703,7 @@ mod tests {
                 poll_secs: None,
                 timelog_start: None,
                 status_colors: Default::default(),
+                status_filters: Vec::new(),
             },
         );
         Config {

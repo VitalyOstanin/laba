@@ -131,6 +131,7 @@ pub async fn run(cmd: ServerCmd, config_flag: &Option<PathBuf>) -> Result<(), Er
                         poll_secs,
                         timelog_start: None,
                         status_colors: Default::default(),
+                        status_filters: Vec::new(),
                     },
                 )
                 .is_some();

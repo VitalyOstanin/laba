@@ -488,6 +488,47 @@ body {
   color: var(--text-dim);
 }
 
+/* Status-filter tabs above the task list: a pill per status/group with a count.
+   The active tab is filled with the accent. */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 12px 0;
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.tab:hover:not([aria-current="true"]) {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.tab[aria-current="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.tab-count {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-dim) 20%, transparent);
+}
+.tab[aria-current="true"] .tab-count {
+  background: color-mix(in srgb, var(--accent-text) 25%, transparent);
+}
+
 .filterbar {
   display: flex;
   align-items: center;
@@ -836,6 +877,17 @@ button.readdot:disabled {
 
 .settings .srv-color-input {
   width: 160px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.settings .srv-filter-statuses {
+  flex: 1;
+  min-width: 200px;
   padding: 4px 8px;
   border: 1px solid var(--border);
   border-radius: 6px;

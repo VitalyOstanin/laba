@@ -19,7 +19,62 @@
     hasMore?: boolean;
     onLoadMore?: () => void;
   } = $props();
-  const shown = $derived(filterTasks(tasks, $filterText));
+  function statusOf(task: Task): string {
+    return task.status == null ? "" : String(task.status);
+  }
+
+  // Status-filter tabs: an "All" tab plus either the server's configured filters
+  // or, when none are configured, one auto tab per distinct status present (in
+  // first-seen order). Only shown for backends with a rich workflow status.
+  type Tab = { label: string; statuses: string[] | null };
+  const tabs = $derived.by((): Tab[] => {
+    const all: Tab = { label: $t("tabs.all"), statuses: null };
+    if (!(server?.supports_status_filters ?? false)) return [all];
+    const configured = server?.status_filters ?? [];
+    let groups: Tab[];
+    if (configured.length > 0) {
+      groups = configured.map((f) => ({
+        label: f.label,
+        statuses: f.statuses,
+      }));
+    } else {
+      const seen: string[] = [];
+      for (const task of tasks) {
+        const s = statusOf(task);
+        if (s && !seen.includes(s)) seen.push(s);
+      }
+      groups = seen.map((s) => ({ label: s, statuses: [s] }));
+    }
+    return [all, ...groups];
+  });
+
+  let activeTab = $state(0);
+  // Keep the selection in range when the tab set changes (server switch, etc.).
+  $effect(() => {
+    if (activeTab >= tabs.length) activeTab = 0;
+  });
+
+  function matchesTab(task: Task, tab: Tab): boolean {
+    return tab.statuses == null || tab.statuses.includes(statusOf(task));
+  }
+  // Counts are over all loaded tasks (not the text filter), so a tab always
+  // shows how many tasks are in that status overall.
+  function tabCount(tab: Tab): number {
+    return tab.statuses == null
+      ? tasks.length
+      : tasks.filter((task) => matchesTab(task, tab)).length;
+  }
+  function selectTab(i: number): void {
+    activeTab = i;
+    limit = PAGE;
+  }
+
+  const shown = $derived(
+    filterTasks(
+      tasks.filter((task) => matchesTab(task, tabs[activeTab] ?? tabs[0])),
+      $filterText,
+    ),
+  );
 
   // Windowed rendering: reveal rows a page at a time, then fetch the next
   // backend page once the resident list is exhausted.
@@ -80,6 +135,21 @@
 
 <section class="card" aria-label={$t("col.tasks")}>
   <header><h2>{$t("col.tasks")}</h2></header>
+  {#if tabs.length > 1}
+    <nav class="tabs" aria-label={$t("tabs.aria")}>
+      {#each tabs as tab, i (tab.label + i)}
+        <button
+          type="button"
+          class="tab"
+          aria-current={activeTab === i}
+          onclick={() => selectTab(i)}
+        >
+          {tab.label}
+          <span class="tab-count">{tabCount(tab)}</span>
+        </button>
+      {/each}
+    </nav>
+  {/if}
   <FilterRow count={shown.length} />
   {#if shown.length === 0}
     <p class="empty">{$t("empty.tasks")}</p>

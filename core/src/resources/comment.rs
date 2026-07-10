@@ -151,6 +151,7 @@ mod tests {
             poll_secs: None,
             timelog_start: None,
             status_colors: Default::default(),
+            status_filters: Vec::new(),
         }
     }
 

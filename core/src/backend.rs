@@ -270,6 +270,7 @@ mod tests {
             poll_secs: None,
             timelog_start: None,
             status_colors: Default::default(),
+            status_filters: Vec::new(),
         };
         let err = list_tasks(&p, None).await.unwrap_err();
         assert!(matches!(err, Error::Auth(_)));

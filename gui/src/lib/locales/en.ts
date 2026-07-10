@@ -1,5 +1,7 @@
 export const en = {
   "col.tasks": "My tasks",
+  "tabs.all": "All",
+  "tabs.aria": "Filter tasks by status",
   "col.notifications": "Notifications",
   "filter.placeholder": "Filter tasks — id, subject, status, due…",
   "empty.tasks": "No tasks",
@@ -52,6 +54,11 @@ export const en = {
     "Uses the gh CLI — no token needed. URL is the GitHub host, e.g. github.com.",
   "settings.addServer.openprojectHint":
     "Set the API token separately (keyring / CLI) after adding.",
+  "settings.filters": "Status filter tabs",
+  "settings.filters.hint":
+    "Each tab groups one or more statuses. Leave empty to auto-list one tab per status.",
+  "settings.filters.label": "Tab name",
+  "settings.filters.statuses": "Statuses (comma-separated)",
   "settings.statusColors": "Status colors",
   "settings.statusColors.hint":
     "Tint task rows by workflow status. Type the status exactly as the server reports it.",

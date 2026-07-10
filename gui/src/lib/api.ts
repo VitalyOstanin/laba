@@ -9,6 +9,7 @@ import type {
   Activity,
   Candidate,
   StatusColorToken,
+  StatusFilter,
 } from "./types";
 
 export const listServers = (): Promise<ServerInfo[]> => invoke("list_servers");
@@ -51,6 +52,11 @@ export const setServerStatusColor = (
   status: string,
   color: StatusColorToken | null,
 ): Promise<void> => invoke("set_server_status_color", { name, status, color });
+// Replace a server's named status filters (task-list tabs). Empty clears them.
+export const setServerStatusFilters = (
+  name: string,
+  filters: StatusFilter[],
+): Promise<void> => invoke("set_server_status_filters", { name, filters });
 export const renameServer = (old: string, next: string): Promise<void> =>
   invoke("rename_server", { old, new: next });
 // Add a server profile. backend "github" needs no token (uses gh); "openproject"
