@@ -22,6 +22,27 @@ export const listNotifications = (
   pageSize?: number,
 ): Promise<Page<Notification>> =>
   invoke("list_notifications", { server, page, pageSize });
+// Per-server profile editors (config.json). `name` is the server's short name
+// / identifier. Pass null to clear an optional value.
+export const setServerDisplayName = (
+  name: string,
+  displayName: string | null,
+): Promise<void> => invoke("set_server_display_name", { name, displayName });
+export const setServerEnabled = (
+  name: string,
+  enabled: boolean,
+): Promise<void> => invoke("set_server_enabled", { name, enabled });
+export const setServerPollSecs = (
+  name: string,
+  pollSecs: number | null,
+): Promise<void> => invoke("set_server_poll_secs", { name, pollSecs });
+export const setServerTimelogStart = (
+  name: string,
+  date: string | null,
+): Promise<void> => invoke("set_server_timelog_start", { name, date });
+export const renameServer = (old: string, next: string): Promise<void> =>
+  invoke("rename_server", { old, new: next });
+
 export const getSettings = (): Promise<Settings> => invoke("get_settings");
 export const saveSettings = (settings: Settings): Promise<void> =>
   invoke("save_settings", { settings });

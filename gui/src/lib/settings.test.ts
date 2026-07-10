@@ -1,60 +1,17 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import {
-  defaultSettings,
-  setPollOverride,
-  setServerEnabled,
-  setTimelogStart,
-} from "./store";
+import { parsePollSecs } from "./store";
 import { applyTheme } from "./theme";
 import { fmtMinutes, fmtSigned } from "./format";
 
-describe("setPollOverride", () => {
-  it("sets a positive value", () => {
-    const s = setPollOverride(defaultSettings, "work", "300");
-    expect(s.poll_override).toEqual({ work: 300 });
+describe("parsePollSecs", () => {
+  it("parses a positive value to seconds", () => {
+    expect(parsePollSecs("300")).toBe(300);
   });
 
-  it("clears the override on blank or non-positive input", () => {
-    const base = { ...defaultSettings, poll_override: { work: 300 } };
-    expect(setPollOverride(base, "work", "").poll_override).toEqual({});
-    expect(setPollOverride(base, "work", "0").poll_override).toEqual({});
-    expect(setPollOverride(base, "work", "-5").poll_override).toEqual({});
-  });
-
-  it("does not mutate the input", () => {
-    const base = { ...defaultSettings, poll_override: { a: 100 } };
-    setPollOverride(base, "b", "200");
-    expect(base.poll_override).toEqual({ a: 100 });
-  });
-});
-
-describe("setServerEnabled", () => {
-  it("adds and removes from disabled_servers", () => {
-    const off = setServerEnabled(defaultSettings, "work", false);
-    expect(off.disabled_servers).toEqual(["work"]);
-    const on = setServerEnabled(off, "work", true);
-    expect(on.disabled_servers).toEqual([]);
-  });
-
-  it("does not duplicate a disabled server", () => {
-    let s = setServerEnabled(defaultSettings, "a", false);
-    s = setServerEnabled(s, "a", false);
-    expect(s.disabled_servers).toEqual(["a"]);
-  });
-});
-
-describe("setTimelogStart", () => {
-  it("sets a date and clears the auto flag", () => {
-    const s = setTimelogStart(defaultSettings, "work", "2026-07-01");
-    expect(s.timelog_start.work).toEqual({ date: "2026-07-01", auto: false });
-  });
-
-  it("clears the start on empty input", () => {
-    const base = {
-      ...defaultSettings,
-      timelog_start: { work: { date: "2026-07-01", auto: true } },
-    };
-    expect(setTimelogStart(base, "work", "").timelog_start).toEqual({});
+  it("returns undefined (clear the override) on blank or non-positive input", () => {
+    expect(parsePollSecs("")).toBeUndefined();
+    expect(parsePollSecs("0")).toBeUndefined();
+    expect(parsePollSecs("-5")).toBeUndefined();
   });
 });
 

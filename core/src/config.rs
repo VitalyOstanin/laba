@@ -39,8 +39,24 @@ impl Backend {
     }
 }
 
+/// Per-server timelog window start.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TimelogStart {
+    /// `YYYY-MM-DD`.
+    pub date: String,
+    /// True while `date` is the auto-seeded first-launch date and has not been
+    /// set explicitly by the user (drives a "reconfigure me" hint).
+    #[serde(default)]
+    pub auto: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ServerProfile {
+    /// Full human name shown in tooltips and the settings heading. The map key
+    /// under which this profile is stored is the short name / identifier; when
+    /// `display_name` is absent the key is used for display too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
     pub base_url: String,
     #[serde(default)]
     pub backend: Backend,
@@ -50,6 +66,39 @@ pub struct ServerProfile {
     pub verify_ssl: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub proxy: Option<String>,
+    /// Whether the server is active in the GUI. A disabled server is not polled,
+    /// hidden from the dashboard, and excluded from timelog; its profile is kept
+    /// so it can be re-enabled. CLI behavior is unaffected.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// Poll interval in seconds. Absent (or 0) falls back to the backend default
+    /// (see [`Backend::default_poll_secs`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub poll_secs: Option<u64>,
+    /// Timelog window start for this server. Seeded with the first-launch date
+    /// (`auto: true`) when the server is first seen, so the UI can prompt the
+    /// user to set a real start date. Only meaningful for timelog-capable
+    /// backends.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timelog_start: Option<TimelogStart>,
+}
+
+impl ServerProfile {
+    /// Full display name: `display_name` if set, else the profile's map key
+    /// (its short name / identifier).
+    pub fn display<'a>(&'a self, key: &'a str) -> &'a str {
+        self.display_name.as_deref().unwrap_or(key)
+    }
+
+    /// Effective poll interval: an explicit `poll_secs` (when > 0), else the
+    /// backend default. A stored 0 is treated as unset so it can never disable
+    /// polling.
+    pub fn effective_poll_secs(&self) -> u64 {
+        match self.poll_secs {
+            Some(secs) if secs > 0 => secs,
+            _ => self.backend.default_poll_secs(),
+        }
+    }
 }
 
 fn default_timeout() -> u64 {
@@ -137,11 +186,18 @@ mod tests {
         cfg.servers.insert(
             "primary".into(),
             ServerProfile {
+                display_name: Some("Primary".into()),
                 backend: Default::default(),
                 base_url: "https://host.example/openproject".into(),
                 timeout: 30,
                 verify_ssl: true,
                 proxy: Some("socks5://127.0.0.1:10808".into()),
+                enabled: true,
+                poll_secs: Some(300),
+                timelog_start: Some(TimelogStart {
+                    date: "2026-07-01".into(),
+                    auto: false,
+                }),
             },
         );
         cfg.save(&path).unwrap();
@@ -156,11 +212,15 @@ mod tests {
             c.servers.insert(
                 (*n).into(),
                 ServerProfile {
+                    display_name: None,
                     backend: Default::default(),
                     base_url: "u".into(),
                     timeout: 30,
                     verify_ssl: true,
                     proxy: None,
+                    enabled: true,
+                    poll_secs: None,
+                    timelog_start: None,
                 },
             );
         }
@@ -196,6 +256,37 @@ mod tests {
         let p: ServerProfile =
             serde_json::from_str(r#"{"base_url":"github.com","backend":"github"}"#).unwrap();
         assert_eq!(p.backend, Backend::Github);
+    }
+
+    #[test]
+    fn display_falls_back_to_key() {
+        let p: ServerProfile = serde_json::from_str(r#"{"base_url":"u"}"#).unwrap();
+        assert_eq!(p.display("MP"), "MP");
+        let p: ServerProfile =
+            serde_json::from_str(r#"{"base_url":"u","display_name":"Metaprime"}"#).unwrap();
+        assert_eq!(p.display("MP"), "Metaprime");
+    }
+
+    #[test]
+    fn server_level_fields_default_when_absent() {
+        let p: ServerProfile = serde_json::from_str(r#"{"base_url":"u"}"#).unwrap();
+        assert!(p.enabled);
+        assert_eq!(p.poll_secs, None);
+        assert_eq!(p.timelog_start, None);
+        // No explicit poll_secs -> backend default.
+        assert_eq!(p.effective_poll_secs(), 120);
+    }
+
+    #[test]
+    fn effective_poll_prefers_explicit_then_backend_default() {
+        let p: ServerProfile = serde_json::from_str(r#"{"base_url":"u","poll_secs":300}"#).unwrap();
+        assert_eq!(p.effective_poll_secs(), 300);
+        // A stored 0 is treated as unset.
+        let p: ServerProfile = serde_json::from_str(r#"{"base_url":"u","poll_secs":0}"#).unwrap();
+        assert_eq!(p.effective_poll_secs(), 120);
+        let p: ServerProfile =
+            serde_json::from_str(r#"{"base_url":"u","backend":"github"}"#).unwrap();
+        assert_eq!(p.effective_poll_secs(), 900);
     }
 
     #[test]

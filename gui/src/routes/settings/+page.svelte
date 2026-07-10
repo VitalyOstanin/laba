@@ -1,13 +1,15 @@
 <script lang="ts">
   import { get } from "svelte/store";
+  import { settings, servers, activeServer, parsePollSecs } from "$lib/store";
   import {
-    settings,
-    servers,
-    setPollOverride,
+    saveSettings,
+    listServers,
+    setServerDisplayName,
     setServerEnabled,
-    setTimelogStart,
-  } from "$lib/store";
-  import { saveSettings } from "$lib/api";
+    setServerPollSecs,
+    setServerTimelogStart,
+    renameServer,
+  } from "$lib/api";
   import { applyTheme } from "$lib/theme";
   import {
     applyUiScale,
@@ -30,6 +32,16 @@
     saved = true;
     clearTimeout(flash);
     flash = setTimeout(() => (saved = false), 1500);
+  }
+
+  // Reload the server list after a profile edit (server-level settings live in
+  // config.json, not in the app settings store).
+  async function refreshServers(): Promise<void> {
+    try {
+      servers.set(await listServers());
+    } catch {
+      // Keep the current list if the reload fails.
+    }
   }
 
   function setTheme(v: Theme): void {
@@ -58,26 +70,43 @@
     setUiScale(get(settings).ui_scale + delta);
   }
   function setTimezone(raw: string): void {
-    const tz = raw.trim() === "" ? null : raw.trim();
+    // Blank means "follow the system"; store the sentinel the backend expects.
+    const tz = raw.trim() === "" ? "system" : raw.trim();
     settings.update((s) => ({ ...s, timezone: tz }));
     void persist();
   }
-  function setPoll(name: string, raw: string): void {
-    settings.update((s) => setPollOverride(s, name, raw));
-    void persist();
+
+  // Per-server profile editors (config.json).
+  async function setDisplayName(name: string, value: string): Promise<void> {
+    await setServerDisplayName(name, value.trim() === "" ? null : value.trim());
+    await refreshServers();
   }
-  function setEnabled(name: string, enabled: boolean): void {
-    settings.update((s) => setServerEnabled(s, name, enabled));
-    void persist();
+  async function renameShort(oldName: string, value: string): Promise<void> {
+    const next = value.trim();
+    if (next === "" || next === oldName) return;
+    await renameServer(oldName, next);
+    if (get(activeServer) === oldName) activeServer.set(next);
+    await refreshServers();
   }
-  function setStart(name: string, date: string): void {
-    settings.update((s) => setTimelogStart(s, name, date));
-    void persist();
+  async function setEnabled(name: string, enabled: boolean): Promise<void> {
+    await setServerEnabled(name, enabled);
+    await refreshServers();
   }
+  async function setPoll(name: string, raw: string): Promise<void> {
+    await setServerPollSecs(name, parsePollSecs(raw) ?? null);
+    await refreshServers();
+  }
+  async function setStart(name: string, date: string): Promise<void> {
+    await setServerTimelogStart(name, date === "" ? null : date);
+    await refreshServers();
+  }
+
+  // Interface scale is stored as a factor (1 = 100%); show it as a percentage.
+  const scalePercent = (factor: number): number => Math.round(factor * 100);
 
   const themes: Theme[] = ["system", "dark", "light"];
   const langs: Lang[] = ["system", "en", "ru"];
-  const weekStarts: WeekStart[] = ["monday", "sunday"];
+  const weekStarts: WeekStart[] = ["system", "monday", "sunday"];
 </script>
 
 <section class="settings" aria-label={$t("settings.title")}>
@@ -148,9 +177,10 @@
       <input
         type="text"
         placeholder={$t("settings.timezone.placeholder")}
-        value={$settings.timezone ?? ""}
+        value={$settings.timezone === "system" ? "" : $settings.timezone}
         onchange={(e) => setTimezone(e.currentTarget.value)}
-        use:fieldKeys={() => $settings.timezone ?? ""}
+        use:fieldKeys={() =>
+          $settings.timezone === "system" ? "" : $settings.timezone}
       />
     </label>
     <p class="hint">{$t("settings.timezone.hint")}</p>
@@ -165,7 +195,9 @@
         aria-label={$t("settings.scale.decrease")}
         onclick={() => bumpUiScale(-UI_SCALE_STEP)}>−</button
       >
-      <span class="scale-value" aria-live="polite">{$settings.ui_scale}%</span>
+      <span class="scale-value" aria-live="polite"
+        >{scalePercent($settings.ui_scale)}%</span
+      >
       <button
         type="button"
         class="scale-btn"
@@ -208,10 +240,27 @@
               onchange={(e) => setEnabled(s.name, e.currentTarget.checked)}
             />
           </label>
-          <span class="srv-name">{s.name}</span>
           <span class="bk {s.backend === 'github' ? 'gh' : 'op'}">
             {s.backend === "github" ? "GH" : "OP"}
           </span>
+          <label class="srv-field">
+            <span>{$t("settings.server.fullName")}</span>
+            <input
+              type="text"
+              value={s.display_name}
+              onchange={(e) => setDisplayName(s.name, e.currentTarget.value)}
+              use:fieldKeys={() => s.display_name}
+            />
+          </label>
+          <label class="srv-field">
+            <span>{$t("settings.server.shortName")}</span>
+            <input
+              type="text"
+              value={s.name}
+              onchange={(e) => renameShort(s.name, e.currentTarget.value)}
+              use:fieldKeys={() => s.name}
+            />
+          </label>
           <label class="srv-field">
             <span>{$t("settings.poll")}</span>
             <input
@@ -219,9 +268,9 @@
               min="1"
               inputmode="numeric"
               placeholder={String(s.poll_secs)}
-              value={$settings.poll_override[s.name] ?? ""}
-              oninput={(e) => setPoll(s.name, e.currentTarget.value)}
-              use:fieldKeys
+              value={s.poll_override ?? ""}
+              onchange={(e) => setPoll(s.name, e.currentTarget.value)}
+              use:fieldKeys={() => String(s.poll_override ?? "")}
             />
           </label>
           {#if s.backend !== "github"}
@@ -229,12 +278,11 @@
               <span>{$t("settings.timelog")}</span>
               <input
                 type="date"
-                value={$settings.timelog_start[s.name]?.date ?? ""}
+                value={s.timelog_start?.date ?? ""}
                 onchange={(e) => setStart(s.name, e.currentTarget.value)}
-                use:fieldKeys={() =>
-                  $settings.timelog_start[s.name]?.date ?? ""}
+                use:fieldKeys={() => s.timelog_start?.date ?? ""}
               />
-              {#if $settings.timelog_start[s.name]?.auto}
+              {#if s.timelog_start?.auto}
                 <span class="auto-hint">{$t("settings.timelog.auto")}</span>
               {/if}
             </label>

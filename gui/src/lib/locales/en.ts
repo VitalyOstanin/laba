@@ -20,6 +20,7 @@ export const en = {
   "settings.language.en": "English",
   "settings.language.ru": "Русский",
   "settings.weekStart": "First day of the week",
+  "settings.weekStart.system": "System",
   "settings.weekStart.monday": "Monday",
   "settings.weekStart.sunday": "Sunday",
   "settings.timezone": "Timezone",
@@ -38,6 +39,8 @@ export const en = {
   "settings.saved": "Saved",
   "settings.servers": "Servers",
   "settings.server.enabled": "Enabled",
+  "settings.server.fullName": "Full name",
+  "settings.server.shortName": "Short name",
   "settings.timelog": "Timelog start per server (YYYY-MM-DD)",
   "settings.timelog.hint":
     "Each server counts from its own start; the plan runs from the earliest.",

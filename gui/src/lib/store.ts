@@ -11,12 +11,9 @@ export const defaultSettings: Settings = {
   theme: "system",
   language: "system",
   minimize_to_tray: true,
-  week_start: "monday",
-  timezone: null,
-  ui_scale: 100,
-  poll_override: {},
-  timelog_start: {},
-  disabled_servers: [],
+  week_start: "system",
+  timezone: "system",
+  ui_scale: 1,
 };
 
 export const settings = writable<Settings>(defaultSettings);
@@ -24,44 +21,12 @@ export const settings = writable<Settings>(defaultSettings);
 export const timelog = writable<TimelogResult | null>(null);
 
 /**
- * Return settings with the poll override for `name` set from a raw input value.
- * A blank or non-positive value clears the override (server falls back to its
- * backend default).
+ * Parse a raw poll-interval input to seconds, or `undefined` to clear the
+ * override (server falls back to its backend default) when blank/non-positive.
  */
-export function setPollOverride(
-  s: Settings,
-  name: string,
-  raw: string,
-): Settings {
+export function parsePollSecs(raw: string): number | undefined {
   const n = parseInt(raw, 10);
-  const po = { ...s.poll_override };
-  if (Number.isFinite(n) && n > 0) po[name] = n;
-  else delete po[name];
-  return { ...s, poll_override: po };
-}
-
-/** Enable or disable a server without removing its profile. */
-export function setServerEnabled(
-  s: Settings,
-  name: string,
-  enabled: boolean,
-): Settings {
-  const set = new Set(s.disabled_servers);
-  if (enabled) set.delete(name);
-  else set.add(name);
-  return { ...s, disabled_servers: [...set].sort() };
-}
-
-/** Set a server's timelog start date, clearing the auto (first-launch) flag. */
-export function setTimelogStart(
-  s: Settings,
-  name: string,
-  date: string,
-): Settings {
-  const ts = { ...s.timelog_start };
-  if (date) ts[name] = { date, auto: false };
-  else delete ts[name];
-  return { ...s, timelog_start: ts };
+  return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
 export interface ServerState {

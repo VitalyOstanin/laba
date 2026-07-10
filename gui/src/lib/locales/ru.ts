@@ -22,6 +22,7 @@ export const ru: Dict = {
   "settings.language.en": "English",
   "settings.language.ru": "Русский",
   "settings.weekStart": "Первый день недели",
+  "settings.weekStart.system": "Системный",
   "settings.weekStart.monday": "Понедельник",
   "settings.weekStart.sunday": "Воскресенье",
   "settings.timezone": "Часовой пояс",
@@ -40,6 +41,8 @@ export const ru: Dict = {
   "settings.saved": "Сохранено",
   "settings.servers": "Серверы",
   "settings.server.enabled": "Включён",
+  "settings.server.fullName": "Полное имя",
+  "settings.server.shortName": "Краткое имя",
   "settings.timelog": "Начало учёта по серверам (ГГГГ-ММ-ДД)",
   "settings.timelog.hint":
     "Каждый сервер считается от своей даты; план — от самой ранней.",

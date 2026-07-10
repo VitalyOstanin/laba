@@ -1,10 +1,18 @@
 export interface ServerInfo {
+  // short name / identifier (the profile key), shown in the switcher
   name: string;
+  // full display name (display_name, or the key when unset)
+  display_name: string;
   base_url: string;
   backend: "openproject" | "github";
   is_default: boolean;
+  // effective poll interval (override or backend default), for display
   poll_secs: number;
+  // raw poll-interval override (null = backend default), for the settings input
+  poll_override: number | null;
   enabled: boolean;
+  // timelog window start, for the settings input
+  timelog_start: TimelogStart | null;
 }
 
 // Normalized task/notification: open-ended maps from core.
@@ -21,29 +29,25 @@ export interface Page<T> {
 
 export type Theme = "system" | "dark" | "light";
 export type Lang = "system" | "en" | "ru";
-export type WeekStart = "monday" | "sunday";
+export type WeekStart = "system" | "monday" | "sunday";
 
 export interface TimelogStart {
   date: string; // YYYY-MM-DD
   auto: boolean;
 }
 
+// App-level preferences. Server-level settings (enabled, poll interval, timelog
+// start) live on the server profile in config.json, not here.
 export interface Settings {
   theme: Theme;
   language: Lang;
   minimize_to_tray: boolean;
-  // first day of the week for week-based grouping
+  // first day of the week for week-based grouping; "system" follows the locale
   week_start: WeekStart;
-  // IANA timezone name for the day boundary and datetime display; null = local
-  timezone: string | null;
-  // interface scale in whole percent (100 = default)
+  // IANA timezone name for the day boundary and datetime display; "system" = local
+  timezone: string;
+  // interface scale factor (1 = no scaling)
   ui_scale: number;
-  // server name -> poll interval override in seconds
-  poll_override: Record<string, number>;
-  // server name -> timelog window start
-  timelog_start: Record<string, TimelogStart>;
-  // server names temporarily disabled in the GUI
-  disabled_servers: string[];
 }
 
 export type TimelogState = "red" | "yellow" | "green" | "over";

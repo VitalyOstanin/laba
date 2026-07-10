@@ -123,6 +123,11 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::list_servers,
+            commands::set_server_display_name,
+            commands::set_server_enabled,
+            commands::set_server_poll_secs,
+            commands::set_server_timelog_start,
+            commands::rename_server,
             commands::list_tasks,
             commands::list_notifications,
             commands::get_settings,

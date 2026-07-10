@@ -5,12 +5,10 @@
 //! overrides) that only the GUI cares about. Kept in `core` so it is testable
 //! and could be reused by other frontends.
 
-use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::config::Backend;
 use crate::error::Error;
 
 /// Color theme choice. `System` follows the OS preference.
@@ -35,12 +33,13 @@ pub enum Lang {
 
 /// First day of the week, for week-based grouping (the timelog week boundary).
 ///
-/// Deriving this from the system locale is deferred (needs CLDR/ICU week data);
-/// for now it is an explicit choice defaulting to Monday. See `TODO.md`.
+/// `System` follows the machine's locale (best-effort; see
+/// [`system_first_weekday`]). `Monday`/`Sunday` force a choice.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum WeekStart {
     #[default]
+    System,
     Monday,
     Sunday,
 }
@@ -49,24 +48,38 @@ impl WeekStart {
     /// The corresponding `chrono` weekday, for timelog week grouping.
     pub fn first_weekday(self) -> chrono::Weekday {
         match self {
+            WeekStart::System => system_first_weekday(),
             WeekStart::Monday => chrono::Weekday::Mon,
             WeekStart::Sunday => chrono::Weekday::Sun,
         }
     }
 }
 
-/// Per-server timelog window start.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct TimelogStart {
-    /// `YYYY-MM-DD`.
-    pub date: String,
-    /// True while `date` is the auto-seeded first-launch date and has not been
-    /// set explicitly by the user (drives a "reconfigure me" hint).
-    #[serde(default)]
-    pub auto: bool,
+/// First day of the week for the machine's locale, best-effort. The country is
+/// read from `LC_ALL`/`LC_TIME`/`LANG` (e.g. `ru_RU.UTF-8` -> `RU`); a small set
+/// of Sunday-first countries maps to Sunday, everything else to Monday. True
+/// locale week data needs CLDR/ICU and is out of scope.
+fn system_first_weekday() -> chrono::Weekday {
+    // Common Sunday-first countries (North America, much of Latin America, East
+    // Asia, and parts of the Middle East). Not exhaustive; the rest fall to Monday.
+    const SUNDAY_FIRST: &[&str] = &[
+        "US", "CA", "JP", "CN", "KR", "TW", "HK", "IN", "IL", "BR", "MX", "PH", "ZA", "CO", "AR",
+        "PE", "VE", "SA", "AE", "EG", "TH", "ID",
+    ];
+    let country = ["LC_ALL", "LC_TIME", "LANG"].iter().find_map(|var| {
+        let v = std::env::var(var).ok()?;
+        // "ru_RU.UTF-8" -> take before '.', then the part after '_'.
+        let base = v.split('.').next().unwrap_or(&v);
+        let (_, c) = base.split_once('_')?;
+        (!c.is_empty()).then(|| c.to_ascii_uppercase())
+    });
+    match country {
+        Some(c) if SUNDAY_FIRST.contains(&c.as_str()) => chrono::Weekday::Sun,
+        _ => chrono::Weekday::Mon,
+    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Settings {
     #[serde(default)]
     pub theme: Theme,
@@ -79,56 +92,57 @@ pub struct Settings {
     #[serde(default)]
     pub week_start: WeekStart,
     /// IANA timezone name (e.g. `Europe/Moscow`) for the timelog day boundary and
-    /// datetime display. Absent/empty means the machine's local zone. See
-    /// [`crate::datetime::Zone`].
-    #[serde(default)]
-    pub timezone: Option<String>,
-    /// Interface scale in whole percent (100 = default). Applied by the GUI to
-    /// the root font size. Clamp with [`clamp_ui_scale`] before use.
+    /// datetime display. `"system"` (or any unresolvable value) means the
+    /// machine's local zone. See [`crate::datetime::Zone`].
+    ///
+    /// Deserialized leniently: a `null` or empty value (older configs stored the
+    /// system zone as `null`) maps to the `"system"` sentinel.
+    #[serde(default = "default_timezone", deserialize_with = "de_timezone")]
+    pub timezone: String,
+    /// Interface scale as a factor (`1.0` = no scaling). Applied by the GUI to the
+    /// root font size. Clamp with [`clamp_ui_scale`] before use.
     #[serde(default = "default_ui_scale")]
-    pub ui_scale: u32,
-    /// Per-server poll interval overrides (seconds). Absent entries fall back to
-    /// the server backend's default (see [`Backend::default_poll_secs`]).
-    #[serde(default)]
-    pub poll_override: BTreeMap<String, u64>,
-    /// Per-server timelog window start (server name -> start). Each timelog-capable
-    /// server has its own start date; the aggregate plan runs from the earliest.
-    /// Seeded with the first-launch date (`auto: true`) when a server is first
-    /// seen, so the UI can prompt the user to set a real start date.
-    #[serde(default)]
-    pub timelog_start: BTreeMap<String, TimelogStart>,
-    /// Servers temporarily disabled in the GUI: not polled, hidden from the
-    /// dashboard, and excluded from timelog. The server profile in `config.json`
-    /// is kept, so the server can be re-enabled. CLI behavior is unaffected.
-    #[serde(default)]
-    pub disabled_servers: BTreeSet<String>,
-}
-
-impl Settings {
-    /// Whether a server is enabled (not in `disabled_servers`).
-    pub fn is_enabled(&self, server: &str) -> bool {
-        !self.disabled_servers.contains(server)
-    }
+    pub ui_scale: f64,
 }
 
 fn default_true() -> bool {
     true
 }
 
-/// Default interface scale (percent).
-pub const DEFAULT_UI_SCALE: u32 = 100;
-/// Smallest / largest interface scale accepted (percent).
-pub const MIN_UI_SCALE: u32 = 50;
-pub const MAX_UI_SCALE: u32 = 200;
+/// Default timezone sentinel: the machine's local zone.
+pub const DEFAULT_TIMEZONE: &str = "system";
 
-fn default_ui_scale() -> u32 {
+fn default_timezone() -> String {
+    DEFAULT_TIMEZONE.to_owned()
+}
+
+/// Deserialize `timezone`, accepting `null`/empty (older configs) as the
+/// `"system"` sentinel so a legacy `gui-settings.json` still loads.
+fn de_timezone<'de, D>(d: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let opt = Option::<String>::deserialize(d)?;
+    Ok(opt
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(default_timezone))
+}
+
+/// Default interface scale factor (no scaling).
+pub const DEFAULT_UI_SCALE: f64 = 1.0;
+/// Smallest / largest interface scale factor accepted.
+pub const MIN_UI_SCALE: f64 = 0.5;
+pub const MAX_UI_SCALE: f64 = 2.0;
+
+fn default_ui_scale() -> f64 {
     DEFAULT_UI_SCALE
 }
 
-/// Clamp an interface scale to `[MIN_UI_SCALE, MAX_UI_SCALE]`, mapping 0 (an
-/// absent/blank value) back to the default so the UI can never shrink to nothing.
-pub fn clamp_ui_scale(scale: u32) -> u32 {
-    if scale == 0 {
+/// Clamp an interface scale factor to `[MIN_UI_SCALE, MAX_UI_SCALE]`, mapping a
+/// non-finite or 0 value (an absent/blank input) back to the default so the UI
+/// can never shrink to nothing.
+pub fn clamp_ui_scale(scale: f64) -> f64 {
+    if !scale.is_finite() || scale == 0.0 {
         DEFAULT_UI_SCALE
     } else {
         scale.clamp(MIN_UI_SCALE, MAX_UI_SCALE)
@@ -142,11 +156,8 @@ impl Default for Settings {
             language: Lang::default(),
             minimize_to_tray: true,
             week_start: WeekStart::default(),
-            timezone: None,
+            timezone: default_timezone(),
             ui_scale: DEFAULT_UI_SCALE,
-            poll_override: BTreeMap::new(),
-            timelog_start: BTreeMap::new(),
-            disabled_servers: BTreeSet::new(),
         }
     }
 }
@@ -169,16 +180,6 @@ impl Settings {
         let text = serde_json::to_string_pretty(self)
             .map_err(|e| Error::Internal(format!("serialize settings: {e}")))?;
         std::fs::write(path, text).map_err(|e| Error::Io(format!("write {}: {e}", path.display())))
-    }
-
-    /// Effective poll interval for a server: an explicit override, else the
-    /// backend default. An override of 0 is ignored (treated as unset) so a
-    /// blank field in the UI cannot disable polling.
-    pub fn effective_poll_secs(&self, server: &str, backend: Backend) -> u64 {
-        match self.poll_override.get(server) {
-            Some(&secs) if secs > 0 => secs,
-            _ => backend.default_poll_secs(),
-        }
     }
 }
 
@@ -203,62 +204,70 @@ mod tests {
         assert_eq!(s.theme, Theme::System);
         assert_eq!(s.language, Lang::System);
         assert!(s.minimize_to_tray);
-        assert!(s.poll_override.is_empty());
+        assert_eq!(s.week_start, WeekStart::System);
+        assert_eq!(s.timezone, DEFAULT_TIMEZONE);
     }
 
     #[test]
     fn save_then_load_roundtrips() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("gui-settings.json");
-        let mut s = Settings {
+        let s = Settings {
             theme: Theme::Dark,
             language: Lang::Ru,
             minimize_to_tray: false,
-            ..Settings::default()
+            week_start: WeekStart::Sunday,
+            timezone: "Europe/Moscow".into(),
+            ui_scale: 1.25,
         };
-        s.poll_override.insert("work".into(), 300);
-        s.timelog_start.insert(
-            "work".into(),
-            TimelogStart {
-                date: "2026-07-01".into(),
-                auto: false,
-            },
-        );
         s.save(&path).unwrap();
         assert_eq!(Settings::load(&path).unwrap(), s);
     }
 
     #[test]
-    fn effective_poll_prefers_override_then_backend_default() {
-        let mut s = Settings::default();
-        s.poll_override.insert("work".into(), 300);
-        assert_eq!(s.effective_poll_secs("work", Backend::OpenProject), 300);
-        // No override: backend defaults apply.
-        assert_eq!(s.effective_poll_secs("gh", Backend::Github), 900);
-        assert_eq!(s.effective_poll_secs("op", Backend::OpenProject), 120);
-    }
-
-    #[test]
-    fn zero_override_is_ignored() {
-        let mut s = Settings::default();
-        s.poll_override.insert("work".into(), 0);
-        assert_eq!(s.effective_poll_secs("work", Backend::OpenProject), 120);
-    }
-
-    #[test]
-    fn week_start_defaults_to_monday_and_maps_to_weekday() {
-        assert_eq!(WeekStart::default(), WeekStart::Monday);
+    fn week_start_defaults_to_system_and_maps_to_weekday() {
+        assert_eq!(WeekStart::default(), WeekStart::System);
         assert_eq!(WeekStart::Monday.first_weekday(), chrono::Weekday::Mon);
         assert_eq!(WeekStart::Sunday.first_weekday(), chrono::Weekday::Sun);
-        assert_eq!(Settings::default().week_start, WeekStart::Monday);
-        // Absent in older configs -> serde defaults (Monday, no timezone).
+        assert_eq!(Settings::default().week_start, WeekStart::System);
+        // Absent in older configs -> serde defaults (system week, system timezone).
         let s: Settings = serde_json::from_str("{}").unwrap();
-        assert_eq!(s.week_start, WeekStart::Monday);
-        assert_eq!(s.timezone, None);
+        assert_eq!(s.week_start, WeekStart::System);
+        assert_eq!(s.timezone, DEFAULT_TIMEZONE);
+        assert_eq!(
+            serde_json::to_string(&WeekStart::System).unwrap(),
+            "\"system\""
+        );
         assert_eq!(
             serde_json::to_string(&WeekStart::Sunday).unwrap(),
             "\"sunday\""
         );
+    }
+
+    #[test]
+    fn system_first_weekday_reads_country() {
+        // Force a known locale via LC_ALL. This mutates process env, so keep it
+        // in one test and restore afterward.
+        let prev = std::env::var("LC_ALL").ok();
+        std::env::set_var("LC_ALL", "en_US.UTF-8");
+        assert_eq!(system_first_weekday(), chrono::Weekday::Sun);
+        std::env::set_var("LC_ALL", "ru_RU.UTF-8");
+        assert_eq!(system_first_weekday(), chrono::Weekday::Mon);
+        match prev {
+            Some(v) => std::env::set_var("LC_ALL", v),
+            None => std::env::remove_var("LC_ALL"),
+        }
+    }
+
+    #[test]
+    fn timezone_accepts_legacy_null_and_empty() {
+        // Older gui-settings.json stored the system zone as null.
+        let s: Settings = serde_json::from_str(r#"{"timezone": null}"#).unwrap();
+        assert_eq!(s.timezone, DEFAULT_TIMEZONE);
+        let s: Settings = serde_json::from_str(r#"{"timezone": ""}"#).unwrap();
+        assert_eq!(s.timezone, DEFAULT_TIMEZONE);
+        let s: Settings = serde_json::from_str(r#"{"timezone": "Europe/Moscow"}"#).unwrap();
+        assert_eq!(s.timezone, "Europe/Moscow");
     }
 
     #[test]
@@ -267,10 +276,11 @@ mod tests {
         // Absent in older configs -> serde default.
         let s: Settings = serde_json::from_str("{}").unwrap();
         assert_eq!(s.ui_scale, DEFAULT_UI_SCALE);
-        assert_eq!(clamp_ui_scale(0), DEFAULT_UI_SCALE);
-        assert_eq!(clamp_ui_scale(10), MIN_UI_SCALE);
-        assert_eq!(clamp_ui_scale(1000), MAX_UI_SCALE);
-        assert_eq!(clamp_ui_scale(125), 125);
+        assert_eq!(clamp_ui_scale(0.0), DEFAULT_UI_SCALE);
+        assert_eq!(clamp_ui_scale(f64::NAN), DEFAULT_UI_SCALE);
+        assert_eq!(clamp_ui_scale(0.1), MIN_UI_SCALE);
+        assert_eq!(clamp_ui_scale(10.0), MAX_UI_SCALE);
+        assert_eq!(clamp_ui_scale(1.25), 1.25);
     }
 
     #[test]

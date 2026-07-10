@@ -96,6 +96,10 @@ mod tests {
             timeout: 30,
             verify_ssl: true,
             proxy: None,
+            display_name: None,
+            enabled: true,
+            poll_secs: None,
+            timelog_start: None,
         }
     }
 
@@ -500,6 +504,10 @@ mod exec_tests {
             timeout: 30,
             verify_ssl: true,
             proxy: None,
+            display_name: None,
+            enabled: true,
+            poll_secs: None,
+            timelog_start: None,
         }
     }
 
@@ -983,6 +991,10 @@ mod attachment_tests {
             timeout: 30,
             verify_ssl: true,
             proxy: None,
+            display_name: None,
+            enabled: true,
+            poll_secs: None,
+            timelog_start: None,
         }
     }
 
@@ -1089,6 +1101,10 @@ mod custom_field_tests {
             timeout: 30,
             verify_ssl: true,
             proxy: None,
+            display_name: None,
+            enabled: true,
+            poll_secs: None,
+            timelog_start: None,
         }
     }
 
@@ -1212,6 +1228,10 @@ mod retry_tests {
             timeout: 30,
             verify_ssl: true,
             proxy: None,
+            display_name: None,
+            enabled: true,
+            poll_secs: None,
+            timelog_start: None,
         };
         let c = Client::new("test", &p, "t".into(), Some("none")).unwrap();
         let v = c.get_json_retrying("x", 3).await.unwrap();

@@ -5,21 +5,30 @@ use serde_json::Value;
 use std::collections::HashMap;
 use taskstream_core::backend;
 use taskstream_core::client::Client;
-use taskstream_core::config::{default_config_path, Backend, Config, ServerProfile};
+use taskstream_core::config::{default_config_path, Backend, Config, ServerProfile, TimelogStart};
 use taskstream_core::resources::{comment, notification, time};
 use taskstream_core::secrets::Secrets;
-use taskstream_core::settings::{default_settings_path, Settings, TimelogStart};
+use taskstream_core::settings::{default_settings_path, Settings};
 use taskstream_core::timelog::{self, DayCell, TimelogStatus};
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct ServerInfo {
+    /// Short name / identifier (the profile's map key), shown in the switcher.
     pub name: String,
+    /// Full display name (`display_name`, or the key when unset).
+    pub display_name: String,
     pub base_url: String,
     pub backend: String, // "openproject" | "github"
     pub is_default: bool,
+    /// Effective poll interval (override or backend default), for display.
     pub poll_secs: u64,
-    /// Not temporarily disabled in the GUI.
+    /// Raw poll-interval override (`None` = use the backend default), for the
+    /// settings input value.
+    pub poll_override: Option<u64>,
+    /// Not disabled in the GUI.
     pub enabled: bool,
+    /// Timelog window start, for the settings input.
+    pub timelog_start: Option<TimelogStart>,
 }
 
 fn backend_str(b: Backend) -> &'static str {
@@ -29,18 +38,21 @@ fn backend_str(b: Backend) -> &'static str {
     }
 }
 
-/// Build the server list for the UI switcher (pure, testable). The effective
-/// poll interval reflects any per-server override in settings.
-pub fn server_infos(cfg: &Config, settings: &Settings) -> Vec<ServerInfo> {
+/// Build the server list for the UI switcher (pure, testable). All server-level
+/// state (display name, enabled, effective poll interval) comes from the profile.
+pub fn server_infos(cfg: &Config) -> Vec<ServerInfo> {
     cfg.servers
         .iter()
         .map(|(name, p)| ServerInfo {
             name: name.clone(),
+            display_name: p.display(name).to_owned(),
             base_url: p.base_url.clone(),
             backend: backend_str(p.backend).into(),
             is_default: cfg.default_server.as_deref() == Some(name.as_str()),
-            poll_secs: settings.effective_poll_secs(name, p.backend),
-            enabled: settings.is_enabled(name),
+            poll_secs: p.effective_poll_secs(),
+            poll_override: p.poll_secs,
+            enabled: p.enabled,
+            timelog_start: p.timelog_start.clone(),
         })
         .collect()
 }
@@ -55,7 +67,7 @@ fn load_settings() -> Result<Settings, String> {
 
 #[tauri::command]
 pub fn list_servers() -> Result<Vec<ServerInfo>, String> {
-    Ok(server_infos(&load_cfg()?, &load_settings()?))
+    Ok(server_infos(&load_cfg()?))
 }
 
 #[tauri::command]
@@ -148,9 +160,9 @@ async fn server_time_minutes(
 /// whole indicator.
 #[tauri::command]
 pub async fn get_timelog() -> Result<TimelogResult, String> {
-    let cfg = load_cfg()?;
-    let mut settings = load_settings()?;
-    let zone = taskstream_core::datetime::Zone::resolve(settings.timezone.as_deref());
+    let mut cfg = load_cfg()?;
+    let settings = load_settings()?;
+    let zone = taskstream_core::datetime::Zone::resolve(Some(&settings.timezone));
     let today_date = zone.today();
     let today = timelog::fmt(today_date);
 
@@ -160,9 +172,9 @@ pub async fn get_timelog() -> Result<TimelogResult, String> {
     let mut any_auto = false;
     let mut dirty = false;
 
-    for (name, p) in &cfg.servers {
-        // Temporarily disabled servers are skipped entirely.
-        if settings.disabled_servers.contains(name) {
+    for (name, p) in cfg.servers.iter_mut() {
+        // Disabled servers are skipped entirely.
+        if !p.enabled {
             continue;
         }
         if !p.backend.supports_timelog() {
@@ -170,16 +182,13 @@ pub async fn get_timelog() -> Result<TimelogResult, String> {
             continue;
         }
         // Seed a start date the first time we see this server.
-        let entry = settings
-            .timelog_start
-            .entry(name.clone())
-            .or_insert_with(|| {
-                dirty = true;
-                TimelogStart {
-                    date: today.clone(),
-                    auto: true,
-                }
-            });
+        let entry = p.timelog_start.get_or_insert_with(|| {
+            dirty = true;
+            TimelogStart {
+                date: today.clone(),
+                auto: true,
+            }
+        });
         let since = entry.date.clone();
         if entry.auto {
             any_auto = true;
@@ -192,8 +201,8 @@ pub async fn get_timelog() -> Result<TimelogResult, String> {
     }
 
     if dirty {
-        // Best-effort: persist the seeded starts; ignore write failures.
-        let _ = settings.save(&default_settings_path());
+        // Best-effort: persist the seeded starts into config.json; ignore failures.
+        let _ = cfg.save(&default_config_path());
     }
 
     // ISO dates sort lexicographically, so the min string is the earliest start.
@@ -339,7 +348,8 @@ pub async fn create_time_entry(
     let client = op_client(&server)?;
     // Default spentOn to "today" in the configured zone, matching the timelog
     // day boundary (the UI does not offer a date field here).
-    let zone = taskstream_core::datetime::Zone::resolve(load_settings()?.timezone.as_deref());
+    let settings = load_settings()?;
+    let zone = taskstream_core::datetime::Zone::resolve(Some(&settings.timezone));
     let spent = timelog::fmt(zone.today());
     time::create(
         &client,
@@ -362,17 +372,16 @@ pub async fn create_time_entry(
 #[tauri::command]
 pub async fn pick_candidates() -> Result<Vec<timelog::Candidate>, String> {
     let cfg = load_cfg()?;
-    let settings = load_settings()?;
     let today = timelog::fmt(timelog::today_local());
     let mut candidates: Vec<timelog::Candidate> = Vec::new();
 
     for (name, p) in &cfg.servers {
-        if settings.disabled_servers.contains(name) || !p.backend.supports_timelog() {
+        if !p.enabled || !p.backend.supports_timelog() {
             continue;
         }
-        let since = settings
+        let since = p
             .timelog_start
-            .get(name)
+            .as_ref()
             .map(|t| t.date.clone())
             .unwrap_or_else(|| today.clone());
         let token = match token_for(name, p.backend)? {
@@ -432,6 +441,97 @@ pub async fn pick_candidates() -> Result<Vec<timelog::Candidate>, String> {
     Ok(timelog::rank_candidates(candidates))
 }
 
+/// Load the config, apply `f` to it, and save it back. Used by the per-server
+/// profile editors so each one is a load/mutate/save unit.
+fn with_config<F>(f: F) -> Result<(), String>
+where
+    F: FnOnce(&mut Config) -> Result<(), String>,
+{
+    let path = default_config_path();
+    let mut cfg = Config::load(&path).map_err(|e| e.to_string())?;
+    f(&mut cfg)?;
+    cfg.save(&path).map_err(|e| e.to_string())
+}
+
+fn profile_mut<'a>(cfg: &'a mut Config, name: &str) -> Result<&'a mut ServerProfile, String> {
+    cfg.servers
+        .get_mut(name)
+        .ok_or_else(|| format!("unknown server '{name}'"))
+}
+
+/// Set a server's full display name. An empty/blank value clears it, so the
+/// short name (the key) is shown instead.
+#[tauri::command]
+pub fn set_server_display_name(name: String, display_name: Option<String>) -> Result<(), String> {
+    with_config(|cfg| {
+        profile_mut(cfg, &name)?.display_name = display_name.filter(|s| !s.trim().is_empty());
+        Ok(())
+    })
+}
+
+/// Enable or disable a server in the GUI.
+#[tauri::command]
+pub fn set_server_enabled(name: String, enabled: bool) -> Result<(), String> {
+    with_config(|cfg| {
+        profile_mut(cfg, &name)?.enabled = enabled;
+        Ok(())
+    })
+}
+
+/// Set a server's poll interval (seconds). A `None`/0 value clears the override
+/// so the backend default applies.
+#[tauri::command]
+pub fn set_server_poll_secs(name: String, poll_secs: Option<u64>) -> Result<(), String> {
+    with_config(|cfg| {
+        profile_mut(cfg, &name)?.poll_secs = poll_secs.filter(|&s| s > 0);
+        Ok(())
+    })
+}
+
+/// Set a server's timelog start date (`YYYY-MM-DD`). An empty value clears it.
+/// Setting a date marks it non-auto (an explicit user choice).
+#[tauri::command]
+pub fn set_server_timelog_start(name: String, date: Option<String>) -> Result<(), String> {
+    with_config(|cfg| {
+        profile_mut(cfg, &name)?.timelog_start = date
+            .filter(|d| !d.trim().is_empty())
+            .map(|date| TimelogStart { date, auto: false });
+        Ok(())
+    })
+}
+
+/// Rename a server: re-key its profile, update the default, and move its stored
+/// token to the new key. The short name is the identifier, so renaming it is a
+/// key move rather than a field edit.
+#[tauri::command]
+pub fn rename_server(old: String, new: String) -> Result<(), String> {
+    if old == new {
+        return Ok(());
+    }
+    let path = default_config_path();
+    let mut cfg = Config::load(&path).map_err(|e| e.to_string())?;
+    if cfg.servers.contains_key(&new) {
+        return Err(format!("server '{new}' already exists"));
+    }
+    let profile = cfg
+        .servers
+        .remove(&old)
+        .ok_or_else(|| format!("unknown server '{old}'"))?;
+    cfg.servers.insert(new.clone(), profile);
+    if cfg.default_server.as_deref() == Some(old.as_str()) {
+        cfg.default_server = Some(new.clone());
+    }
+    cfg.save(&path).map_err(|e| e.to_string())?;
+    // Move the stored token from the old key to the new one (best-effort: a
+    // missing token just means nothing to move).
+    let secrets = Secrets::new(Secrets::default_fallback_path());
+    if let Some(token) = secrets.get(&old).map_err(|e| e.to_string())? {
+        secrets.set(&new, &token).map_err(|e| e.to_string())?;
+        secrets.delete(&old).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 /// OpenProject servers need a token from the keyring/file secret store; GitHub
 /// uses `gh` and needs none.
 fn token_for(server: &str, backend: Backend) -> Result<Option<String>, String> {
@@ -460,6 +560,10 @@ mod tests {
                 timeout: 30,
                 verify_ssl: true,
                 proxy: None,
+                display_name: None,
+                enabled: true,
+                poll_secs: None,
+                timelog_start: None,
             },
         );
         servers.insert(
@@ -470,6 +574,10 @@ mod tests {
                 timeout: 30,
                 verify_ssl: true,
                 proxy: None,
+                display_name: None,
+                enabled: true,
+                poll_secs: None,
+                timelog_start: None,
             },
         );
         Config {
@@ -480,13 +588,15 @@ mod tests {
 
     #[test]
     fn server_infos_lists_all_with_backend_and_default() {
-        let infos = server_infos(&cfg(), &Settings::default());
+        let infos = server_infos(&cfg());
         assert_eq!(infos.len(), 2);
         let work = infos.iter().find(|i| i.name == "work").unwrap();
         assert_eq!(work.backend, "openproject");
         assert!(work.is_default);
         assert_eq!(work.poll_secs, 120);
         assert!(work.enabled);
+        // No display_name set -> falls back to the key.
+        assert_eq!(work.display_name, "work");
         let gh = infos.iter().find(|i| i.name == "gh").unwrap();
         assert_eq!(gh.backend, "github");
         assert!(!gh.is_default);
@@ -494,22 +604,25 @@ mod tests {
     }
 
     #[test]
-    fn server_infos_apply_poll_override() {
-        let mut settings = Settings::default();
-        settings.poll_override.insert("work".into(), 300);
-        let infos = server_infos(&cfg(), &settings);
+    fn server_infos_reflect_profile_display_and_poll() {
+        let mut c = cfg();
+        let work = c.servers.get_mut("work").unwrap();
+        work.display_name = Some("Metaprime".into());
+        work.poll_secs = Some(300);
+        let infos = server_infos(&c);
         let work = infos.iter().find(|i| i.name == "work").unwrap();
+        assert_eq!(work.display_name, "Metaprime");
         assert_eq!(work.poll_secs, 300);
-        // Non-overridden server keeps its backend default.
+        // Server with no override keeps its backend default.
         let gh = infos.iter().find(|i| i.name == "gh").unwrap();
         assert_eq!(gh.poll_secs, 900);
     }
 
     #[test]
     fn server_infos_mark_disabled() {
-        let mut settings = Settings::default();
-        settings.disabled_servers.insert("gh".into());
-        let infos = server_infos(&cfg(), &settings);
+        let mut c = cfg();
+        c.servers.get_mut("gh").unwrap().enabled = false;
+        let infos = server_infos(&c);
         assert!(infos.iter().find(|i| i.name == "work").unwrap().enabled);
         assert!(!infos.iter().find(|i| i.name == "gh").unwrap().enabled);
     }

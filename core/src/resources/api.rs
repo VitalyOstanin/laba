@@ -77,6 +77,10 @@ mod tests {
             timeout: 30,
             verify_ssl: true,
             proxy: None,
+            display_name: None,
+            enabled: true,
+            poll_secs: None,
+            timelog_start: None,
         }
     }
 
