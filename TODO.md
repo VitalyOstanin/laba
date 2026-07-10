@@ -110,6 +110,42 @@ Backlog of ideas to evaluate. Not commitments.
       Linux window `app_id` is `taskstream-gui` (StartupWMClass must match for
       dev `--no-bundle` runs).
 
+## Updates / self-update
+
+- [ ] Periodic update check against the GitHub releases of this project. Poll the
+      releases API on an interval, compare the latest tag to the running version,
+      and surface an available update **unobtrusively** (a quiet banner/indicator,
+      not a modal), with a control to **dismiss/hide** it (and not nag again for
+      that version). When an update is available, offer to perform it **fully
+      automatically, but only on an explicit user action** (a button) — download
+      the new release asset, replace the binary, and restart. Never update
+      silently in the background. Respect the no-proxy / network constraints and
+      verify the download (checksum/signature) before applying.
+- [ ] Fully automatic self-update (separate, opt-in): once the user-triggered
+      update flow above is solid, add an opt-in setting to apply available updates
+      automatically without a per-update click. Off by default; the manual
+      user-action flow remains the default path.
+- [ ] Config/settings compatibility across updates. An update must never break
+      the user's existing `config.json` / settings: newer fields load with
+      defaults (already the `#[serde(default)]` convention) and older binaries
+      tolerate unknown fields. When a change is not backward-compatible, ship a
+      **versioned migration** — stamp the config with a schema version, migrate
+      forward on load, and back up the pre-migration file. The update flow should
+      verify the migrated config loads before committing to the new binary, and
+      be able to roll back (restore the backup + prior binary) if it does not.
+
+## Networking / proxy
+
+- [ ] Proxy support for backend HTTP: both **SOCKS5** and **HTTP(S)** proxies,
+      configurable at two levels — a **global** default and a **per-server**
+      override (a server may need a different proxy or none). Per-server wins over
+      global; allow an explicit "no proxy / direct" per server. Honor standard
+      `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY`/`NO_PROXY` env as the fallback when
+      nothing is configured. reqwest supports both schemes (`reqwest::Proxy`);
+      SOCKS5 needs the `socks` feature. Apply the resolved proxy when building the
+      per-server client in `core`. Surface it in server settings (GUI) and as a
+      CLI flag/config. Cover proxied vs direct in tests (wiremock + a stub proxy).
+
 ## Documentation
 
 - [ ] Produce polished, eye-catching screenshots for the README (dashboard,

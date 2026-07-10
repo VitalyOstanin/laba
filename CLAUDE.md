@@ -172,11 +172,24 @@ CSP blocks remote hosts — see `docs/ADR/0010`).
 - Server badges show the full backend name ("OpenProject" / "GitHub"), not
   abbreviations.
 
+### Async actions
+
+Any control that triggers an asynchronous action (a network call, a state
+toggle backed by the backend) gives **immediate in-progress feedback** — the
+control shows it is working (a spinner in/beside it, or an equivalent busy
+state) and is disabled for the duration, so the user never wonders whether the
+click registered. This is the rule for **every** async action, not just some:
+the read/unread toggle, comment submission, logging time, saving settings, and
+any future one. On completion the control returns to its resting state (and
+reflects the new value); on failure it surfaces the error and restores the
+prior state. Prefer a small inline spinner over blocking the whole surface.
+
 ### Accessibility
 
 Every interactive control has a visible `:focus-visible` ring and an
 `aria-label`/`title`. State encoded in color is also encoded in shape or text
-(the read dot is filled vs hollow, not only a color change).
+(the read dot is filled vs hollow, not only a color change). A busy control
+also exposes `aria-busy` while its async action is in flight.
 
 ### Anti-patterns
 
