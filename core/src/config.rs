@@ -29,6 +29,16 @@ impl Backend {
         matches!(self, Backend::OpenProject)
     }
 
+    /// Whether taskstream keeps a local assignee history for this backend
+    /// because the server does not reliably expose work packages the user was
+    /// *previously* assigned to. OpenProject drops the assignee link on
+    /// reassignment, so the "was mine" set is tracked locally and merged back in
+    /// (`include_past`). GitHub search can still surface past issues, so it does
+    /// not need a local history.
+    pub fn needs_local_history(self) -> bool {
+        matches!(self, Backend::OpenProject)
+    }
+
     /// Default polling interval in seconds. GitHub is polled less often because
     /// `gh` shares the account's stricter API rate limit.
     pub fn default_poll_secs(self) -> u64 {
@@ -295,6 +305,8 @@ mod tests {
         assert!(!Backend::Github.supports_timelog());
         assert!(Backend::OpenProject.supports_time_activities());
         assert!(!Backend::Github.supports_time_activities());
+        assert!(Backend::OpenProject.needs_local_history());
+        assert!(!Backend::Github.needs_local_history());
         assert_eq!(Backend::OpenProject.default_poll_secs(), 120);
         assert_eq!(Backend::Github.default_poll_secs(), 900);
     }

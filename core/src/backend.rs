@@ -51,18 +51,35 @@ pub async fn list_tasks_page(
     match profile.backend {
         Backend::OpenProject => {
             let client = openproject_client(profile, token)?;
-            let params = work_packages::WpListParams {
-                assignee: Some("me".into()),
-                open: true,
-                offset: page.max(1),
-                limit: Some(page_size),
-                ..Default::default()
-            };
-            let (items, total) = work_packages::list_page(&client, params, false).await?;
-            Ok(Page {
-                items: as_array(items),
-                next_offset: next_page(page, page_size, total),
-            })
+            if profile.backend.needs_local_history() {
+                // The server forgets past assignees, so aggregate current +
+                // locally tracked past-assigned tasks in one shot (the
+                // include_past path does not paginate on the server).
+                let params = work_packages::WpListParams {
+                    assignee: Some("me".into()),
+                    open: true,
+                    include_past: true,
+                    ..Default::default()
+                };
+                let items = work_packages::list(&client, params, false).await?;
+                Ok(Page {
+                    items: as_array(items),
+                    next_offset: None,
+                })
+            } else {
+                let params = work_packages::WpListParams {
+                    assignee: Some("me".into()),
+                    open: true,
+                    offset: page.max(1),
+                    limit: Some(page_size),
+                    ..Default::default()
+                };
+                let (items, total) = work_packages::list_page(&client, params, false).await?;
+                Ok(Page {
+                    items: as_array(items),
+                    next_offset: next_page(page, page_size, total),
+                })
+            }
         }
         Backend::Github => {
             let host = profile.base_url.clone();
