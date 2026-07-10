@@ -8,7 +8,7 @@
 use ksni::{menu::StandardItem, Tray, TrayMethods};
 use tauri::AppHandle;
 
-use crate::{show_main_window, tray_labels};
+use crate::{show_main_window, toggle_main_window, tray_labels};
 
 struct TaskstreamTray {
     app: AppHandle,
@@ -22,6 +22,15 @@ impl TaskstreamTray {
     fn reveal(&self) {
         let app = self.app.clone();
         let _ = self.app.run_on_main_thread(move || show_main_window(&app));
+    }
+
+    /// Toggle the window: hide it if already active, otherwise reveal it. Used by
+    /// the tray double-click so a second double-click closes the window.
+    fn toggle(&self) {
+        let app = self.app.clone();
+        let _ = self
+            .app
+            .run_on_main_thread(move || toggle_main_window(&app));
     }
 }
 
@@ -41,9 +50,10 @@ impl Tray for TaskstreamTray {
         "taskstream-gui".into()
     }
 
-    /// GNOME's AppIndicator extension maps a double-click to `Activate`.
+    /// GNOME's AppIndicator extension maps a double-click to `Activate`. Toggle
+    /// so a double-click on the already-active window hides it again.
     fn activate(&mut self, _x: i32, _y: i32) {
-        self.reveal();
+        self.toggle();
     }
 
     fn menu(&self) -> Vec<ksni::MenuItem<Self>> {

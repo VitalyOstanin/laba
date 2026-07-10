@@ -21,6 +21,23 @@ fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+/// Toggle the main window from a tray double-click: hide it when it is already
+/// visible and focused, otherwise reveal and focus it.
+fn toggle_main_window<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(w) = app.get_webview_window("main") {
+        let visible = w.is_visible().unwrap_or(false);
+        let focused = w.is_focused().unwrap_or(false);
+        let minimized = w.is_minimized().unwrap_or(false);
+        if visible && focused && !minimized {
+            let _ = w.hide();
+        } else {
+            let _ = w.show();
+            let _ = w.unminimize();
+            let _ = w.set_focus();
+        }
+    }
+}
+
 /// Read the "hide to tray on close" preference, defaulting to true when
 /// settings cannot be read.
 fn minimize_to_tray() -> bool {
