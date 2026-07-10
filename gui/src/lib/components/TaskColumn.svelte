@@ -68,6 +68,16 @@
     activeTab = i;
     limit = PAGE;
   }
+  // A tab is tinted with the color token of the statuses it selects (the first
+  // status' token; grouped statuses in a filter share a tone by convention).
+  // The "All" tab (statuses null) stays neutral, and an empty tab (count 0)
+  // stays neutral too — there is nothing to draw attention to.
+  function tabTone(tab: Tab): string {
+    const first = tab.statuses?.[0];
+    const token = first ? server?.status_colors?.[first] : undefined;
+    if (!token || tabCount(tab) === 0) return "";
+    return `tone-${token}`;
+  }
 
   const shown = $derived(
     filterTasks(
@@ -140,7 +150,7 @@
       {#each tabs as tab, i (tab.label + i)}
         <button
           type="button"
-          class="tab"
+          class="tab {tabTone(tab)}"
           aria-current={activeTab === i}
           onclick={() => selectTab(i)}
         >

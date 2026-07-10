@@ -529,6 +529,37 @@ body {
   background: color-mix(in srgb, var(--accent-text) 25%, transparent);
 }
 
+/* A tab carries the same semantic tone as the statuses it selects, so its color
+   echoes the task rows it filters to. `--tone-c` resolves to the token color. */
+.tab.tone-danger {
+  --tone-c: var(--danger);
+}
+.tab.tone-warn {
+  --tone-c: var(--warn);
+}
+.tab.tone-success {
+  --tone-c: var(--ok);
+}
+.tab.tone-progress {
+  --tone-c: var(--info);
+}
+.tab.tone-dimmed {
+  --tone-c: var(--text-dim);
+}
+.tab[class*="tone-"] {
+  color: var(--tone-c);
+  border-color: color-mix(in srgb, var(--tone-c) 45%, var(--border));
+}
+.tab[class*="tone-"]:hover:not([aria-current="true"]) {
+  border-color: var(--tone-c);
+  color: var(--tone-c);
+}
+.tab[class*="tone-"][aria-current="true"] {
+  background: var(--tone-c);
+  border-color: var(--tone-c);
+  color: var(--accent-text);
+}
+
 .filterbar {
   display: flex;
   align-items: center;
