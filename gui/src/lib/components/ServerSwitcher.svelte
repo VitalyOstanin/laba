@@ -18,7 +18,7 @@
       {#if s.enabled}
         <span class="dot" class:err={$summaries[s.name]?.error}></span>
       {/if}
-      {s.name}
+      {s.display_name}
       <span class="bk {s.backend === 'github' ? 'gh' : 'op'}">
         {s.backend === "github" ? "GitHub" : "OpenProject"}
       </span>
