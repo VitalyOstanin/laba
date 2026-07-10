@@ -1,10 +1,25 @@
 mod commands;
+#[cfg(target_os = "linux")]
+mod linux_tray;
 
+use tauri::{AppHandle, Manager, Runtime};
+
+// The Tauri tray is used only where its click events work (Windows/macOS); on
+// Linux the tray is served by `linux_tray` (native StatusNotifierItem via ksni).
+#[cfg(not(target_os = "linux"))]
 use tauri::{
     menu::{Menu, MenuItem},
-    tray::TrayIconBuilder,
-    Manager,
+    tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
 };
+
+/// Reveal and focus the main window (from the tray menu or a tray click).
+fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+}
 
 /// Read the "hide to tray on close" preference, defaulting to true when
 /// settings cannot be read.
@@ -59,24 +74,41 @@ pub fn run() {
             if let Some(w) = app.get_webview_window("main") {
                 w.open_devtools();
             }
-            let (show_label, quit_label) = tray_labels();
-            let show = MenuItem::with_id(app, "show", show_label, true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", quit_label, true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show, &quit])?;
-            let _tray = TrayIconBuilder::new()
-                .icon(app.default_window_icon().unwrap().clone())
-                .menu(&menu)
-                .on_menu_event(|app, event| match event.id.as_ref() {
-                    "show" => {
-                        if let Some(w) = app.get_webview_window("main") {
-                            let _ = w.show();
-                            let _ = w.set_focus();
+
+            // Linux: serve the tray over the native StatusNotifierItem so a
+            // double-click reaches the app (Tauri's Linux tray drops clicks).
+            #[cfg(target_os = "linux")]
+            linux_tray::spawn(app.handle().clone());
+
+            // Windows/macOS: Tauri's tray delivers click events natively.
+            #[cfg(not(target_os = "linux"))]
+            {
+                let (show_label, quit_label) = tray_labels();
+                let show = MenuItem::with_id(app, "show", show_label, true, None::<&str>)?;
+                let quit = MenuItem::with_id(app, "quit", quit_label, true, None::<&str>)?;
+                let menu = Menu::with_items(app, &[&show, &quit])?;
+                let _tray = TrayIconBuilder::new()
+                    .icon(app.default_window_icon().unwrap().clone())
+                    .menu(&menu)
+                    // Left-click should not pop the menu; the menu is right-click
+                    // only, so a double-click can be used to reveal the window.
+                    .show_menu_on_left_click(false)
+                    .on_menu_event(|app, event| match event.id.as_ref() {
+                        "show" => show_main_window(app),
+                        "quit" => app.exit(0),
+                        _ => {}
+                    })
+                    .on_tray_icon_event(|tray, event| {
+                        if let TrayIconEvent::DoubleClick {
+                            button: MouseButton::Left,
+                            ..
+                        } = event
+                        {
+                            show_main_window(tray.app_handle());
                         }
-                    }
-                    "quit" => app.exit(0),
-                    _ => {}
-                })
-                .build(app)?;
+                    })
+                    .build(app)?;
+            }
             Ok(())
         })
         // Closing the window hides it to the tray unless the user turned that

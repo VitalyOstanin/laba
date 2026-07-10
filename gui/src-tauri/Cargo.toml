@@ -30,3 +30,11 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 taskstream-core = { path = "../../core" }
 
+# Linux tray via the native StatusNotifierItem protocol. Tauri's built-in tray
+# (libayatana-appindicator) does not deliver click events on Linux, so the
+# GNOME "double-click to activate" cannot reach the app. ksni exposes the SNI
+# `Activate` method that GNOME maps to a double-click, letting the tray reveal
+# the window. On Windows/macOS the Tauri tray is used instead.
+[target.'cfg(target_os = "linux")'.dependencies]
+ksni = "0.3"
+
