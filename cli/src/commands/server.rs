@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::Subcommand;
-use taskstream_core::config::{Config, ServerProfile};
+use taskstream_core::config::{Config, ServerProfile, StatusColor};
 use taskstream_core::error::Error;
 use taskstream_core::secrets::Secrets;
 
@@ -44,6 +44,20 @@ pub enum ServerCmd {
     Rename { old: String, new: String },
     /// Set the default server.
     SetDefault { name: String },
+    /// Set or clear the row tint for a workflow status on a server. The status
+    /// string must match exactly what the server reports.
+    StatusColor {
+        /// Server short name (defaults to the default server).
+        #[arg(long)]
+        server: Option<String>,
+        /// Exact status string as it appears on the server.
+        status: String,
+        /// Tint token: danger | warn | success | dimmed. Omit with --clear.
+        color: Option<String>,
+        /// Remove the mapping for `status` instead of setting it.
+        #[arg(long)]
+        clear: bool,
+    },
     /// Show a profile (token not shown).
     Show { name: Option<String> },
 }
@@ -101,6 +115,7 @@ pub async fn run(cmd: ServerCmd, config_flag: &Option<PathBuf>) -> Result<(), Er
                         enabled: !disabled,
                         poll_secs,
                         timelog_start: None,
+                        status_colors: Default::default(),
                     },
                 )
                 .is_some();
@@ -157,6 +172,33 @@ pub async fn run(cmd: ServerCmd, config_flag: &Option<PathBuf>) -> Result<(), Er
             cfg.default_server = Some(name.clone());
             cfg.save(&path)?;
             println!("default server is now '{name}'");
+        }
+        ServerCmd::StatusColor {
+            server,
+            status,
+            color,
+            clear,
+        } => {
+            let name = cfg.resolve_server_name(server.as_deref())?;
+            let profile = cfg.servers.get_mut(&name).expect("resolved server exists");
+            if clear || color.is_none() {
+                if profile.status_colors.remove(&status).is_some() {
+                    cfg.save(&path)?;
+                    println!("cleared color for status '{status}' on '{name}'");
+                } else {
+                    println!("no color set for status '{status}' on '{name}'");
+                }
+            } else {
+                let token = color.unwrap();
+                let parsed = StatusColor::from_token(&token).ok_or_else(|| {
+                    Error::Usage(format!(
+                        "unknown color '{token}'; expected danger|warn|success|dimmed"
+                    ))
+                })?;
+                profile.status_colors.insert(status.clone(), parsed);
+                cfg.save(&path)?;
+                println!("status '{status}' on '{name}' -> {token}");
+            }
         }
         ServerCmd::Show { name } => {
             let name = cfg.resolve_server_name(name.as_deref())?;

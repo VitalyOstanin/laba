@@ -269,6 +269,7 @@ mod tests {
             enabled: true,
             poll_secs: None,
             timelog_start: None,
+            status_colors: Default::default(),
         };
         let err = list_tasks(&p, None).await.unwrap_err();
         assert!(matches!(err, Error::Auth(_)));

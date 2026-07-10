@@ -100,6 +100,7 @@ mod tests {
             enabled: true,
             poll_secs: None,
             timelog_start: None,
+            status_colors: Default::default(),
         }
     }
 
@@ -508,6 +509,7 @@ mod exec_tests {
             enabled: true,
             poll_secs: None,
             timelog_start: None,
+            status_colors: Default::default(),
         }
     }
 
@@ -995,6 +997,7 @@ mod attachment_tests {
             enabled: true,
             poll_secs: None,
             timelog_start: None,
+            status_colors: Default::default(),
         }
     }
 
@@ -1105,6 +1108,7 @@ mod custom_field_tests {
             enabled: true,
             poll_secs: None,
             timelog_start: None,
+            status_colors: Default::default(),
         }
     }
 
@@ -1232,6 +1236,7 @@ mod retry_tests {
             enabled: true,
             poll_secs: None,
             timelog_start: None,
+            status_colors: Default::default(),
         };
         let c = Client::new("test", &p, "t".into(), Some("none")).unwrap();
         let v = c.get_json_retrying("x", 3).await.unwrap();

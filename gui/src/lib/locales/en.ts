@@ -45,6 +45,16 @@ export const en = {
   "settings.timelog.hint":
     "Each server counts from its own start; the plan runs from the earliest.",
   "settings.timelog.auto": "auto — set your real start date",
+  "settings.statusColors": "Status colors",
+  "settings.statusColors.hint":
+    "Tint task rows by workflow status. Type the status exactly as the server reports it.",
+  "settings.statusColors.status": "Status",
+  "settings.statusColors.add": "Add",
+  "settings.statusColors.remove": "Remove",
+  "settings.color.danger": "Red",
+  "settings.color.warn": "Amber",
+  "settings.color.success": "Green",
+  "settings.color.dimmed": "Dimmed",
   "server.switcher": "Active server",
   "server.off": "off",
   "server.disabled": "disabled",

@@ -79,6 +79,7 @@ mod tests {
             enabled: true,
             poll_secs: None,
             timelog_start: None,
+            status_colors: Default::default(),
         }
     }
 

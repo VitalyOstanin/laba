@@ -34,6 +34,14 @@
 
   // Commenting exists only on OpenProject backends.
   const canComment = $derived(server?.backend === "openproject");
+
+  // Semantic row tint for a task, looked up by its exact status string in the
+  // server's per-status color map. Unmapped statuses render neutral.
+  function tone(task: Task): string {
+    const status = task.status == null ? "" : String(task.status);
+    const token = server?.status_colors?.[status];
+    return token ? `tone-${token}` : "";
+  }
   let openId = $state<number | null>(null);
   let text = $state("");
   let busy = $state(false);
@@ -65,7 +73,7 @@
   {:else}
     <ul class="list">
       {#each visible as task (task.id)}
-        <li class="task">
+        <li class="task {tone(task)}">
           <span class="id">{task.id}</span>
           <span class="subject">{task.subject}</span>
           <span class="status">{task.status}</span>

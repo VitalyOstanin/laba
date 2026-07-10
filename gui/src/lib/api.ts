@@ -8,6 +8,7 @@ import type {
   TimelogResult,
   Activity,
   Candidate,
+  StatusColorToken,
 } from "./types";
 
 export const listServers = (): Promise<ServerInfo[]> => invoke("list_servers");
@@ -40,6 +41,12 @@ export const setServerTimelogStart = (
   name: string,
   date: string | null,
 ): Promise<void> => invoke("set_server_timelog_start", { name, date });
+// Set (token) or clear (null) the row tint for a workflow status on a server.
+export const setServerStatusColor = (
+  name: string,
+  status: string,
+  color: StatusColorToken | null,
+): Promise<void> => invoke("set_server_status_color", { name, status, color });
 export const renameServer = (old: string, next: string): Promise<void> =>
   invoke("rename_server", { old, new: next });
 

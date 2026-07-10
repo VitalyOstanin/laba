@@ -13,7 +13,12 @@ export interface ServerInfo {
   enabled: boolean;
   // timelog window start, for the settings input
   timelog_start: TimelogStart | null;
+  // per-status row tint tokens (status -> "danger" | "warn" | "success" | "dimmed")
+  status_colors: Record<string, StatusColorToken>;
 }
+
+// Semantic tint token for a task row; maps to a theme-aware CSS token in the UI.
+export type StatusColorToken = "danger" | "warn" | "success" | "dimmed";
 
 // Normalized task/notification: open-ended maps from core.
 export type Task = Record<string, unknown>;

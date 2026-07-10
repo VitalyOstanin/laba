@@ -556,6 +556,27 @@ body {
   white-space: nowrap;
 }
 
+/* Task row tint by workflow status (per-server `status_colors`). The subject
+   takes the semantic tone so attention-needing rows read at a glance; the
+   status pill echoes it. Tokens map to the theme-aware color tokens. */
+.list > li.task.tone-danger .subject,
+.list > li.task.tone-danger .status {
+  color: var(--danger);
+}
+.list > li.task.tone-warn .subject,
+.list > li.task.tone-warn .status {
+  color: var(--warn);
+}
+.list > li.task.tone-success .subject,
+.list > li.task.tone-success .status {
+  color: var(--ok);
+}
+.list > li.task.tone-dimmed .subject,
+.list > li.task.tone-dimmed .id {
+  color: var(--text-dim);
+  opacity: 0.75;
+}
+
 .empty {
   margin: 0;
   padding: 18px 12px;
@@ -685,6 +706,76 @@ body {
 
 .settings .auto-hint {
   color: var(--warn);
+}
+
+/* Per-server status-color editor: takes the full row width below the inline
+   fields, one mapping per line. */
+.settings .srv-colors {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 34px;
+}
+
+.settings .srv-colors-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.settings .srv-color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.settings .srv-color-status {
+  min-width: 120px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings .srv-color-input {
+  width: 160px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.settings .srv-color-row select {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.settings .swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+.settings .swatch.tone-danger {
+  background: var(--danger);
+}
+.settings .swatch.tone-warn {
+  background: var(--warn);
+}
+.settings .swatch.tone-success {
+  background: var(--ok);
+}
+.settings .swatch.tone-dimmed {
+  background: var(--text-dim);
 }
 
 .settings .tz-field input {

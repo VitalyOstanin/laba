@@ -47,6 +47,16 @@ export const ru: Dict = {
   "settings.timelog.hint":
     "Каждый сервер считается от своей даты; план — от самой ранней.",
   "settings.timelog.auto": "авто — задайте реальную дату начала",
+  "settings.statusColors": "Цвета по статусам",
+  "settings.statusColors.hint":
+    "Тонировать строки задач по статусу. Вводите статус точно так, как его отдаёт сервер.",
+  "settings.statusColors.status": "Статус",
+  "settings.statusColors.add": "Добавить",
+  "settings.statusColors.remove": "Удалить",
+  "settings.color.danger": "Красный",
+  "settings.color.warn": "Янтарный",
+  "settings.color.success": "Зелёный",
+  "settings.color.dimmed": "Приглушённый",
   "server.switcher": "Активный сервер",
   "server.off": "выкл",
   "server.disabled": "отключён",

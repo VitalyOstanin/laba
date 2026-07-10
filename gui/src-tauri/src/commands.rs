@@ -2,10 +2,13 @@
 
 use serde::Serialize;
 use serde_json::Value;
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use taskstream_core::backend;
 use taskstream_core::client::Client;
-use taskstream_core::config::{default_config_path, Backend, Config, ServerProfile, TimelogStart};
+use taskstream_core::config::{
+    default_config_path, Backend, Config, ServerProfile, StatusColor, TimelogStart,
+};
 use taskstream_core::resources::{comment, notification, time};
 use taskstream_core::secrets::Secrets;
 use taskstream_core::settings::{default_settings_path, Settings};
@@ -29,6 +32,9 @@ pub struct ServerInfo {
     pub enabled: bool,
     /// Timelog window start, for the settings input.
     pub timelog_start: Option<TimelogStart>,
+    /// Per-status row tint tokens (status -> `danger`/`warn`/`success`/`dimmed`),
+    /// for tinting task rows and editing in settings.
+    pub status_colors: BTreeMap<String, String>,
 }
 
 fn backend_str(b: Backend) -> &'static str {
@@ -53,6 +59,11 @@ pub fn server_infos(cfg: &Config) -> Vec<ServerInfo> {
             poll_override: p.poll_secs,
             enabled: p.enabled,
             timelog_start: p.timelog_start.clone(),
+            status_colors: p
+                .status_colors
+                .iter()
+                .map(|(status, color)| (status.clone(), color.token().to_owned()))
+                .collect(),
         })
         .collect()
 }
@@ -500,6 +511,31 @@ pub fn set_server_timelog_start(name: String, date: Option<String>) -> Result<()
     })
 }
 
+/// Set or clear a server's row tint for a workflow status. A `None`/blank color
+/// removes the mapping (status renders neutral). An unknown color token is an
+/// error so a typo does not silently drop the tint.
+#[tauri::command]
+pub fn set_server_status_color(
+    name: String,
+    status: String,
+    color: Option<String>,
+) -> Result<(), String> {
+    with_config(|cfg| {
+        let profile = profile_mut(cfg, &name)?;
+        match color.filter(|c| !c.trim().is_empty()) {
+            Some(token) => {
+                let parsed = StatusColor::from_token(&token)
+                    .ok_or_else(|| format!("unknown color '{token}'"))?;
+                profile.status_colors.insert(status, parsed);
+            }
+            None => {
+                profile.status_colors.remove(&status);
+            }
+        }
+        Ok(())
+    })
+}
+
 /// Rename a server: re-key its profile, update the default, and move its stored
 /// token to the new key. The short name is the identifier, so renaming it is a
 /// key move rather than a field edit.
@@ -547,7 +583,6 @@ fn token_for(server: &str, backend: Backend) -> Result<Option<String>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::BTreeMap;
     use taskstream_core::config::ServerProfile;
 
     fn cfg() -> Config {
@@ -564,6 +599,7 @@ mod tests {
                 enabled: true,
                 poll_secs: None,
                 timelog_start: None,
+                status_colors: Default::default(),
             },
         );
         servers.insert(
@@ -578,6 +614,7 @@ mod tests {
                 enabled: true,
                 poll_secs: None,
                 timelog_start: None,
+                status_colors: Default::default(),
             },
         );
         Config {

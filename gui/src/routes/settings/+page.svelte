@@ -8,6 +8,7 @@
     setServerEnabled,
     setServerPollSecs,
     setServerTimelogStart,
+    setServerStatusColor,
     renameServer,
   } from "$lib/api";
   import { applyTheme } from "$lib/theme";
@@ -19,7 +20,7 @@
   } from "$lib/scale";
   import { language, t } from "$lib/i18n";
   import { fieldKeys } from "$lib/keys";
-  import type { Theme, Lang, WeekStart } from "$lib/types";
+  import type { Theme, Lang, WeekStart, StatusColorToken } from "$lib/types";
 
   let saved = $state(false);
   let flash: ReturnType<typeof setTimeout> | undefined;
@@ -98,6 +99,40 @@
   }
   async function setStart(name: string, date: string): Promise<void> {
     await setServerTimelogStart(name, date === "" ? null : date);
+    await refreshServers();
+  }
+
+  // Per-server status-color editor. Drafts for the "add" row are keyed by server
+  // name so each row keeps its own in-progress status text and color.
+  const COLOR_TOKENS: StatusColorToken[] = [
+    "danger",
+    "warn",
+    "success",
+    "dimmed",
+  ];
+  let draftStatus = $state<Record<string, string>>({});
+  let draftColor = $state<Record<string, StatusColorToken>>({});
+
+  async function addStatusColor(name: string): Promise<void> {
+    const status = (draftStatus[name] ?? "").trim();
+    if (status === "") return;
+    await setServerStatusColor(name, status, draftColor[name] ?? "danger");
+    draftStatus[name] = "";
+    await refreshServers();
+  }
+  async function changeStatusColor(
+    name: string,
+    status: string,
+    color: StatusColorToken,
+  ): Promise<void> {
+    await setServerStatusColor(name, status, color);
+    await refreshServers();
+  }
+  async function removeStatusColor(
+    name: string,
+    status: string,
+  ): Promise<void> {
+    await setServerStatusColor(name, status, null);
     await refreshServers();
   }
 
@@ -287,6 +322,56 @@
               {/if}
             </label>
           {/if}
+          <div class="srv-colors">
+            <span class="srv-colors-title">{$t("settings.statusColors")}</span>
+            {#each Object.entries(s.status_colors) as [status, color] (status)}
+              <div class="srv-color-row">
+                <span class="srv-color-status" title={status}>{status}</span>
+                <select
+                  value={color}
+                  onchange={(e) =>
+                    changeStatusColor(
+                      s.name,
+                      status,
+                      e.currentTarget.value as StatusColorToken,
+                    )}
+                >
+                  {#each COLOR_TOKENS as tok (tok)}
+                    <option value={tok}>{$t(`settings.color.${tok}`)}</option>
+                  {/each}
+                </select>
+                <span class="swatch tone-{color}" aria-hidden="true"></span>
+                <button
+                  type="button"
+                  class="linkbtn"
+                  onclick={() => removeStatusColor(s.name, status)}
+                  >{$t("settings.statusColors.remove")}</button
+                >
+              </div>
+            {/each}
+            <div class="srv-color-row">
+              <input
+                type="text"
+                class="srv-color-input"
+                placeholder={$t("settings.statusColors.status")}
+                bind:value={draftStatus[s.name]}
+                onkeydown={(e) => {
+                  if (e.key === "Enter") addStatusColor(s.name);
+                }}
+              />
+              <select bind:value={draftColor[s.name]}>
+                {#each COLOR_TOKENS as tok (tok)}
+                  <option value={tok}>{$t(`settings.color.${tok}`)}</option>
+                {/each}
+              </select>
+              <button
+                type="button"
+                class="btn"
+                onclick={() => addStatusColor(s.name)}
+                >{$t("settings.statusColors.add")}</button
+              >
+            </div>
+          </div>
         </li>
       {/each}
     </ul>

@@ -49,6 +49,45 @@ impl Backend {
     }
 }
 
+/// Semantic tint for a task row, keyed by workflow status per server.
+///
+/// A token (not a raw color) so it renders correctly in both the light and dark
+/// GUI themes: the frontend maps each variant to a theme-aware CSS token
+/// (`Danger` -> `--danger`, `Warn` -> `--warn`, `Success` -> `--ok`, `Dimmed` ->
+/// `--text-dim`). A status with no mapping stays the neutral default.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum StatusColor {
+    Danger,
+    Warn,
+    Success,
+    Dimmed,
+}
+
+impl StatusColor {
+    /// Parse a lowercase token (`danger`/`warn`/`success`/`dimmed`), returning
+    /// `None` for anything else. Used by the CLI and GUI to accept a color name.
+    pub fn from_token(s: &str) -> Option<StatusColor> {
+        match s {
+            "danger" => Some(StatusColor::Danger),
+            "warn" => Some(StatusColor::Warn),
+            "success" => Some(StatusColor::Success),
+            "dimmed" => Some(StatusColor::Dimmed),
+            _ => None,
+        }
+    }
+
+    /// The lowercase token for this color (inverse of [`from_token`]).
+    pub fn token(self) -> &'static str {
+        match self {
+            StatusColor::Danger => "danger",
+            StatusColor::Warn => "warn",
+            StatusColor::Success => "success",
+            StatusColor::Dimmed => "dimmed",
+        }
+    }
+}
+
 /// Per-server timelog window start.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TimelogStart {
@@ -91,9 +130,20 @@ pub struct ServerProfile {
     /// backends.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timelog_start: Option<TimelogStart>,
+    /// Per-status row tint, keyed by the exact workflow status string as it
+    /// appears on this server. The status names are instance-specific, so the
+    /// map is user data (kept out of code/tests, which use fictional statuses).
+    /// An unlisted status renders neutral.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub status_colors: BTreeMap<String, StatusColor>,
 }
 
 impl ServerProfile {
+    /// The configured tint for a task with the given status, if any.
+    pub fn status_color(&self, status: &str) -> Option<StatusColor> {
+        self.status_colors.get(status).copied()
+    }
+
     /// Full display name: `display_name` if set, else the profile's map key
     /// (its short name / identifier).
     pub fn display<'a>(&'a self, key: &'a str) -> &'a str {
@@ -208,6 +258,10 @@ mod tests {
                     date: "2026-07-01".into(),
                     auto: false,
                 }),
+                status_colors: BTreeMap::from([
+                    ("In progress".into(), StatusColor::Warn),
+                    ("Under review".into(), StatusColor::Success),
+                ]),
             },
         );
         cfg.save(&path).unwrap();
@@ -231,6 +285,7 @@ mod tests {
                     enabled: true,
                     poll_secs: None,
                     timelog_start: None,
+                    status_colors: Default::default(),
                 },
             );
         }
@@ -283,8 +338,49 @@ mod tests {
         assert!(p.enabled);
         assert_eq!(p.poll_secs, None);
         assert_eq!(p.timelog_start, None);
+        assert!(p.status_colors.is_empty());
         // No explicit poll_secs -> backend default.
         assert_eq!(p.effective_poll_secs(), 120);
+    }
+
+    #[test]
+    fn status_colors_parse_and_look_up() {
+        let p: ServerProfile = serde_json::from_str(
+            r#"{"base_url":"u","status_colors":{"Blocked":"danger","Done":"dimmed"}}"#,
+        )
+        .unwrap();
+        assert_eq!(p.status_color("Blocked"), Some(StatusColor::Danger));
+        assert_eq!(p.status_color("Done"), Some(StatusColor::Dimmed));
+        // Unlisted status -> neutral (no tint).
+        assert_eq!(p.status_color("In progress"), None);
+        // Empty map is omitted from the serialized form.
+        let bare: ServerProfile = serde_json::from_str(r#"{"base_url":"u"}"#).unwrap();
+        let json = serde_json::to_string(&bare).unwrap();
+        assert!(
+            !json.contains("status_colors"),
+            "empty map must not serialize"
+        );
+    }
+
+    #[test]
+    fn status_color_serializes_lowercase() {
+        assert_eq!(
+            serde_json::to_string(&StatusColor::Success).unwrap(),
+            "\"success\""
+        );
+    }
+
+    #[test]
+    fn status_color_token_roundtrips() {
+        for c in [
+            StatusColor::Danger,
+            StatusColor::Warn,
+            StatusColor::Success,
+            StatusColor::Dimmed,
+        ] {
+            assert_eq!(StatusColor::from_token(c.token()), Some(c));
+        }
+        assert_eq!(StatusColor::from_token("bogus"), None);
     }
 
     #[test]
