@@ -109,6 +109,7 @@
     "danger",
     "warn",
     "success",
+    "progress",
     "dimmed",
   ];
   let draftStatus = $state<Record<string, string>>({});

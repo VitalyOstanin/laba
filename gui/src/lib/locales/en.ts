@@ -61,6 +61,7 @@ export const en = {
   "settings.color.danger": "Red",
   "settings.color.warn": "Amber",
   "settings.color.success": "Green",
+  "settings.color.progress": "Teal",
   "settings.color.dimmed": "Dimmed",
   "server.switcher": "Active server",
   "server.off": "off",

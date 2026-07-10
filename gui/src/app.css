@@ -15,6 +15,7 @@
   --danger: #c0392b;
   --warn: #b8860b;
   --ok: #2e8b57;
+  --info: #0d7d87;
 }
 
 :root {
@@ -49,6 +50,7 @@
     --danger: #e06254;
     --warn: #d1a12a;
     --ok: #57b989;
+    --info: #33c2cc;
   }
 }
 
@@ -64,6 +66,7 @@
   --danger: #e06254;
   --warn: #d1a12a;
   --ok: #57b989;
+  --info: #33c2cc;
 }
 
 * {
@@ -627,6 +630,10 @@ body {
 .list > li.task.tone-success .status {
   color: var(--ok);
 }
+.list > li.task.tone-progress .subject,
+.list > li.task.tone-progress .status {
+  color: var(--info);
+}
 .list > li.task.tone-dimmed .subject,
 .list > li.task.tone-dimmed .id {
   color: var(--text-dim);
@@ -873,6 +880,9 @@ body {
 }
 .settings .swatch.tone-success {
   background: var(--ok);
+}
+.settings .swatch.tone-progress {
+  background: var(--info);
 }
 .settings .swatch.tone-dimmed {
   background: var(--text-dim);

@@ -53,25 +53,29 @@ impl Backend {
 ///
 /// A token (not a raw color) so it renders correctly in both the light and dark
 /// GUI themes: the frontend maps each variant to a theme-aware CSS token
-/// (`Danger` -> `--danger`, `Warn` -> `--warn`, `Success` -> `--ok`, `Dimmed` ->
-/// `--text-dim`). A status with no mapping stays the neutral default.
+/// (`Danger` -> `--danger`, `Warn` -> `--warn`, `Success` -> `--ok`,
+/// `Progress` -> `--info`, `Dimmed` -> `--text-dim`). A status with no mapping
+/// stays the neutral default.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum StatusColor {
     Danger,
     Warn,
     Success,
+    Progress,
     Dimmed,
 }
 
 impl StatusColor {
-    /// Parse a lowercase token (`danger`/`warn`/`success`/`dimmed`), returning
-    /// `None` for anything else. Used by the CLI and GUI to accept a color name.
+    /// Parse a lowercase token (`danger`/`warn`/`success`/`progress`/`dimmed`),
+    /// returning `None` for anything else. Used by the CLI and GUI to accept a
+    /// color name.
     pub fn from_token(s: &str) -> Option<StatusColor> {
         match s {
             "danger" => Some(StatusColor::Danger),
             "warn" => Some(StatusColor::Warn),
             "success" => Some(StatusColor::Success),
+            "progress" => Some(StatusColor::Progress),
             "dimmed" => Some(StatusColor::Dimmed),
             _ => None,
         }
@@ -83,6 +87,7 @@ impl StatusColor {
             StatusColor::Danger => "danger",
             StatusColor::Warn => "warn",
             StatusColor::Success => "success",
+            StatusColor::Progress => "progress",
             StatusColor::Dimmed => "dimmed",
         }
     }
@@ -376,6 +381,7 @@ mod tests {
             StatusColor::Danger,
             StatusColor::Warn,
             StatusColor::Success,
+            StatusColor::Progress,
             StatusColor::Dimmed,
         ] {
             assert_eq!(StatusColor::from_token(c.token()), Some(c));

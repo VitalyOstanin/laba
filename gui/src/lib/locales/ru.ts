@@ -63,6 +63,7 @@ export const ru: Dict = {
   "settings.color.danger": "Красный",
   "settings.color.warn": "Янтарный",
   "settings.color.success": "Зелёный",
+  "settings.color.progress": "Бирюзовый",
   "settings.color.dimmed": "Приглушённый",
   "server.switcher": "Активный сервер",
   "server.off": "выкл",
