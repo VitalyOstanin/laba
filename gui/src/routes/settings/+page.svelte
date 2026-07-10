@@ -307,7 +307,7 @@
             />
           </label>
           <span class="bk {s.backend === 'github' ? 'gh' : 'op'}">
-            {s.backend === "github" ? "GH" : "OP"}
+            {s.backend === "github" ? "GitHub" : "OpenProject"}
           </span>
           <label class="srv-field">
             <span>{$t("settings.server.fullName")}</span>

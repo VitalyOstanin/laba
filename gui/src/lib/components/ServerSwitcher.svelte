@@ -20,7 +20,7 @@
       {/if}
       {s.name}
       <span class="bk {s.backend === 'github' ? 'gh' : 'op'}">
-        {s.backend === "github" ? "GH" : "OP"}
+        {s.backend === "github" ? "GitHub" : "OpenProject"}
       </span>
       {#if !s.enabled}
         <span class="off-tag">{$t("server.off")}</span>
