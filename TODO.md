@@ -103,14 +103,12 @@ Backlog of ideas to evaluate. Not commitments.
 
 ## Branding
 
-- [ ] Replace the stock Tauri placeholder icon set in `gui/src-tauri/icons/`
-      with a real taskstream icon. The window/taskbar and the tray icon (the
-      tray uses `default_window_icon()` in `gui/src-tauri/src/lib.rs`) currently
-      show the default Tauri logo. Design a source icon, regenerate every size
-      via `tauri icon <source.png>`, and rebuild. The bundled `.desktop` and its
-      icon are produced by the bundler from these assets, so fixing the source
-      set fixes installed launchers too; the Linux window `app_id` is
-      `taskstream-gui` (StartupWMClass must match for dev `--no-bundle` runs).
+- [x] Replace the stock Tauri placeholder icon set in `gui/src-tauri/icons/`
+      with a real taskstream icon. Done: `icons/icon.svg` (checklist on an
+      accent-blue tile) is the source; all sizes regenerated via `tauri icon`.
+      The tray uses `default_window_icon()` in `gui/src-tauri/src/lib.rs`; the
+      Linux window `app_id` is `taskstream-gui` (StartupWMClass must match for
+      dev `--no-bundle` runs).
 
 ## Documentation
 
