@@ -4,6 +4,7 @@
   import { addComment } from "../api";
   import { refreshServer } from "../poller";
   import { onVisible } from "../scroll";
+  import { openExternal } from "../external";
   import FilterRow from "./FilterRow.svelte";
   import type { Task, ServerInfo } from "../types";
 
@@ -42,6 +43,18 @@
     const token = server?.status_colors?.[status];
     return token ? `tone-${token}` : "";
   }
+
+  // Browser URL for a task: GitHub carries an explicit `url`; OpenProject work
+  // packages are addressed as `<base_url>/work_packages/<id>`. Null when neither
+  // is available (no server or no id), so the number stays plain text.
+  function taskHref(task: Task): string | null {
+    if (server?.backend === "github") {
+      return typeof task.url === "string" ? task.url : null;
+    }
+    const base = server?.base_url;
+    if (!base || task.id == null) return null;
+    return `${base.replace(/\/+$/, "")}/work_packages/${task.id}`;
+  }
   let openId = $state<number | null>(null);
   let text = $state("");
   let busy = $state(false);
@@ -74,7 +87,17 @@
     <ul class="list">
       {#each visible as task (task.id)}
         <li class="task {tone(task)}">
-          <span class="id">{task.id}</span>
+          {#if taskHref(task)}
+            <button
+              type="button"
+              class="id id-link"
+              title={taskHref(task)}
+              onclick={() => openExternal(taskHref(task) ?? "")}
+              >{task.id}</button
+            >
+          {:else}
+            <span class="id">{task.id}</span>
+          {/if}
           <span class="subject">{task.subject}</span>
           <span class="status">{task.status}</span>
           {#if canComment}
