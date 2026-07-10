@@ -573,45 +573,32 @@ body {
   white-space: nowrap;
 }
 
-/* Notification read state: a leading dot (blue when unread, dim when read) plus
-   a check-icon button to toggle, replacing the old text link. */
-.list .dot {
+/* Notification read state as a single dot that is also the toggle. A filled
+   accent dot means unread; a hollow ring means read (like an email inbox).
+   Clicking it flips the state; unread rows also render bold (see .notif.unread
+   .subject). No checkbox/checkmark — that metaphor reads as selection. */
+.list .readdot {
   flex: none;
-  width: 8px;
-  height: 8px;
-  margin-top: 6px;
+  width: 11px;
+  height: 11px;
+  margin-top: 5px;
+  padding: 0;
   border-radius: 50%;
-  background: var(--border);
+  border: 2px solid var(--text-dim);
+  background: transparent;
+  box-sizing: border-box;
 }
-.list .dot.on {
+.list .readdot.unread {
+  border-color: var(--accent);
   background: var(--accent);
 }
-
-.list .icon-btn {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface-2);
-  color: var(--text-dim);
+button.readdot {
   cursor: pointer;
 }
-.list .icon-btn:hover:not(:disabled) {
+button.readdot:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
 }
-/* Read state: the toggle shows the notification is already read (filled check). */
-.list .icon-btn.active {
-  color: var(--ok);
-  border-color: color-mix(in srgb, var(--ok) 40%, var(--border));
-}
-.list .icon-btn:disabled {
-  opacity: 0.5;
+button.readdot:disabled {
   cursor: default;
 }
 

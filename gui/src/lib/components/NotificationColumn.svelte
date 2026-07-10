@@ -30,8 +30,9 @@
     else if (hasMore) onLoadMore();
   }
 
-  // Read/unread actions exist only on OpenProject backends.
-  const canToggle = $derived(server?.backend === "openproject");
+  // Read/unread toggling is a backend capability (only some backends expose a
+  // per-notification read write).
+  const canToggle = $derived(server?.can_toggle_read ?? false);
   let busy = $state(false);
 
   async function toggle(n: Notification): Promise<void> {
@@ -72,19 +73,11 @@
     <ul class="list">
       {#each visible as n (n.id)}
         <li class="notif" class:unread={unreadOf(n)}>
-          <span
-            class="dot"
-            class:on={unreadOf(n)}
-            aria-hidden="true"
-            title={unreadOf(n) ? $t("notif.isUnread") : $t("notif.isRead")}
-          ></span>
-          <span class="reason">{n.reason}</span>
-          <span class="subject">{n.wpTitle ?? n.subject}</span>
           {#if canToggle}
             <button
               type="button"
-              class="icon-btn"
-              class:active={!unreadOf(n)}
+              class="readdot"
+              class:unread={unreadOf(n)}
               disabled={busy}
               aria-label={unreadOf(n)
                 ? $t("notif.markRead")
@@ -93,24 +86,17 @@
                 ? $t("notif.markRead")
                 : $t("notif.markUnread")}
               onclick={() => toggle(n)}
-            >
-              <svg
-                viewBox="0 0 16 16"
-                width="15"
-                height="15"
-                aria-hidden="true"
-              >
-                <path
-                  d="M13.5 4.5 6.5 11.5 3 8"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
+            ></button>
+          {:else}
+            <span
+              class="readdot"
+              class:unread={unreadOf(n)}
+              aria-hidden="true"
+              title={unreadOf(n) ? $t("notif.isUnread") : $t("notif.isRead")}
+            ></span>
           {/if}
+          <span class="reason">{n.reason}</span>
+          <span class="subject">{n.wpTitle ?? n.subject}</span>
         </li>
       {/each}
     </ul>

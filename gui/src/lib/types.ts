@@ -15,6 +15,10 @@ export interface ServerInfo {
   timelog_start: TimelogStart | null;
   // per-status row tint tokens (status -> "danger"|"warn"|"success"|"progress"|"dimmed")
   status_colors: Record<string, StatusColorToken>;
+  // whether this server has a notification inbox (else the column is hidden)
+  has_notifications: boolean;
+  // whether notification read state can be toggled from the app
+  can_toggle_read: boolean;
 }
 
 // Semantic tint token for a task row; maps to a theme-aware CSS token in the UI.

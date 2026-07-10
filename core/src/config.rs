@@ -39,6 +39,20 @@ impl Backend {
         matches!(self, Backend::OpenProject)
     }
 
+    /// Whether this backend exposes a notification inbox. Both current backends
+    /// do; kept as a capability so a future backend without notifications hides
+    /// the column instead of showing an empty one.
+    pub fn supports_notifications(self) -> bool {
+        matches!(self, Backend::OpenProject | Backend::Github)
+    }
+
+    /// Whether a notification's read state can be toggled from the app. Only
+    /// OpenProject exposes a per-notification read/unread write; GitHub
+    /// notifications are read-only here.
+    pub fn supports_notification_read_toggle(self) -> bool {
+        matches!(self, Backend::OpenProject)
+    }
+
     /// Default polling interval in seconds. GitHub is polled less often because
     /// `gh` shares the account's stricter API rate limit.
     pub fn default_poll_secs(self) -> u64 {
@@ -409,6 +423,10 @@ mod tests {
         assert!(!Backend::Github.supports_time_activities());
         assert!(Backend::OpenProject.needs_local_history());
         assert!(!Backend::Github.needs_local_history());
+        assert!(Backend::OpenProject.supports_notifications());
+        assert!(Backend::Github.supports_notifications());
+        assert!(Backend::OpenProject.supports_notification_read_toggle());
+        assert!(!Backend::Github.supports_notification_read_toggle());
         assert_eq!(Backend::OpenProject.default_poll_secs(), 120);
         assert_eq!(Backend::Github.default_poll_secs(), 900);
     }

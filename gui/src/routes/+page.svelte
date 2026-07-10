@@ -30,12 +30,14 @@
 <StatusBanner error={state?.error ?? null} />
 <TimelogIndicator />
 <main class="cols">
-  <NotificationColumn
-    notifications={state?.notifications ?? []}
-    server={activeInfo}
-    hasMore={state?.notifCursor != null}
-    onLoadMore={() => $activeServer && loadMoreNotifications($activeServer)}
-  />
+  {#if activeInfo?.has_notifications ?? true}
+    <NotificationColumn
+      notifications={state?.notifications ?? []}
+      server={activeInfo}
+      hasMore={state?.notifCursor != null}
+      onLoadMore={() => $activeServer && loadMoreNotifications($activeServer)}
+    />
+  {/if}
   <TaskColumn
     tasks={state?.tasks ?? []}
     server={activeInfo}

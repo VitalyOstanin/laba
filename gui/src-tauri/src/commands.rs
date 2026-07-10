@@ -35,6 +35,10 @@ pub struct ServerInfo {
     /// Per-status row tint tokens (status -> `danger`/`warn`/`success`/`dimmed`),
     /// for tinting task rows and editing in settings.
     pub status_colors: BTreeMap<String, String>,
+    /// Whether this server has a notification inbox (else the column is hidden).
+    pub has_notifications: bool,
+    /// Whether notification read state can be toggled from the app.
+    pub can_toggle_read: bool,
 }
 
 fn backend_str(b: Backend) -> &'static str {
@@ -64,6 +68,8 @@ pub fn server_infos(cfg: &Config) -> Vec<ServerInfo> {
                 .iter()
                 .map(|(status, color)| (status.clone(), color.token().to_owned()))
                 .collect(),
+            has_notifications: p.backend.supports_notifications(),
+            can_toggle_read: p.backend.supports_notification_read_toggle(),
         })
         .collect()
 }
