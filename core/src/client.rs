@@ -102,6 +102,7 @@ mod tests {
             timelog_start: None,
             status_colors: Default::default(),
             status_filters: Vec::new(),
+            display_fields: Vec::new(),
         }
     }
 
@@ -512,6 +513,7 @@ mod exec_tests {
             timelog_start: None,
             status_colors: Default::default(),
             status_filters: Vec::new(),
+            display_fields: Vec::new(),
         }
     }
 
@@ -1001,6 +1003,7 @@ mod attachment_tests {
             timelog_start: None,
             status_colors: Default::default(),
             status_filters: Vec::new(),
+            display_fields: Vec::new(),
         }
     }
 
@@ -1113,6 +1116,7 @@ mod custom_field_tests {
             timelog_start: None,
             status_colors: Default::default(),
             status_filters: Vec::new(),
+            display_fields: Vec::new(),
         }
     }
 
@@ -1242,6 +1246,7 @@ mod retry_tests {
             timelog_start: None,
             status_colors: Default::default(),
             status_filters: Vec::new(),
+            display_fields: Vec::new(),
         };
         let c = Client::new("test", &p, "t".into(), Some("none")).unwrap();
         let v = c.get_json_retrying("x", 3).await.unwrap();

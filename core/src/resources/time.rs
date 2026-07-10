@@ -280,6 +280,7 @@ mod tests {
             timelog_start: None,
             status_colors: Default::default(),
             status_filters: Vec::new(),
+            display_fields: Vec::new(),
         }
     }
 

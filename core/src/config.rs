@@ -60,6 +60,21 @@ impl Backend {
         matches!(self, Backend::OpenProject)
     }
 
+    /// Whether a single task can be opened for its full description and comment
+    /// thread (the task-detail screen). OpenProject exposes a work package with
+    /// its description plus an activities/comments endpoint; the GitHub backend
+    /// here does not fetch issue bodies or comments, so its rows only link out.
+    pub fn supports_task_detail(self) -> bool {
+        matches!(self, Backend::OpenProject)
+    }
+
+    /// Whether tasks carry custom fields the user can choose to show as extra
+    /// list columns (`display_fields`). OpenProject work packages do; GitHub
+    /// issues do not.
+    pub fn supports_custom_fields(self) -> bool {
+        matches!(self, Backend::OpenProject)
+    }
+
     /// Default polling interval in seconds. GitHub is polled less often because
     /// `gh` shares the account's stricter API rate limit.
     pub fn default_poll_secs(self) -> u64 {
@@ -177,6 +192,13 @@ pub struct ServerProfile {
     /// Ordered. Empty means the GUI auto-derives one tab per status present.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub status_filters: Vec<StatusFilter>,
+    /// Custom-field names to show as extra columns in the task list (and to sort
+    /// by), matched against each task's expanded `customFields[].name`. Ordered.
+    /// The name is used both to look up the value and as the column label (e.g.
+    /// `Rank`). Instance-specific, so this is user data. Only meaningful for
+    /// backends with custom fields (see [`Backend::supports_custom_fields`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub display_fields: Vec<String>,
 }
 
 impl ServerProfile {
@@ -307,6 +329,7 @@ mod tests {
                     label: "Active".into(),
                     statuses: vec!["In progress".into(), "Under review".into()],
                 }],
+                display_fields: vec!["Rank".into()],
             },
         );
         cfg.save(&path).unwrap();
@@ -332,6 +355,7 @@ mod tests {
                     timelog_start: None,
                     status_colors: Default::default(),
                     status_filters: Vec::new(),
+                    display_fields: Vec::new(),
                 },
             );
         }
