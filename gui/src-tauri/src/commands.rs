@@ -81,6 +81,20 @@ pub fn list_servers() -> Result<Vec<ServerInfo>, String> {
     Ok(server_infos(&load_cfg()?))
 }
 
+/// Quit the whole application (Ctrl+Q). Exits regardless of the minimize-to-tray
+/// setting, unlike closing the window.
+#[tauri::command]
+pub fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
+/// Close the current window (Ctrl+W). This fires the normal close flow, so with
+/// minimize-to-tray on it hides to the tray; otherwise the app exits.
+#[tauri::command]
+pub fn close_window(window: tauri::Window) -> Result<(), String> {
+    window.close().map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub fn get_settings() -> Result<Settings, String> {
     load_settings()

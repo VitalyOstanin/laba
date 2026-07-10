@@ -12,6 +12,10 @@ import type {
 } from "./types";
 
 export const listServers = (): Promise<ServerInfo[]> => invoke("list_servers");
+// Window/app controls for keyboard shortcuts. quitApp exits unconditionally;
+// closeWindow runs the normal close flow (hide to tray or quit per settings).
+export const quitApp = (): Promise<void> => invoke("quit_app");
+export const closeWindow = (): Promise<void> => invoke("close_window");
 export const listTasks = (
   server: string,
   page?: number,

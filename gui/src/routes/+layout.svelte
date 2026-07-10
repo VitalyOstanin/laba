@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import { get } from "svelte/store";
   import { attachConsole } from "@tauri-apps/plugin-log";
-  import { getSettings, saveSettings } from "$lib/api";
+  import { getSettings, saveSettings, quitApp, closeWindow } from "$lib/api";
   import { settings } from "$lib/store";
   import { applyTheme } from "$lib/theme";
   import {
@@ -35,6 +35,18 @@
     // persisted scale is used instead of the webview's transient zoom.
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      // Layout-independent: match the physical key via `code` (KeyQ/KeyW), so
+      // Ctrl+Q / Ctrl+W work under a Cyrillic layout too.
+      if (e.code === "KeyQ") {
+        e.preventDefault();
+        void quitApp();
+        return;
+      }
+      if (e.code === "KeyW") {
+        e.preventDefault();
+        void closeWindow();
+        return;
+      }
       const cur = get(settings).ui_scale;
       if (e.key === "0") {
         e.preventDefault();
