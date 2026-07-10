@@ -197,23 +197,25 @@ pub async fn run(cmd: ServerCmd, config_flag: &Option<PathBuf>) -> Result<(), Er
         } => {
             let name = cfg.resolve_server_name(server.as_deref())?;
             let profile = cfg.servers.get_mut(&name).expect("resolved server exists");
-            if clear || color.is_none() {
-                if profile.status_colors.remove(&status).is_some() {
+            match color {
+                Some(token) if !clear => {
+                    let parsed = StatusColor::from_token(&token).ok_or_else(|| {
+                        Error::Usage(format!(
+                            "unknown color '{token}'; expected danger|warn|success|progress|dimmed"
+                        ))
+                    })?;
+                    profile.status_colors.insert(status.clone(), parsed);
                     cfg.save(&path)?;
-                    println!("cleared color for status '{status}' on '{name}'");
-                } else {
-                    println!("no color set for status '{status}' on '{name}'");
+                    println!("status '{status}' on '{name}' -> {token}");
                 }
-            } else {
-                let token = color.unwrap();
-                let parsed = StatusColor::from_token(&token).ok_or_else(|| {
-                    Error::Usage(format!(
-                        "unknown color '{token}'; expected danger|warn|success|dimmed"
-                    ))
-                })?;
-                profile.status_colors.insert(status.clone(), parsed);
-                cfg.save(&path)?;
-                println!("status '{status}' on '{name}' -> {token}");
+                _ => {
+                    if profile.status_colors.remove(&status).is_some() {
+                        cfg.save(&path)?;
+                        println!("cleared color for status '{status}' on '{name}'");
+                    } else {
+                        println!("no color set for status '{status}' on '{name}'");
+                    }
+                }
             }
         }
         ServerCmd::Show { name } => {
