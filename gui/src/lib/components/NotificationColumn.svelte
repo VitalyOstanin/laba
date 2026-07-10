@@ -72,19 +72,43 @@
     <ul class="list">
       {#each visible as n (n.id)}
         <li class="notif" class:unread={unreadOf(n)}>
+          <span
+            class="dot"
+            class:on={unreadOf(n)}
+            aria-hidden="true"
+            title={unreadOf(n) ? $t("notif.isUnread") : $t("notif.isRead")}
+          ></span>
           <span class="reason">{n.reason}</span>
           <span class="subject">{n.wpTitle ?? n.subject}</span>
           {#if canToggle}
             <button
               type="button"
-              class="linkbtn"
+              class="icon-btn"
+              class:active={!unreadOf(n)}
               disabled={busy}
+              aria-label={unreadOf(n)
+                ? $t("notif.markRead")
+                : $t("notif.markUnread")}
               title={unreadOf(n)
                 ? $t("notif.markRead")
                 : $t("notif.markUnread")}
               onclick={() => toggle(n)}
             >
-              {unreadOf(n) ? $t("notif.read") : $t("notif.unread")}
+              <svg
+                viewBox="0 0 16 16"
+                width="15"
+                height="15"
+                aria-hidden="true"
+              >
+                <path
+                  d="M13.5 4.5 6.5 11.5 3 8"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
             </button>
           {/if}
         </li>

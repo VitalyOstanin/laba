@@ -511,6 +511,51 @@ pub fn set_server_timelog_start(name: String, date: Option<String>) -> Result<()
     })
 }
 
+/// Add a server profile from the GUI. `backend` is `openproject` or `github`;
+/// GitHub servers authenticate through `gh` and need no token. Rejects a
+/// duplicate short name. The first server added becomes the default.
+#[tauri::command]
+pub fn add_server(
+    name: String,
+    url: String,
+    backend: String,
+    display_name: Option<String>,
+) -> Result<(), String> {
+    let name = name.trim().to_owned();
+    if name.is_empty() {
+        return Err("server name is required".into());
+    }
+    let backend = match backend.as_str() {
+        "openproject" => Backend::OpenProject,
+        "github" => Backend::Github,
+        other => return Err(format!("unknown backend '{other}'")),
+    };
+    with_config(|cfg| {
+        if cfg.servers.contains_key(&name) {
+            return Err(format!("server '{name}' already exists"));
+        }
+        cfg.servers.insert(
+            name.clone(),
+            ServerProfile {
+                display_name: display_name.filter(|s| !s.trim().is_empty()),
+                base_url: url.trim().to_owned(),
+                backend,
+                timeout: 30,
+                verify_ssl: true,
+                proxy: None,
+                enabled: true,
+                poll_secs: None,
+                timelog_start: None,
+                status_colors: Default::default(),
+            },
+        );
+        if cfg.default_server.is_none() {
+            cfg.default_server = Some(name);
+        }
+        Ok(())
+    })
+}
+
 /// Set or clear a server's row tint for a workflow status. A `None`/blank color
 /// removes the mapping (status renders neutral). An unknown color token is an
 /// error so a typo does not silently drop the tint.

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::Subcommand;
-use taskstream_core::config::{Config, ServerProfile, StatusColor};
+use taskstream_core::config::{Backend, Config, ServerProfile, StatusColor};
 use taskstream_core::error::Error;
 use taskstream_core::secrets::Secrets;
 
@@ -15,6 +15,10 @@ pub enum ServerCmd {
         name: String,
         #[arg(long)]
         url: String,
+        /// Backend: `openproject` (default) or `github`. GitHub servers use the
+        /// `gh` CLI and need no token; `url` is the GitHub host (e.g. github.com).
+        #[arg(long, default_value = "openproject")]
+        backend: String,
         /// Full display name (shown in tooltips / settings). Defaults to `name`.
         #[arg(long)]
         display_name: Option<String>,
@@ -75,6 +79,7 @@ pub async fn run(cmd: ServerCmd, config_flag: &Option<PathBuf>) -> Result<(), Er
                         "name": name,
                         "display_name": p.display(name),
                         "base_url": p.base_url,
+                        "backend": p.backend,
                         "default": cfg.default_server.as_deref() == Some(name),
                         "enabled": p.enabled,
                         "poll_secs": p.poll_secs,
@@ -87,6 +92,7 @@ pub async fn run(cmd: ServerCmd, config_flag: &Option<PathBuf>) -> Result<(), Er
         ServerCmd::Add {
             name,
             url,
+            backend,
             display_name,
             proxy,
             timeout,
@@ -101,13 +107,22 @@ pub async fn run(cmd: ServerCmd, config_flag: &Option<PathBuf>) -> Result<(), Er
                     "server '{name}' already exists; use --force to replace it"
                 )));
             }
+            let backend = match backend.as_str() {
+                "openproject" => Backend::OpenProject,
+                "github" => Backend::Github,
+                other => {
+                    return Err(Error::Usage(format!(
+                        "unknown backend '{other}'; expected openproject|github"
+                    )))
+                }
+            };
             let replaced = cfg
                 .servers
                 .insert(
                     name.clone(),
                     ServerProfile {
                         display_name,
-                        backend: Default::default(),
+                        backend,
                         base_url: url,
                         timeout,
                         verify_ssl,

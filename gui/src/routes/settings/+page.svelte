@@ -10,6 +10,7 @@
     setServerTimelogStart,
     setServerStatusColor,
     renameServer,
+    addServer,
   } from "$lib/api";
   import { applyTheme } from "$lib/theme";
   import {
@@ -134,6 +135,35 @@
   ): Promise<void> {
     await setServerStatusColor(name, status, null);
     await refreshServers();
+  }
+
+  // Add-server form. GitHub needs no token (uses gh); OpenProject needs a token
+  // set separately (keyring/CLI), so the form only creates the profile.
+  let newName = $state("");
+  let newUrl = $state("");
+  let newBackend = $state<"openproject" | "github">("openproject");
+  let newDisplay = $state("");
+  let addError = $state("");
+
+  async function addNewServer(): Promise<void> {
+    addError = "";
+    const name = newName.trim();
+    if (name === "" || newUrl.trim() === "") return;
+    try {
+      await addServer(
+        name,
+        newUrl.trim(),
+        newBackend,
+        newDisplay.trim() === "" ? null : newDisplay.trim(),
+      );
+      newName = "";
+      newUrl = "";
+      newDisplay = "";
+      newBackend = "openproject";
+      await refreshServers();
+    } catch (e) {
+      addError = String(e);
+    }
   }
 
   // Interface scale is stored as a factor (1 = 100%); show it as a percentage.
@@ -375,5 +405,42 @@
         </li>
       {/each}
     </ul>
+
+    <div class="add-server">
+      <span class="add-server-title">{$t("settings.addServer")}</span>
+      <div class="add-server-row">
+        <input
+          type="text"
+          class="as-name"
+          placeholder={$t("settings.server.shortName")}
+          bind:value={newName}
+        />
+        <input
+          type="text"
+          class="as-url"
+          placeholder={$t("settings.addServer.url")}
+          bind:value={newUrl}
+        />
+        <select bind:value={newBackend}>
+          <option value="openproject">OpenProject</option>
+          <option value="github">GitHub</option>
+        </select>
+        <input
+          type="text"
+          class="as-display"
+          placeholder={$t("settings.server.fullName")}
+          bind:value={newDisplay}
+        />
+        <button type="button" class="btn" onclick={addNewServer}
+          >{$t("settings.addServer.add")}</button
+        >
+      </div>
+      {#if newBackend === "github"}
+        <span class="hint">{$t("settings.addServer.githubHint")}</span>
+      {:else}
+        <span class="hint">{$t("settings.addServer.openprojectHint")}</span>
+      {/if}
+      {#if addError}<span class="add-error" role="alert">{addError}</span>{/if}
+    </div>
   </fieldset>
 </section>

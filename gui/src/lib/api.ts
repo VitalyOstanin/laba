@@ -49,6 +49,14 @@ export const setServerStatusColor = (
 ): Promise<void> => invoke("set_server_status_color", { name, status, color });
 export const renameServer = (old: string, next: string): Promise<void> =>
   invoke("rename_server", { old, new: next });
+// Add a server profile. backend "github" needs no token (uses gh); "openproject"
+// needs a token set separately (keyring/CLI).
+export const addServer = (
+  name: string,
+  url: string,
+  backend: "openproject" | "github",
+  displayName: string | null,
+): Promise<void> => invoke("add_server", { name, url, backend, displayName });
 
 export const getSettings = (): Promise<Settings> => invoke("get_settings");
 export const saveSettings = (settings: Settings): Promise<void> =>

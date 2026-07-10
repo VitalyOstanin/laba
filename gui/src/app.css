@@ -570,6 +570,48 @@ body {
   white-space: nowrap;
 }
 
+/* Notification read state: a leading dot (blue when unread, dim when read) plus
+   a check-icon button to toggle, replacing the old text link. */
+.list .dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--border);
+}
+.list .dot.on {
+  background: var(--accent);
+}
+
+.list .icon-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.list .icon-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* Read state: the toggle shows the notification is already read (filled check). */
+.list .icon-btn.active {
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 40%, var(--border));
+}
+.list .icon-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* Task row tint by workflow status (per-server `status_colors`). The subject
    takes the semantic tone so attention-needing rows read at a glance; the
    status pill echoes it. Tokens map to the theme-aware color tokens. */
@@ -720,6 +762,50 @@ body {
 
 .settings .auto-hint {
   color: var(--warn);
+}
+
+/* Add-server form below the existing server list. */
+.settings .add-server {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.settings .add-server-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+.settings .add-server-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.settings .add-server-row input,
+.settings .add-server-row select {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+.settings .add-server-row .as-name {
+  width: 96px;
+}
+.settings .add-server-row .as-url {
+  width: 220px;
+}
+.settings .add-server-row .as-display {
+  width: 140px;
+}
+.settings .add-error {
+  color: var(--danger);
+  font-size: 12px;
 }
 
 /* Per-server status-color editor: takes the full row width below the inline

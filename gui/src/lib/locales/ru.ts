@@ -47,6 +47,13 @@ export const ru: Dict = {
   "settings.timelog.hint":
     "Каждый сервер считается от своей даты; план — от самой ранней.",
   "settings.timelog.auto": "авто — задайте реальную дату начала",
+  "settings.addServer": "Добавить сервер",
+  "settings.addServer.url": "URL / хост",
+  "settings.addServer.add": "Добавить",
+  "settings.addServer.githubHint":
+    "Работает через gh CLI — токен не нужен. URL — хост GitHub, например github.com.",
+  "settings.addServer.openprojectHint":
+    "Токен API задайте отдельно (keyring / CLI) после добавления.",
   "settings.statusColors": "Цвета по статусам",
   "settings.statusColors.hint":
     "Тонировать строки задач по статусу. Вводите статус точно так, как его отдаёт сервер.",
@@ -83,6 +90,8 @@ export const ru: Dict = {
   "notif.markUnread": "Отметить непрочитанным",
   "notif.read": "Прочитано",
   "notif.unread": "Не прочитано",
+  "notif.isUnread": "Не прочитано",
+  "notif.isRead": "Прочитано",
   "task.comment": "Комментарий",
   "task.commentPlaceholder": "Напишите комментарий…",
   "task.send": "Отправить",

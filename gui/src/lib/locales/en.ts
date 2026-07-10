@@ -45,6 +45,13 @@ export const en = {
   "settings.timelog.hint":
     "Each server counts from its own start; the plan runs from the earliest.",
   "settings.timelog.auto": "auto — set your real start date",
+  "settings.addServer": "Add a server",
+  "settings.addServer.url": "URL / host",
+  "settings.addServer.add": "Add",
+  "settings.addServer.githubHint":
+    "Uses the gh CLI — no token needed. URL is the GitHub host, e.g. github.com.",
+  "settings.addServer.openprojectHint":
+    "Set the API token separately (keyring / CLI) after adding.",
   "settings.statusColors": "Status colors",
   "settings.statusColors.hint":
     "Tint task rows by workflow status. Type the status exactly as the server reports it.",
@@ -81,6 +88,8 @@ export const en = {
   "notif.markUnread": "Mark unread",
   "notif.read": "Read",
   "notif.unread": "Unread",
+  "notif.isUnread": "Unread",
+  "notif.isRead": "Read",
   "task.comment": "Comment",
   "task.commentPlaceholder": "Write a comment…",
   "task.send": "Send",
