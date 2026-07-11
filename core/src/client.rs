@@ -933,6 +933,8 @@ impl Client {
         use sha2::{Digest, Sha256};
 
         let url = self.resolve_url(path)?;
+        log::debug!("GET {url} (download)");
+        let started = std::time::Instant::now();
         let resp = self
             .http
             .request(reqwest::Method::GET, &url)
@@ -942,6 +944,7 @@ impl Client {
             .await
             .map_err(|e| Error::Api(format!("request {url}: {e}")))?;
         let status = resp.status();
+        log::debug!("GET {url} -> {} (download)", status.as_u16());
         if !status.is_success() {
             let text = resp.text().await.unwrap_or_default();
             return Err(api_error(status, text));
@@ -956,6 +959,10 @@ impl Client {
             dest.write_all(&chunk)
                 .map_err(|e| Error::Io(format!("write download: {e}")))?;
         }
+        log::debug!(
+            "GET {url} download done: {total} bytes ({} ms)",
+            started.elapsed().as_millis()
+        );
         Ok(DownloadInfo {
             bytes: total,
             sha256: format!("{:x}", hasher.finalize()),
@@ -988,6 +995,8 @@ impl Client {
             std::process::id()
         ));
 
+        log::debug!("GET {url} (download)");
+        let started = std::time::Instant::now();
         let resp = self
             .http
             .request(reqwest::Method::GET, &url)
@@ -997,6 +1006,7 @@ impl Client {
             .await
             .map_err(|e| Error::Api(format!("request {url}: {e}")))?;
         let status = resp.status();
+        log::debug!("GET {url} -> {} (download)", status.as_u16());
         if !status.is_success() {
             let text = resp.text().await.unwrap_or_default();
             return Err(api_error(status, text));
@@ -1043,6 +1053,10 @@ impl Client {
             let _ = std::fs::remove_file(&tmp);
             Error::Io(format!("rename download: {e}"))
         })?;
+        log::debug!(
+            "GET {url} download done: {total} bytes ({} ms)",
+            started.elapsed().as_millis()
+        );
         Ok(DownloadInfo {
             bytes: total,
             sha256: format!("{:x}", hasher.finalize()),
@@ -1094,6 +1108,8 @@ impl Client {
             .part("file", file_part);
 
         let url = self.resolve_url(&format!("work_packages/{wp_id}/attachments"))?;
+        log::debug!("POST {url} (upload)");
+        let started = std::time::Instant::now();
         let resp = self
             .http
             .request(reqwest::Method::POST, &url)
@@ -1104,10 +1120,16 @@ impl Client {
             .await
             .map_err(|e| Error::Api(format!("request {url}: {e}")))?;
         let status = resp.status();
+        log::debug!(
+            "POST {url} -> {} (upload, {} ms)",
+            status.as_u16(),
+            started.elapsed().as_millis()
+        );
         let text = resp
             .text()
             .await
             .map_err(|e| Error::Api(format!("read body: {e}")))?;
+        log::trace!("response body: {text}");
         if !status.is_success() {
             return Err(api_error(status, text));
         }
