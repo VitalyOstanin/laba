@@ -2,8 +2,38 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::error::Error;
+use crate::migrate;
+
+/// Current `config.json` schema version. Bump when a change is not backward
+/// compatible and add a matching step to [`CONFIG_MIGRATIONS`].
+pub const CONFIG_SCHEMA_VERSION: u32 = 2;
+
+fn config_schema_version() -> u32 {
+    CONFIG_SCHEMA_VERSION
+}
+
+/// v1 -> v2: normalize each server's `base_url` by trimming trailing slashes, so
+/// the stored value matches the form the client uses (it already trims at build
+/// time). Idempotent.
+fn m1_normalize_base_urls(value: &mut Value) -> Result<(), Error> {
+    if let Some(servers) = value.get_mut("servers").and_then(Value::as_object_mut) {
+        for profile in servers.values_mut() {
+            if let Some(url) = profile.get("base_url").and_then(Value::as_str) {
+                let trimmed = url.trim_end_matches('/').to_owned();
+                profile["base_url"] = Value::String(trimmed);
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Ordered forward migrations for `config.json`. `CONFIG_MIGRATIONS[i]` migrates
+/// version `BASE_VERSION + i` to the next; the length must be
+/// `CONFIG_SCHEMA_VERSION - migrate::BASE_VERSION`.
+const CONFIG_MIGRATIONS: &[migrate::Step] = &[m1_normalize_base_urls];
 
 /// Which tracker a server profile talks to.
 ///
@@ -235,8 +265,11 @@ fn default_true() -> bool {
     true
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Config {
+    /// Schema version, for forward migrations on load (see [`crate::migrate`]).
+    #[serde(default = "config_schema_version")]
+    pub schema_version: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_server: Option<String>,
     /// Global default proxy applied to every server that does not set its own.
@@ -251,14 +284,42 @@ pub struct Config {
     pub servers: BTreeMap<String, ServerProfile>,
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            schema_version: CONFIG_SCHEMA_VERSION,
+            default_server: None,
+            proxy: None,
+            servers: BTreeMap::new(),
+        }
+    }
+}
+
 impl Config {
     pub fn load(path: &Path) -> Result<Config, Error> {
-        match std::fs::read_to_string(path) {
-            Ok(text) => serde_json::from_str(&text)
-                .map_err(|e| Error::Config(format!("parse {}: {e}", path.display()))),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Config::default()),
-            Err(e) => Err(Error::Io(format!("read {}: {e}", path.display()))),
+        let text = match std::fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Config::default()),
+            Err(e) => return Err(Error::Io(format!("read {}: {e}", path.display()))),
+        };
+        let mut value: Value = serde_json::from_str(&text)
+            .map_err(|e| Error::Config(format!("parse {}: {e}", path.display())))?;
+        let from = migrate::version_of(&value);
+        let migrated = migrate::run(&mut value, from, CONFIG_SCHEMA_VERSION, CONFIG_MIGRATIONS)?;
+        // Deserializing the migrated JSON verifies the new shape loads before we
+        // commit it to disk.
+        let mut cfg: Config = serde_json::from_value(value)
+            .map_err(|e| Error::Config(format!("parse {}: {e}", path.display())))?;
+        cfg.schema_version = if migrated {
+            CONFIG_SCHEMA_VERSION
+        } else {
+            from
+        };
+        if migrated {
+            migrate::backup(path, &text, from)?;
+            cfg.save(path)?;
         }
+        Ok(cfg)
     }
 
     pub fn save(&self, path: &Path) -> Result<(), Error> {
@@ -347,6 +408,46 @@ mod tests {
         );
         cfg.save(&path).unwrap();
         assert_eq!(Config::load(&path).unwrap(), cfg);
+    }
+
+    #[test]
+    fn legacy_config_migrates_base_url_and_backs_up() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.json");
+        // A pre-versioning file (no schema_version) with a trailing slash.
+        std::fs::write(
+            &path,
+            r#"{"servers":{"a":{"base_url":"https://h.example/op/"}}}"#,
+        )
+        .unwrap();
+
+        let cfg = Config::load(&path).unwrap();
+        assert_eq!(cfg.schema_version, CONFIG_SCHEMA_VERSION);
+        assert_eq!(cfg.servers["a"].base_url, "https://h.example/op");
+
+        // The original (v1) file is preserved as a backup and the migrated file
+        // is rewritten stamped with the current version.
+        assert!(dir.path().join("config.json.bak-v1").exists());
+        let rewritten = std::fs::read_to_string(&path).unwrap();
+        assert!(rewritten.contains(&format!("\"schema_version\": {CONFIG_SCHEMA_VERSION}")));
+
+        // A second load does not migrate again.
+        let reread = Config::load(&path).unwrap();
+        assert_eq!(reread.schema_version, CONFIG_SCHEMA_VERSION);
+        assert_eq!(reread.servers["a"].base_url, "https://h.example/op");
+    }
+
+    #[test]
+    fn newer_config_is_not_downgraded() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.json");
+        std::fs::write(&path, r#"{"schema_version":99,"servers":{}}"#).unwrap();
+        let before = std::fs::read_to_string(&path).unwrap();
+
+        let cfg = Config::load(&path).unwrap();
+        assert_eq!(cfg.schema_version, 99);
+        // The file is left untouched (never rewritten to a lower version).
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), before);
     }
 
     #[allow(clippy::field_reassign_with_default)]

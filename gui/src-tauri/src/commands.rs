@@ -808,6 +808,7 @@ mod tests {
             },
         );
         Config {
+            schema_version: taskstream_core::config::CONFIG_SCHEMA_VERSION,
             default_server: Some("work".into()),
             proxy: None,
             servers,

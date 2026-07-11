@@ -8,8 +8,22 @@
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::error::Error;
+use crate::migrate;
+
+/// Current `gui-settings.json` schema version. Bump when a change is not
+/// backward compatible and add a matching step to [`SETTINGS_MIGRATIONS`].
+pub const SETTINGS_SCHEMA_VERSION: u32 = 1;
+
+fn settings_schema_version() -> u32 {
+    SETTINGS_SCHEMA_VERSION
+}
+
+/// Ordered forward migrations for `gui-settings.json`. Empty until a breaking
+/// change lands; the length must be `SETTINGS_SCHEMA_VERSION - BASE_VERSION`.
+const SETTINGS_MIGRATIONS: &[migrate::Step] = &[];
 
 /// Color theme choice. `System` follows the OS preference.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -81,6 +95,9 @@ fn system_first_weekday() -> chrono::Weekday {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Settings {
+    /// Schema version, for forward migrations on load (see [`crate::migrate`]).
+    #[serde(default = "settings_schema_version")]
+    pub schema_version: u32,
     #[serde(default)]
     pub theme: Theme,
     #[serde(default)]
@@ -152,6 +169,7 @@ pub fn clamp_ui_scale(scale: f64) -> f64 {
 impl Default for Settings {
     fn default() -> Self {
         Settings {
+            schema_version: SETTINGS_SCHEMA_VERSION,
             theme: Theme::default(),
             language: Lang::default(),
             minimize_to_tray: true,
@@ -164,12 +182,32 @@ impl Default for Settings {
 
 impl Settings {
     pub fn load(path: &Path) -> Result<Settings, Error> {
-        match std::fs::read_to_string(path) {
-            Ok(text) => serde_json::from_str(&text)
-                .map_err(|e| Error::Config(format!("parse {}: {e}", path.display()))),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Settings::default()),
-            Err(e) => Err(Error::Io(format!("read {}: {e}", path.display()))),
+        let text = match std::fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Settings::default()),
+            Err(e) => return Err(Error::Io(format!("read {}: {e}", path.display()))),
+        };
+        let mut value: Value = serde_json::from_str(&text)
+            .map_err(|e| Error::Config(format!("parse {}: {e}", path.display())))?;
+        let from = migrate::version_of(&value);
+        let migrated = migrate::run(
+            &mut value,
+            from,
+            SETTINGS_SCHEMA_VERSION,
+            SETTINGS_MIGRATIONS,
+        )?;
+        let mut settings: Settings = serde_json::from_value(value)
+            .map_err(|e| Error::Config(format!("parse {}: {e}", path.display())))?;
+        settings.schema_version = if migrated {
+            SETTINGS_SCHEMA_VERSION
+        } else {
+            from
+        };
+        if migrated {
+            migrate::backup(path, &text, from)?;
+            settings.save(path)?;
         }
+        Ok(settings)
     }
 
     pub fn save(&self, path: &Path) -> Result<(), Error> {
@@ -213,6 +251,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("gui-settings.json");
         let s = Settings {
+            schema_version: SETTINGS_SCHEMA_VERSION,
             theme: Theme::Dark,
             language: Lang::Ru,
             minimize_to_tray: false,
