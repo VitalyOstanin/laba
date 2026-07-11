@@ -14,7 +14,7 @@ default, and each server may have its own credentials and its own proxy.
 
 ## Decision
 
-Store configuration in `$XDG_CONFIG_HOME/laboro/config.json` as a
+Store configuration in `$XDG_CONFIG_HOME/laba/config.json` as a
 map of named server profiles plus a `default_server` field. Each profile holds
 `base_url`, `timeout`, `verify_ssl` and an optional `proxy`. Tokens are not kept
 in this file (see ADR 0003).

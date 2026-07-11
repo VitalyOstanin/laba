@@ -2,12 +2,12 @@
 # Base image MUST match the host distro release so glibc/ABI line up — the
 # resulting dynamically-linked binary then runs on the host.
 #
-#   podman build --http-proxy=false -t laboro-build -f Containerfile .
+#   podman build --http-proxy=false -t laba-build -f Containerfile .
 #   podman run --rm --http-proxy=false -v "$PWD":/work \
 #     -v opc-cargo-registry:/root/.cargo/registry \
 #     -v opc-cargo-target:/work/target \
-#     laboro-build \
-#     cargo build --release --bin laboro
+#     laba-build \
+#     cargo build --release --bin laba
 FROM ubuntu:26.04
 
 ENV DEBIAN_FRONTEND=noninteractive

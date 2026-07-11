@@ -13,7 +13,7 @@ use crate::error::Error;
 
 /// Repository whose releases back the changelog and updater endpoint.
 pub const UPDATE_OWNER: &str = "VitalyOstanin";
-pub const UPDATE_REPO: &str = "laboro";
+pub const UPDATE_REPO: &str = "laba";
 
 const GITHUB_API: &str = "https://api.github.com";
 
@@ -90,7 +90,7 @@ async fn changelog_from(api_base: &str, current: &str) -> Result<Vec<ReleaseNote
     let url = format!("{api_base}/repos/{UPDATE_OWNER}/{UPDATE_REPO}/releases?per_page=100");
     let client = reqwest::Client::builder()
         // GitHub rejects requests without a User-Agent.
-        .user_agent(concat!("laboro/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("laba/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|e| Error::Io(format!("build http client: {e}")))?;
     let resp = client

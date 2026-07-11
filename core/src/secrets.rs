@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::error::Error;
 
-const KEYRING_SERVICE: &str = "laboro";
+const KEYRING_SERVICE: &str = "laba";
 
 /// Token store: system keyring by profile name, with a 0600 file fallback
 /// when no keyring backend is available.

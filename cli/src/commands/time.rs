@@ -1,6 +1,6 @@
 use clap::Subcommand;
-use laboro_core::error::Error;
-use laboro_core::resources::time;
+use laba_core::error::Error;
+use laba_core::resources::time;
 
 use crate::cli::Globals;
 

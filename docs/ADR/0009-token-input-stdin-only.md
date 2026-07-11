@@ -35,7 +35,7 @@ interactive prompt and no prompt dependency. Confirmation lines ("token stored",
 ## Consequences
 
 - The recommended path is piping the token via stdin
-  (`printf %s "$TOKEN" | laboro auth login --with-token`), which keeps it out
+  (`printf %s "$TOKEN" | laba auth login --with-token`), which keeps it out
   of the process list; `--token` remains available but is documented as less
   private.
 - No extra dependency is carried for terminal echo handling.

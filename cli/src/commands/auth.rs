@@ -2,10 +2,10 @@ use std::io::Read;
 use std::path::PathBuf;
 
 use clap::Subcommand;
-use laboro_core::client::Client;
-use laboro_core::config::{Backend, Config, ServerProfile};
-use laboro_core::error::Error;
-use laboro_core::secrets::Secrets;
+use laba_core::client::Client;
+use laba_core::config::{Backend, Config, ServerProfile};
+use laba_core::error::Error;
+use laba_core::secrets::Secrets;
 
 #[derive(Debug, Subcommand)]
 pub enum AuthCmd {

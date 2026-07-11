@@ -86,12 +86,12 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
-      - run: cargo build --release --locked --target ${{ matrix.target }} --bin laboro
+      - run: cargo build --release --locked --target ${{ matrix.target }} --bin laba
       - name: Package
         shell: bash
         run: |
           tag="${{ needs.gate.outputs.tag }}"
-          bin=laboro
+          bin=laba
           ext=""
           [[ "${{ matrix.target }}" == *windows* ]] && ext=".exe"
           dir="${bin}-${tag}-${{ matrix.target }}"
@@ -162,7 +162,7 @@ jobs:
           tag="${{ needs.gate.outputs.tag }}"
           appimage="$(find target/release/bundle/appimage -maxdepth 1 -name '*.AppImage' | head -n1)"
           test -n "$appimage" || { echo "AppImage not found under target/release/bundle/appimage" >&2; exit 1; }
-          asset="laboro-${tag}-linux-x86_64.tar.gz"
+          asset="laba-${tag}-linux-x86_64.tar.gz"
           tar czf "$asset" -C "$(dirname "$appimage")" "$(basename "$appimage")"
           sha256sum "$asset" > "${asset}.sha256"
           gh release upload "$tag" "$asset" "${asset}.sha256" --clobber

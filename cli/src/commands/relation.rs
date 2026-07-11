@@ -1,7 +1,7 @@
 use clap::builder::PossibleValuesParser;
 use clap::Subcommand;
-use laboro_core::error::Error;
-use laboro_core::resources::relation::{self, RELATION_TYPES};
+use laba_core::error::Error;
+use laba_core::resources::relation::{self, RELATION_TYPES};
 
 use crate::cli::Globals;
 

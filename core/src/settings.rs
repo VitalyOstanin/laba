@@ -227,13 +227,13 @@ impl Settings {
     }
 }
 
-/// Default settings path: `$XDG_CONFIG_HOME/laboro/gui-settings.json`.
+/// Default settings path: `$XDG_CONFIG_HOME/laba/gui-settings.json`.
 pub fn default_settings_path() -> PathBuf {
     let base = std::env::var_os("XDG_CONFIG_HOME")
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
         .unwrap_or_else(|| PathBuf::from(".config"));
-    base.join("laboro").join("gui-settings.json")
+    base.join("laba").join("gui-settings.json")
 }
 
 #[cfg(test)]
@@ -242,7 +242,7 @@ mod tests {
 
     #[test]
     fn load_missing_returns_default() {
-        let p = Path::new("/nonexistent/laboro/gui-settings.json");
+        let p = Path::new("/nonexistent/laba/gui-settings.json");
         let s = Settings::load(p).unwrap();
         assert_eq!(s, Settings::default());
         assert_eq!(s.theme, Theme::System);

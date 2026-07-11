@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "laboro",
-  "identifier": "io.github.vitalyostanin.laboro",
+  "productName": "laba",
+  "identifier": "io.github.vitalyostanin.laba",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "laboro",
+        "title": "laba",
         "width": 800,
         "height": 600
       }
@@ -36,7 +36,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM5NUE0N0IxMEEzM0E2MDAKUldRQXBqTUtzVWRheVN1ZmNjRFllbEZkS1dvcGJtSE5GcklBWTFJNnZqbEEzZW9PYVRrZWIzQUMK",
       "endpoints": [
-        "https://github.com/VitalyOstanin/laboro/releases/latest/download/latest.json"
+        "https://github.com/VitalyOstanin/laba/releases/latest/download/latest.json"
       ]
     }
   }

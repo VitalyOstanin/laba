@@ -41,7 +41,7 @@ fn toggle_main_window<R: Runtime>(app: &AppHandle<R>) {
 /// Read the "hide to tray on close" preference, defaulting to true when
 /// settings cannot be read.
 fn minimize_to_tray() -> bool {
-    use laboro_core::settings::{default_settings_path, Settings};
+    use laba_core::settings::{default_settings_path, Settings};
     Settings::load(&default_settings_path())
         .map(|s| s.minimize_to_tray)
         .unwrap_or(true)
@@ -52,7 +52,7 @@ fn minimize_to_tray() -> bool {
 /// before the webview locale exists, so the two strings are duplicated here.
 /// `Lang::System` follows the `LANG`/`LC_ALL` environment, defaulting to English.
 fn tray_labels() -> (&'static str, &'static str) {
-    use laboro_core::settings::{default_settings_path, Lang, Settings};
+    use laba_core::settings::{default_settings_path, Lang, Settings};
     let lang = Settings::load(&default_settings_path())
         .map(|s| s.language)
         .unwrap_or_default();

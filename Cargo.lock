@@ -2440,13 +2440,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "laboro-cli"
+name = "laba-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
  "clap",
- "laboro-core",
+ "laba-core",
  "predicates",
  "serde_json",
  "tempfile",
@@ -2455,7 +2455,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "laboro-core"
+name = "laba-core"
 version = "0.1.0"
 dependencies = [
  "chrono",
@@ -2474,11 +2474,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "laboro-gui"
+name = "laba-gui"
 version = "0.1.0"
 dependencies = [
  "ksni",
- "laboro-core",
+ "laba-core",
  "log",
  "serde",
  "serde_json",

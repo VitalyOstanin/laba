@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    laboro_gui_lib::run()
+    laba_gui_lib::run()
 }

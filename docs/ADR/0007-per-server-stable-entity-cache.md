@@ -20,7 +20,7 @@ A per-server, two-tier cache of stable entities:
 - In-memory map (lazily loaded, lives for the process) layered on top of a JSON
   file that survives restarts.
 - Scoped per server profile; the backing file is
-  `XDG_CACHE_HOME/laboro/<server>/cache.json` (overridable via
+  `XDG_CACHE_HOME/laba/<server>/cache.json` (overridable via
   `OPENPROJECT_CACHE`).
 - Three categories: enumeration resolve (`name -> id`), users (`id -> name`) and
   schemas (`href -> custom field names`).

@@ -14,9 +14,9 @@ use crate::{show_main_window, toggle_main_window, tray_labels};
 
 /// Live handle to the running tray, so the frontend can push an attention count
 /// (unread notifications + tasks in red status filters) that repaints the icon.
-static HANDLE: OnceLock<Mutex<Option<Handle<LaboroTray>>>> = OnceLock::new();
+static HANDLE: OnceLock<Mutex<Option<Handle<LabaTray>>>> = OnceLock::new();
 
-struct LaboroTray {
+struct LabaTray {
     app: AppHandle,
     show_label: String,
     quit_label: String,
@@ -24,7 +24,7 @@ struct LaboroTray {
     count: u32,
 }
 
-impl LaboroTray {
+impl LabaTray {
     /// Reveal the window on the Tauri main thread. The ksni callbacks run on the
     /// service task, and GTK window calls must happen on the main thread.
     fn reveal(&self) {
@@ -42,23 +42,23 @@ impl LaboroTray {
     }
 }
 
-impl Tray for LaboroTray {
+impl Tray for LabaTray {
     fn id(&self) -> String {
-        "laboro-gui".into()
+        "laba-gui".into()
     }
 
     fn title(&self) -> String {
-        "laboro".into()
+        "laba".into()
     }
 
-    /// Themed icon installed under the name `laboro-gui`; resolved by the
+    /// Themed icon installed under the name `laba-gui`; resolved by the
     /// tray host through the icon theme. Cleared when a badge is shown so the
     /// host prefers `icon_pixmap` (the red count badge) instead.
     fn icon_name(&self) -> String {
         if self.count > 0 {
             String::new()
         } else {
-            "laboro-gui".into()
+            "laba-gui".into()
         }
     }
 
@@ -75,9 +75,9 @@ impl Tray for LaboroTray {
 
     fn tool_tip(&self) -> ToolTip {
         let title = if self.count > 0 {
-            format!("laboro — {} need attention", self.count)
+            format!("laba — {} need attention", self.count)
         } else {
-            "laboro".into()
+            "laba".into()
         };
         ToolTip {
             title,
@@ -118,7 +118,7 @@ pub fn update_badge(count: u32) {
     if let Some(handle) = handle {
         tauri::async_runtime::spawn(async move {
             handle
-                .update(move |tray: &mut LaboroTray| tray.count = count)
+                .update(move |tray: &mut LabaTray| tray.count = count)
                 .await;
         });
     }
@@ -127,7 +127,7 @@ pub fn update_badge(count: u32) {
 /// Register the tray and keep it alive for the process lifetime.
 pub fn spawn(app: AppHandle) {
     let (show_label, quit_label) = tray_labels();
-    let tray = LaboroTray {
+    let tray = LabaTray {
         app,
         show_label: show_label.to_owned(),
         quit_label: quit_label.to_owned(),

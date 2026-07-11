@@ -1,5 +1,5 @@
 [package]
-name = "laboro-core"
+name = "laba-core"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

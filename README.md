@@ -1,4 +1,4 @@
-# laboro
+# laba
 
 Desktop tray client and command-line interface for [OpenProject](https://www.openproject.org/),
 built on [Tauri](https://tauri.app/) with a shared Rust core.
@@ -28,10 +28,10 @@ built on [Tauri](https://tauri.app/) with a shared Rust core.
 
 | Path         | Crate / package  | Contents                                          |
 |--------------|------------------|---------------------------------------------------|
-| `core/`      | `laboro-core`| OpenProject API client, config, cache, timelog    |
-| `cli/`       | `laboro-cli` | `laboro` command-line binary                  |
+| `core/`      | `laba-core`| OpenProject API client, config, cache, timelog    |
+| `cli/`       | `laba-cli` | `laba` command-line binary                  |
 | `gui/`       | —                | SvelteKit frontend                                |
-| `gui/src-tauri/` | `laboro-gui` | Tauri desktop shell (Rust)                     |
+| `gui/src-tauri/` | `laba-gui` | Tauri desktop shell (Rust)                     |
 
 The Cargo workspace `default-members` are `core` and `cli`, so a plain
 `cargo build` on the host skips the `gui` crate, which needs the webkit2gtk
@@ -47,7 +47,7 @@ them.
 
 ```sh
 # Core + CLI (host):
-cargo build --workspace --exclude laboro-gui
+cargo build --workspace --exclude laba-gui
 
 # GUI (in the Tauri container): builds the frontend and the desktop bundle.
 scripts/tauri-container.sh 'cd gui && npm ci && npm run tauri build'
@@ -61,27 +61,27 @@ test.
 
 ```sh
 # Host: core + cli.
-cargo nextest run --workspace --exclude laboro-gui
-cargo clippy --workspace --exclude laboro-gui --all-targets -- -D warnings
+cargo nextest run --workspace --exclude laba-gui
+cargo clippy --workspace --exclude laba-gui --all-targets -- -D warnings
 cargo fmt --all --check
 
 # GUI, in the container: lint, format, type-check, unit tests, Rust clippy.
-scripts/tauri-container.sh 'cd gui && npm ci && npm run lint && npm run format:check && npm run check && npm test && cargo clippy -p laboro-gui --all-targets -- -D warnings'
+scripts/tauri-container.sh 'cd gui && npm ci && npm run lint && npm run format:check && npm run check && npm test && cargo clippy -p laba-gui --all-targets -- -D warnings'
 ```
 
 ## Running
 
 ```sh
 # CLI: log in to a server, then list your work packages.
-cargo run -p laboro-cli -- server add my-op https://op.example
-cargo run -p laboro-cli -- auth login --server my-op
-cargo run -p laboro-cli -- wp list
+cargo run -p laba-cli -- server add my-op https://op.example
+cargo run -p laba-cli -- auth login --server my-op
+cargo run -p laba-cli -- wp list
 
 # GUI in development (hot reload), inside the container:
 scripts/tauri-container.sh 'cd gui && npm ci && npm run tauri dev'
 ```
 
-Run `cargo run -p laboro-cli -- --help` for the full command list.
+Run `cargo run -p laba-cli -- --help` for the full command list.
 
 ## Environment variables
 
@@ -99,8 +99,8 @@ File locations follow the XDG base directories and can be overridden:
 
 | Variable             | Overrides                              | Default                         |
 |----------------------|----------------------------------------|---------------------------------|
-| `OPENPROJECT_CACHE`  | Cache directory (user names, schemas)  | `$XDG_CACHE_HOME/laboro`    |
-| `OPENPROJECT_STATE`  | State file (last-seen history)         | `$XDG_STATE_HOME/laboro`    |
+| `OPENPROJECT_CACHE`  | Cache directory (user names, schemas)  | `$XDG_CACHE_HOME/laba`    |
+| `OPENPROJECT_STATE`  | State file (last-seen history)         | `$XDG_STATE_HOME/laba`    |
 | `XDG_CONFIG_HOME`    | Config directory (`config.json`, GUI settings) | `~/.config`             |
 
 ## License

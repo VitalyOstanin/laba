@@ -1,8 +1,8 @@
-# laboro-gui
+# laba-gui
 
-Desktop GUI for laboro — a multi-backend task tracker client (OpenProject,
+Desktop GUI for laba — a multi-backend task tracker client (OpenProject,
 GitHub). Built with Tauri v2 and SvelteKit (Svelte 5, adapter-static SPA). The
-GUI drives the shared `laboro-core` crate for backend access and reuses the
+GUI drives the shared `laba-core` crate for backend access and reuses the
 same configuration as the CLI.
 
 ## Build and test

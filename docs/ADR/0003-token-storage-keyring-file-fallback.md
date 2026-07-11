@@ -20,7 +20,7 @@ package `libdbus-1-dev`, and `async-secret-service` uses a pure-Rust D-Bus stack
 
 ## Decision
 
-Store tokens in the OS keyring under service `laboro` with the
+Store tokens in the OS keyring under service `laba` with the
 account set to the profile name. When no keyring backend is available, fall back
 to a separate `secrets.json` file with mode `0600` (never in the main config).
 Token resolution precedence: `--token` flag, `OPENPROJECT_TOKEN`, keyring, file

@@ -62,9 +62,9 @@ fi
 exec podman run --rm -it --init \
   --security-opt seccomp=unconfined \
   -v "$REPO_ROOT":/work -w /work \
-  -v laboro-cargo:/usr/local/cargo/registry \
-  -v laboro-rustup:/usr/local/rustup \
-  -v laboro-npm:/root/.npm \
+  -v laba-cargo:/usr/local/cargo/registry \
+  -v laba-rustup:/usr/local/rustup \
+  -v laba-npm:/root/.npm \
   -e PATH=/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin \
   "${DISPLAY_ARGS[@]}" "${DBUS_ARGS[@]}" "${GPU_ARGS[@]}" \
   "$IMAGE" \

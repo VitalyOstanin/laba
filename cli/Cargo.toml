@@ -1,5 +1,5 @@
 [package]
-name = "laboro-cli"
+name = "laba-cli"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,11 +9,11 @@ authors.workspace = true
 description = "Command-line interface for OpenProject."
 
 [[bin]]
-name = "laboro"
+name = "laba"
 path = "src/main.rs"
 
 [dependencies]
-laboro-core = { path = "../core" }
+laba-core = { path = "../core" }
 tokio = { workspace = true }
 clap = { workspace = true }
 serde_json = { workspace = true }

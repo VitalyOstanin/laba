@@ -38,7 +38,7 @@ and the run hangs before launching wdio.
 ## How it works
 
 - `wdio.conf.js` — WebdriverIO config: the `tauri:options.application` capability
-  points at the workspace-root `target/release/laboro-gui` (a release build,
+  points at the workspace-root `target/release/laba-gui` (a release build,
   so the embedded frontend assets are served instead of a dev server);
   `tauri-driver` is started in `beforeSession` and killed in `afterSession`.
 - `e2e/*.test.js` — specs (mocha `describe`/`it`).

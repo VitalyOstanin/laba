@@ -1,14 +1,14 @@
-//! Thin Tauri commands wrapping `laboro_core`. Business logic stays in core.
+//! Thin Tauri commands wrapping `laba_core`. Business logic stays in core.
 
-use laboro_core::backend;
-use laboro_core::client::Client;
-use laboro_core::config::{
+use laba_core::backend;
+use laba_core::client::Client;
+use laba_core::config::{
     default_config_path, Backend, Config, ServerProfile, StatusColor, StatusFilter, TimelogStart,
 };
-use laboro_core::resources::{comment, notification, time, work_packages};
-use laboro_core::secrets::Secrets;
-use laboro_core::settings::{default_settings_path, Settings};
-use laboro_core::timelog::{self, DayCell, TimelogStatus};
+use laba_core::resources::{comment, notification, time, work_packages};
+use laba_core::secrets::Secrets;
+use laba_core::settings::{default_settings_path, Settings};
+use laba_core::timelog::{self, DayCell, TimelogStatus};
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -212,7 +212,7 @@ async fn server_time_minutes(
 pub async fn get_timelog() -> Result<TimelogResult, String> {
     let mut cfg = load_cfg()?;
     let settings = load_settings()?;
-    let zone = laboro_core::datetime::Zone::resolve(Some(&settings.timezone));
+    let zone = laba_core::datetime::Zone::resolve(Some(&settings.timezone));
     let today_date = zone.today();
     let today = timelog::fmt(today_date);
 
@@ -416,8 +416,8 @@ pub fn set_tray_status(count: u32) -> Result<(), String> {
 /// banner's "what's new". Display only; the updater plugin performs the actual
 /// update. The running version is this bundle's `CARGO_PKG_VERSION`.
 #[tauri::command]
-pub async fn get_changelog() -> Result<Vec<laboro_core::update::ReleaseNote>, String> {
-    laboro_core::update::changelog_since(env!("CARGO_PKG_VERSION"))
+pub async fn get_changelog() -> Result<Vec<laba_core::update::ReleaseNote>, String> {
+    laba_core::update::changelog_since(env!("CARGO_PKG_VERSION"))
         .await
         .map_err(|e| e.to_string())
 }
@@ -430,12 +430,12 @@ pub struct GhDependency {
     /// A GitHub-backend server is configured (so `gh` is actually needed).
     pub used: bool,
     /// `gh` availability: "ready" | "missing" | "unauthenticated".
-    pub status: laboro_core::github::GhStatus,
+    pub status: laba_core::github::GhStatus,
 }
 
 #[tauri::command]
 pub async fn gh_dependency() -> Result<GhDependency, String> {
-    use laboro_core::github::{gh_status_for_host, GhStatus};
+    use laba_core::github::{gh_status_for_host, GhStatus};
     let cfg = load_cfg()?;
     let uses_github = cfg
         .servers
@@ -477,7 +477,7 @@ pub async fn create_time_entry(
     // Default spentOn to "today" in the configured zone, matching the timelog
     // day boundary (the UI does not offer a date field here).
     let settings = load_settings()?;
-    let zone = laboro_core::datetime::Zone::resolve(Some(&settings.timezone));
+    let zone = laba_core::datetime::Zone::resolve(Some(&settings.timezone));
     let spent = timelog::fmt(zone.today());
     time::create(
         &client,
@@ -733,7 +733,7 @@ pub fn set_server_display_fields(name: String, fields: Vec<String>) -> Result<()
 
 /// Normalize a proxy input from the settings UI: trim; an empty value clears the
 /// override (inherit the next level); a URL or the `"direct"`/`"none"` sentinel
-/// is kept verbatim (interpreted by [`laboro_core::client::resolve_proxy`]).
+/// is kept verbatim (interpreted by [`laba_core::client::resolve_proxy`]).
 fn normalize_proxy(v: Option<String>) -> Option<String> {
     v.map(|s| s.trim().to_owned()).filter(|s| !s.is_empty())
 }
@@ -811,7 +811,7 @@ fn token_for(server: &str, backend: Backend) -> Result<Option<String>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use laboro_core::config::ServerProfile;
+    use laba_core::config::ServerProfile;
 
     fn cfg() -> Config {
         let mut servers = BTreeMap::new();
@@ -850,7 +850,7 @@ mod tests {
             },
         );
         Config {
-            schema_version: laboro_core::config::CONFIG_SCHEMA_VERSION,
+            schema_version: laba_core::config::CONFIG_SCHEMA_VERSION,
             default_server: Some("work".into()),
             proxy: None,
             servers,

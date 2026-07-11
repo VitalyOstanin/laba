@@ -1,8 +1,8 @@
 use clap::Subcommand;
-use laboro_core::client::Client;
-use laboro_core::config::{Backend, ServerProfile};
-use laboro_core::error::Error;
-use laboro_core::resources::work_packages::{self, WpFields, WpListParams};
+use laba_core::client::Client;
+use laba_core::config::{Backend, ServerProfile};
+use laba_core::error::Error;
+use laba_core::resources::work_packages::{self, WpFields, WpListParams};
 use serde_json::Value;
 
 use crate::cli::Globals;
@@ -104,7 +104,7 @@ async fn run_github(cmd: WpCmd, profile: &ServerProfile, g: &Globals) -> Result<
     match cmd {
         WpCmd::List { .. } => {
             super::ensure_gh_ready(profile)?;
-            let tasks = laboro_core::backend::list_tasks(profile, None).await?;
+            let tasks = laba_core::backend::list_tasks(profile, None).await?;
             crate::output::emit(&Value::Array(tasks), g.human);
             Ok(())
         }

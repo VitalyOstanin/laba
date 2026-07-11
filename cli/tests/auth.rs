@@ -6,7 +6,7 @@ fn login_then_offline_status() {
     let dir = tempfile::tempdir().unwrap();
     let cfg = dir.path().join("config.json");
 
-    Command::cargo_bin("laboro")
+    Command::cargo_bin("laba")
         .unwrap()
         .args([
             "--config",
@@ -20,7 +20,7 @@ fn login_then_offline_status() {
         .assert()
         .success();
 
-    Command::cargo_bin("laboro")
+    Command::cargo_bin("laba")
         .unwrap()
         .args([
             "--config",

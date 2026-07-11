@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
 use clap::Subcommand;
-use laboro_core::cache::Cache;
-use laboro_core::config::Config;
-use laboro_core::error::Error;
+use laba_core::cache::Cache;
+use laba_core::config::Config;
+use laba_core::error::Error;
 use serde_json::json;
 
 #[derive(Debug, Subcommand)]
