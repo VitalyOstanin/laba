@@ -673,6 +673,38 @@ button.readdot:hover:not(:disabled) {
 button.readdot:disabled {
   cursor: default;
 }
+/* In-flight toggle: the dot becomes a spinning ring so the click clearly
+   registered (project async-feedback rule). */
+button.readdot.busy {
+  border-color: var(--accent);
+  border-top-color: transparent;
+  background: transparent;
+  animation: spin 0.6s linear infinite;
+}
+
+/* Reusable inline spinner for any in-flight async control. Sized to the current
+   font; sits inline before a label. */
+.spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  button.readdot.busy,
+  .spinner {
+    animation-duration: 1.6s;
+  }
+}
 
 /* Task row tint by workflow status (per-server `status_colors`). The subject
    takes the semantic tone so attention-needing rows read at a glance; the

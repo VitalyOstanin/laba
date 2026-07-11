@@ -33,27 +33,32 @@
   // Read/unread toggling is a backend capability (only some backends expose a
   // per-notification read write).
   const canToggle = $derived(server?.can_toggle_read ?? false);
-  let busy = $state(false);
+  // Async feedback (project rule): show which dot is in flight, disable it while
+  // the toggle runs. `busyId` is the notification being toggled; `busyAll` marks
+  // the mark-all action. Any in-flight action blocks the others.
+  let busyId = $state<number | null>(null);
+  let busyAll = $state(false);
+  const anyBusy = $derived(busyId !== null || busyAll);
 
   async function toggle(n: Notification): Promise<void> {
-    if (!server || busy) return;
-    busy = true;
+    if (!server || anyBusy) return;
+    busyId = Number(n.id);
     try {
       await setNotificationRead(server.name, Number(n.id), unreadOf(n));
       await refreshServer(server.name);
     } finally {
-      busy = false;
+      busyId = null;
     }
   }
 
   async function markAll(): Promise<void> {
-    if (!server || busy) return;
-    busy = true;
+    if (!server || anyBusy) return;
+    busyAll = true;
     try {
       await markAllRead(server.name);
       await refreshServer(server.name);
     } finally {
-      busy = false;
+      busyAll = false;
     }
   }
 </script>
@@ -62,8 +67,16 @@
   <header>
     <h2>{$t("col.notifications")}</h2>
     {#if canToggle}
-      <button type="button" class="linkbtn" disabled={busy} onclick={markAll}
-        >{$t("notif.markAll")}</button
+      <button
+        type="button"
+        class="linkbtn"
+        class:busy={busyAll}
+        disabled={anyBusy}
+        aria-busy={busyAll}
+        onclick={markAll}
+      >
+        {#if busyAll}<span class="spinner" aria-hidden="true"></span>{/if}
+        {$t("notif.markAll")}</button
       >
     {/if}
   </header>
@@ -78,7 +91,9 @@
               type="button"
               class="readdot"
               class:unread={unreadOf(n)}
-              disabled={busy}
+              class:busy={busyId === Number(n.id)}
+              disabled={anyBusy}
+              aria-busy={busyId === Number(n.id)}
               aria-label={unreadOf(n)
                 ? $t("notif.markRead")
                 : $t("notif.markUnread")}
