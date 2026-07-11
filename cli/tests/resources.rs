@@ -216,6 +216,51 @@ async fn time_create_sends_iso_duration() {
 }
 
 #[tokio::test]
+async fn time_create_defaults_spent_on_to_tz() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/v3/time_entries"))
+        .respond_with(ResponseTemplate::new(201).set_body_json(json!({"id": 1})))
+        .mount(&server)
+        .await;
+
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = write_config(dir.path(), &server.uri());
+
+    Command::cargo_bin("laba")
+        .unwrap()
+        .env("OPENPROJECT_CACHE", dir.path())
+        .env("OPENPROJECT_PROXY", "none")
+        .args([
+            "--config",
+            cfg.to_str().unwrap(),
+            "--token",
+            "t",
+            "--tz",
+            "Europe/Moscow",
+            "time",
+            "create",
+            "--work-package",
+            "5",
+            "--duration",
+            "90m",
+        ])
+        .assert()
+        .success();
+
+    let requests = server.received_requests().await.unwrap();
+    let post = requests
+        .iter()
+        .find(|r| r.method == wiremock::http::Method::POST)
+        .unwrap();
+    let body: serde_json::Value = serde_json::from_slice(&post.body).unwrap();
+    // With no --spent-on, the default is "today" resolved in the --tz zone.
+    let expected =
+        laba_core::timelog::fmt(laba_core::datetime::Zone::resolve(Some("Europe/Moscow")).today());
+    assert_eq!(body["spentOn"], json!(expected));
+}
+
+#[tokio::test]
 async fn api_get_sends_query_field() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))

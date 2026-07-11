@@ -93,12 +93,22 @@ pub async fn run(cmd: TimeCmd, g: &Globals) -> Result<(), Error> {
             comment,
             activity,
         } => {
+            // Default spentOn to "today" in the configured zone (--tz / LABA_TZ),
+            // matching the GUI and the timelog day boundary. Without an override
+            // the zone resolves to machine-local, preserving prior behavior.
+            let spent = match spent_on {
+                Some(s) => s,
+                None => {
+                    let zone = laba_core::datetime::Zone::resolve(g.tz.as_deref());
+                    laba_core::timelog::fmt(zone.today())
+                }
+            };
             time::create(
                 &client,
                 work_package,
                 hours,
                 duration.as_deref(),
-                spent_on.as_deref(),
+                Some(spent.as_str()),
                 comment.as_deref(),
                 activity.as_deref(),
                 raw,

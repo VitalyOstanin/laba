@@ -23,9 +23,11 @@ Backlog of ideas to evaluate. Not commitments.
       rejected in favor of one override. Remaining: (1) render API datetimes
       (`createdAt`/`updatedAt`, notification times) through `Zone::format_datetime`
       once the GUI/CLI actually display them — no timestamp is shown today, so the
-      primitive exists but has no call site yet; (2) give the CLI a `--tz` /
-      `LABA_TZ` override so its `spentOn` default and future datetime display
-      match the GUI (the CLI has no persisted settings, so it needs a flag/env).
+      primitive exists but has no call site yet. Done: the CLI has a global
+      `--tz` / `LABA_TZ` override (the CLI has no persisted settings, so it needs a
+      flag/env); it drives the `time create` `spentOn` default via
+      `Zone::resolve(...).today()`, matching the GUI. Future CLI datetime display
+      should route through the same zone once item (1) lands.
 - [ ] First-day-of-week: add the `auto` (locale-derived) option. The explicit
       Monday/Sunday choice is implemented (`Settings::week_start`, used by the
       timelog week boundary via `week_start_of`). Deriving the first day from the

@@ -35,6 +35,10 @@ pub struct Globals {
     /// Max retries for idempotent requests.
     #[arg(long, global = true, env = "OPENPROJECT_RETRIES", default_value_t = 3)]
     pub retries: u32,
+    /// IANA timezone for date defaults and datetime display (e.g. Europe/Moscow;
+    /// defaults to the machine-local zone). Matches the GUI's timezone setting.
+    #[arg(long, global = true, env = "LABA_TZ")]
+    pub tz: Option<String>,
     /// Human-friendly output instead of JSON.
     #[arg(long, global = true)]
     pub human: bool,
