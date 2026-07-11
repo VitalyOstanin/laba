@@ -559,6 +559,17 @@ body {
   }
 }
 
+/* First-load placeholder for the dashboard: a centered spinner shown while the
+   active server's first page is in flight (server switch or initial load). */
+.cols-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 48px 14px;
+  color: var(--text-dim);
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
