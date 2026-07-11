@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
   import { t } from "../i18n";
   import { unreadOf } from "../store";
   import { setNotificationRead, markAllRead } from "../api";
@@ -61,6 +62,23 @@
       busyAll = false;
     }
   }
+
+  // Opening the notification's work package on the task-detail screen is a
+  // backend capability (same one the task list uses to make subjects clickable).
+  const canDetail = $derived(server?.supports_task_detail ?? false);
+  // The related work package id a notification points at, or null when absent
+  // (the notification is not about a work package, or the backend omits it).
+  function wpIdOf(n: Notification): number | null {
+    const id = Number(n.wpId);
+    return Number.isFinite(id) ? id : null;
+  }
+  function openTask(n: Notification): void {
+    const id = wpIdOf(n);
+    if (!server || id == null) return;
+    goto(
+      `/task?server=${encodeURIComponent(server.name)}&id=${encodeURIComponent(String(id))}`,
+    );
+  }
 </script>
 
 <section class="card" aria-label={$t("col.notifications")}>
@@ -111,7 +129,16 @@
             ></span>
           {/if}
           <span class="reason">{n.reason}</span>
-          <span class="subject">{n.wpTitle ?? n.subject}</span>
+          {#if canDetail && wpIdOf(n) != null}
+            <button
+              type="button"
+              class="subject subject-btn"
+              onclick={() => openTask(n)}
+              title={$t("task.openDetail")}>{n.wpTitle ?? n.subject}</button
+            >
+          {:else}
+            <span class="subject">{n.wpTitle ?? n.subject}</span>
+          {/if}
         </li>
       {/each}
     </ul>
