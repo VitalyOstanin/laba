@@ -178,6 +178,7 @@ pub fn run() {
             commands::pick_candidates,
             commands::set_tray_status,
             commands::get_changelog,
+            commands::gh_dependency,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

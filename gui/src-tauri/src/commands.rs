@@ -422,6 +422,38 @@ pub async fn get_changelog() -> Result<Vec<taskstream_core::update::ReleaseNote>
         .map_err(|e| e.to_string())
 }
 
+/// Whether the `gh` CLI dependency is satisfied. Only relevant when a GitHub
+/// server is configured — the update checker never uses `gh`. Lets the GUI show
+/// a friendly install/login hint at startup instead of failing mid-request.
+#[derive(Debug, Clone, Serialize)]
+pub struct GhDependency {
+    /// A GitHub-backend server is configured (so `gh` is actually needed).
+    pub used: bool,
+    /// `gh` availability: "ready" | "missing" | "unauthenticated".
+    pub status: taskstream_core::github::GhStatus,
+}
+
+#[tauri::command]
+pub async fn gh_dependency() -> Result<GhDependency, String> {
+    use taskstream_core::github::{gh_status_for_host, GhStatus};
+    let cfg = load_cfg()?;
+    let uses_github = cfg
+        .servers
+        .values()
+        .any(|p| matches!(p.backend, Backend::Github));
+    if !uses_github {
+        return Ok(GhDependency {
+            used: false,
+            status: GhStatus::Ready,
+        });
+    }
+    // Probing spawns `gh`; keep it off the async runtime thread.
+    let status = tauri::async_runtime::spawn_blocking(|| gh_status_for_host(""))
+        .await
+        .map_err(|e| format!("gh probe failed: {e}"))?;
+    Ok(GhDependency { used: true, status })
+}
+
 /// List a server's time-entry activity types for the log-time form.
 #[tauri::command]
 pub async fn list_activities(server: String) -> Result<Value, String> {

@@ -136,4 +136,13 @@ export const ru: Dict = {
   "update.remindLater": "Напомнить позже",
   "update.skip": "Пропустить версию",
   "update.failed": "Не удалось обновить",
+  "gh.missing.title": "Серверы GitHub используют GitHub CLI",
+  "gh.missing.body":
+    "Чтобы показывать ваши задачи и pull request с GitHub, установите GitHub CLI (gh). Другим серверам и проверке обновлений он не нужен.",
+  "gh.unauth.title": "Войдите в GitHub CLI",
+  "gh.unauth.body":
+    "GitHub CLI установлен, но вход не выполнен. Выполните «gh auth login» в терминале и нажмите «Проверить снова».",
+  "gh.install": "Как установить",
+  "gh.recheck": "Проверить снова",
+  "gh.later": "Позже",
 };

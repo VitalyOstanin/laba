@@ -103,6 +103,7 @@ pub enum WpCmd {
 async fn run_github(cmd: WpCmd, profile: &ServerProfile, g: &Globals) -> Result<(), Error> {
     match cmd {
         WpCmd::List { .. } => {
+            super::ensure_gh_ready(profile)?;
             let tasks = taskstream_core::backend::list_tasks(profile, None).await?;
             crate::output::emit(&Value::Array(tasks), g.human);
             Ok(())

@@ -26,6 +26,7 @@
   } from "$lib/scale";
   import { language } from "$lib/i18n";
   import UpdateBanner from "$lib/components/UpdateBanner.svelte";
+  import GhDependencyBanner from "$lib/components/GhDependencyBanner.svelte";
 
   let { children } = $props();
 
@@ -122,4 +123,5 @@
 </script>
 
 <UpdateBanner />
+<GhDependencyBanner />
 {@render children()}

@@ -277,6 +277,66 @@ body {
   color: var(--danger);
 }
 
+/* gh CLI dependency hint: an unobtrusive, comfortable notice shown only when a
+   GitHub server is configured and gh is missing or not signed in. */
+.gh-banner {
+  margin: 10px 14px 0;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--warn) 55%, var(--border));
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.gh-text {
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gh-text span {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.gh-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gh-banner button {
+  font: inherit;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.gh-banner button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.gh-install {
+  background: var(--accent) !important;
+  color: var(--accent-text) !important;
+  border-color: transparent !important;
+}
+
+.gh-later {
+  border-color: transparent !important;
+  color: var(--text-dim) !important;
+  text-decoration: underline;
+}
+
 /* Timelog indicator */
 .timelog {
   margin: 10px 14px 0;

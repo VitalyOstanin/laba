@@ -34,6 +34,29 @@ pub fn load_profile(g: &Globals) -> Result<(String, ServerProfile), Error> {
     Ok((name, profile))
 }
 
+/// For github-backed commands, verify the `gh` CLI is installed and signed in,
+/// returning a friendly, actionable error otherwise. A no-op for OpenProject.
+/// The update checker does not use `gh`; only the GitHub task backend does.
+pub fn ensure_gh_ready(profile: &ServerProfile) -> Result<(), Error> {
+    use taskstream_core::github::{gh_status_for_host, GhStatus};
+    if profile.backend != Backend::Github {
+        return Ok(());
+    }
+    match gh_status_for_host(&profile.base_url) {
+        GhStatus::Ready => Ok(()),
+        GhStatus::Missing => Err(Error::Usage(
+            "the github backend needs the GitHub CLI (gh), which is not installed. \
+             Install it: https://github.com/cli/cli#installation"
+                .into(),
+        )),
+        GhStatus::Unauthenticated => Err(Error::Usage(
+            "the github backend needs the GitHub CLI signed in. \
+             Run 'gh auth login', then retry."
+                .into(),
+        )),
+    }
+}
+
 /// Reject a command the active backend cannot serve. `what` names the command
 /// for the error; the message also lists what the github backend does support.
 pub fn require_openproject(profile: &ServerProfile, what: &str) -> Result<(), Error> {

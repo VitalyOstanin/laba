@@ -134,6 +134,15 @@ export const en = {
   "update.remindLater": "Remind me later",
   "update.skip": "Skip this version",
   "update.failed": "Update failed",
+  "gh.missing.title": "GitHub servers use the GitHub CLI",
+  "gh.missing.body":
+    "To show your GitHub issues and pull requests, install the GitHub CLI (gh). Your other servers and the update checker don't need it.",
+  "gh.unauth.title": "Sign in to the GitHub CLI",
+  "gh.unauth.body":
+    "The GitHub CLI is installed but not signed in. Run “gh auth login” in a terminal, then recheck.",
+  "gh.install": "Install guide",
+  "gh.recheck": "Recheck",
+  "gh.later": "Later",
 } as const;
 
 export type Key = keyof typeof en;

@@ -16,6 +16,7 @@ import type {
   Activity,
   Candidate,
   ReleaseNote,
+  GhDependency,
 } from "./types";
 
 // --- mutable in-memory state (a session's edits are reflected until reload) ---
@@ -354,6 +355,8 @@ export async function mockInvoke(
       return TIMELOG;
     case "get_changelog":
       return CHANGELOG;
+    case "gh_dependency":
+      return GH_DEPENDENCY;
     case "get_global_proxy":
       return globalProxy;
     case "set_global_proxy":

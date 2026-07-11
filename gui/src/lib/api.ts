@@ -11,6 +11,7 @@ import type {
   StatusColorToken,
   StatusFilter,
   ReleaseNote,
+  GhDependency,
 } from "./types";
 
 export const listServers = (): Promise<ServerInfo[]> => invoke("list_servers");
@@ -18,6 +19,10 @@ export const listServers = (): Promise<ServerInfo[]> => invoke("list_servers");
 // banner's "what's new".
 export const getChangelog = (): Promise<ReleaseNote[]> =>
   invoke("get_changelog");
+// Whether the gh CLI dependency (GitHub task backend only) is satisfied, so the
+// UI can show a friendly install/login hint.
+export const ghDependency = (): Promise<GhDependency> =>
+  invoke("gh_dependency");
 // Window/app controls for keyboard shortcuts. quitApp exits unconditionally;
 // closeWindow runs the normal close flow (hide to tray or quit per settings).
 export const quitApp = (): Promise<void> => invoke("quit_app");

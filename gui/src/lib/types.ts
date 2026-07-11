@@ -96,6 +96,12 @@ export interface ReleaseNote {
   published_at: string | null;
 }
 
+// gh CLI availability for the GitHub task backend (see core `github`).
+export type GhStatus = "ready" | "missing" | "unauthenticated";
+export interface GhDependency {
+  // a GitHub-backend server is configured, so gh is actually needed
+  used: boolean;
+  status: GhStatus;
 }
 
 export type TimelogState = "red" | "yellow" | "green" | "over";

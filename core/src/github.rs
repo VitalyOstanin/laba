@@ -5,9 +5,49 @@
 //! Output is normalized to the same shape as an OpenProject work package so the
 //! CLI and GUI can render both backends uniformly.
 
+use serde::Serialize;
 use serde_json::{Map, Value};
 
 use crate::error::Error;
+
+/// Availability of the `gh` CLI, which the GitHub task backend requires. The
+/// update checker does NOT use `gh` (it reads public releases anonymously), so
+/// this only matters when a GitHub server is configured.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum GhStatus {
+    /// `gh` is installed and authenticated — the backend can run.
+    Ready,
+    /// `gh` is not on `PATH`; it must be installed.
+    Missing,
+    /// `gh` is installed but not logged in; `gh auth login` is needed.
+    Unauthenticated,
+}
+
+/// Classify `gh` availability by probing a [`GhRunner`]: the binary must be
+/// present (`gh --version`) and authenticated (`gh auth status`). Separated from
+/// process spawning so it is unit-tested with a fake runner.
+pub fn gh_status<R: GhRunner>(runner: &R) -> GhStatus {
+    match runner.run(&["--version"]) {
+        Ok(_) => {}
+        // A spawn failure means the binary is absent from PATH.
+        Err(Error::Io(_)) => return GhStatus::Missing,
+        // Any other failure of `--version` means `gh` is unusable here.
+        Err(_) => return GhStatus::Missing,
+    }
+    match runner.run(&["auth", "status"]) {
+        Ok(_) => GhStatus::Ready,
+        Err(_) => GhStatus::Unauthenticated,
+    }
+}
+
+/// Probe the real `gh` for `host` (empty = default host). Convenience over
+/// [`gh_status`] with a [`GhCli`] runner.
+pub fn gh_status_for_host(host: &str) -> GhStatus {
+    gh_status(&GhCli {
+        host: host.to_owned(),
+    })
+}
 
 /// Abstraction over invoking `gh`, so tests can feed fixtures instead of
 /// spawning the real process.
@@ -257,6 +297,50 @@ mod tests {
     use super::tests_support::FakeGh;
     use super::*;
     use serde_json::json;
+
+    /// Fake runner whose `--version` / `auth status` outcomes are configurable,
+    /// to classify [`gh_status`] without the real binary.
+    struct StatusGh {
+        installed: bool,
+        authed: bool,
+    }
+
+    impl GhRunner for StatusGh {
+        fn run(&self, args: &[&str]) -> Result<Vec<u8>, Error> {
+            match args.first().copied() {
+                Some("--version") if self.installed => Ok(Vec::new()),
+                Some("--version") => Err(Error::Io("spawn gh: not found".into())),
+                Some("auth") if self.authed => Ok(Vec::new()),
+                Some("auth") => Err(Error::Api("not logged in".into())),
+                _ => Err(Error::Api(format!("unexpected gh args: {args:?}"))),
+            }
+        }
+    }
+
+    #[test]
+    fn gh_status_classifies_missing_unauth_ready() {
+        assert_eq!(
+            gh_status(&StatusGh {
+                installed: false,
+                authed: false
+            }),
+            GhStatus::Missing
+        );
+        assert_eq!(
+            gh_status(&StatusGh {
+                installed: true,
+                authed: false
+            }),
+            GhStatus::Unauthenticated
+        );
+        assert_eq!(
+            gh_status(&StatusGh {
+                installed: true,
+                authed: true
+            }),
+            GhStatus::Ready
+        );
+    }
 
     #[test]
     fn normalize_issue_maps_shared_shape() {
