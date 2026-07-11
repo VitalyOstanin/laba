@@ -73,8 +73,17 @@ fn tray_labels() -> (&'static str, &'static str) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_process::init());
+    // Desktop-only self-update against the project's GitHub releases. The
+    // frontend drives it (check on start, install on an explicit click); this
+    // just wires the plugin so those JS calls have a backend.
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+    builder
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(log::LevelFilter::Info)
@@ -168,6 +177,7 @@ pub fn run() {
             commands::create_time_entry,
             commands::pick_candidates,
             commands::set_tray_status,
+            commands::get_changelog,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -176,6 +176,107 @@ body {
   background: color-mix(in srgb, var(--danger) 8%, transparent);
 }
 
+/* Update banner: an unobtrusive, dismissible notice that a newer release is
+   available, with an expandable cumulative changelog and an explicit install. */
+.update-banner {
+  margin: 10px 14px 0;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--info) 55%, var(--border));
+  background: color-mix(in srgb, var(--info) 8%, transparent);
+  color: var(--text);
+}
+
+.update-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.update-msg {
+  flex: 1 1 auto;
+}
+
+.update-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.update-banner button {
+  font: inherit;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+}
+
+.update-banner button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.update-link {
+  background: transparent;
+  border-color: transparent !important;
+  color: var(--accent);
+  padding: 4px 6px !important;
+  text-decoration: underline;
+}
+
+.update-install {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.update-later {
+  background: transparent;
+  border-color: var(--border) !important;
+  color: var(--text-dim);
+}
+
+.update-skip {
+  background: transparent;
+  border-color: transparent !important;
+  color: var(--text-dim);
+  text-decoration: underline;
+}
+
+.update-notes {
+  margin-top: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.update-version + .update-version {
+  margin-top: 10px;
+}
+
+.update-version h4 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+}
+
+.update-version ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.update-version li.para {
+  list-style: none;
+  margin-left: -18px;
+}
+
+.update-error {
+  margin-top: 8px;
+  color: var(--danger);
+}
+
 /* Timelog indicator */
 .timelog {
   margin: 10px 14px 0;

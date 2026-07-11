@@ -21,6 +21,8 @@ keyring = { workspace = true }
 thiserror = { workspace = true }
 # SHA-256 checksum of downloaded attachment content.
 sha2 = "0.10"
+# Compare release tags to the running version for the update changelog.
+semver = "1"
 # Stream the response body in chunks.
 futures-util = "0.3"
 # Local date for the default spentOn on time-entry create.

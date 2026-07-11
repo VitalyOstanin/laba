@@ -412,6 +412,16 @@ pub fn set_tray_status(count: u32) -> Result<(), String> {
     Ok(())
 }
 
+/// Cumulative changelog for versions newer than the running one, for the update
+/// banner's "what's new". Display only; the updater plugin performs the actual
+/// update. The running version is this bundle's `CARGO_PKG_VERSION`.
+#[tauri::command]
+pub async fn get_changelog() -> Result<Vec<taskstream_core::update::ReleaseNote>, String> {
+    taskstream_core::update::changelog_since(env!("CARGO_PKG_VERSION"))
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// List a server's time-entry activity types for the log-time form.
 #[tauri::command]
 pub async fn list_activities(server: String) -> Result<Value, String> {

@@ -1,0 +1,97 @@
+/**
+ * Self-update bridge over the Tauri updater plugin, with a browser fallback.
+ *
+ * In a real Tauri window this drives `@tauri-apps/plugin-updater`: `check()`
+ * against the GitHub releases endpoint (configured in `tauri.conf.json`), then
+ * `downloadAndInstall()` + `relaunch()` on an explicit user action. Under
+ * `vite dev` in a plain browser there is no Tauri runtime, so it returns a
+ * fixture so the banner can be developed with hot reload; installing is a no-op
+ * there. Detection mirrors `$lib/invoke`.
+ */
+import type { Update } from "@tauri-apps/plugin-updater";
+
+/** An available update the banner can present. */
+export interface AvailableUpdate {
+  version: string;
+  notes: string | null;
+}
+
+const hasTauri =
+  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+// The `Update` handle from the last successful `check()`, reused by
+// `installUpdate` so the download targets the version the user was shown.
+let pending: Update | null = null;
+
+/**
+ * Whether the update banner should be shown: an update is available and its
+ * version is not the one the user already dismissed. Pure, so it is unit-tested.
+ */
+export function shouldShowUpdate(
+  available: AvailableUpdate | null,
+  dismissedVersion: string | null | undefined,
+): boolean {
+  if (!available) return false;
+  return available.version !== dismissedVersion;
+}
+
+/**
+ * Check the configured endpoint for a newer release. Returns `null` when the
+ * running version is current or the check fails (an update banner should never
+ * surface an error). In the browser dev environment returns a fixture.
+ */
+export async function checkForUpdate(): Promise<AvailableUpdate | null> {
+  if (!hasTauri) {
+    // Dev fixture so the banner renders under `npm run dev`.
+    return {
+      version: "0.2.0",
+      notes: "Example release notes for the dev mock.",
+    };
+  }
+  try {
+    const { check } = await import("@tauri-apps/plugin-updater");
+    const update = await check();
+    pending = update;
+    if (!update) return null;
+    return { version: update.version, notes: update.body ?? null };
+  } catch (e) {
+    console.error("update check failed:", e);
+    return null;
+  }
+}
+
+/**
+ * Download and install the pending update, reporting coarse progress, then
+ * relaunch. Only call after {@link checkForUpdate} returned a version. A no-op
+ * in the browser dev environment (no bundle to swap).
+ */
+export async function installUpdate(
+  onProgress?: (downloadedBytes: number, contentLength: number | null) => void,
+): Promise<void> {
+  if (!hasTauri) {
+    // Nothing to install in the browser; resolve after a tick so any spinner
+    // is visible during UI development.
+    await new Promise((r) => setTimeout(r, 300));
+    return;
+  }
+  if (!pending) throw new Error("no pending update — check first");
+  let downloaded = 0;
+  let total: number | null = null;
+  await pending.downloadAndInstall((event) => {
+    switch (event.event) {
+      case "Started":
+        total = event.data.contentLength ?? null;
+        onProgress?.(0, total);
+        break;
+      case "Progress":
+        downloaded += event.data.chunkLength;
+        onProgress?.(downloaded, total);
+        break;
+      case "Finished":
+        onProgress?.(downloaded, total);
+        break;
+    }
+  });
+  const { relaunch } = await import("@tauri-apps/plugin-process");
+  await relaunch();
+}

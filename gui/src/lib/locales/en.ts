@@ -126,6 +126,14 @@ export const en = {
     "socks5://host:port, http://host:port, or direct",
   "settings.proxy.hint":
     "Route this backend's HTTP through a proxy. Leave empty to inherit the global default, then the HTTP(S)_PROXY environment, then a direct connection. Enter “direct” to force a direct connection.",
+  "update.available": "A new version is available:",
+  "update.whatsNew": "What's new",
+  "update.hideNotes": "Hide",
+  "update.install": "Update & restart",
+  "update.installing": "Installing…",
+  "update.remindLater": "Remind me later",
+  "update.skip": "Skip this version",
+  "update.failed": "Update failed",
 } as const;
 
 export type Key = keyof typeof en;

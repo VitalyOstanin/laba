@@ -10,9 +10,14 @@ import type {
   Candidate,
   StatusColorToken,
   StatusFilter,
+  ReleaseNote,
 } from "./types";
 
 export const listServers = (): Promise<ServerInfo[]> => invoke("list_servers");
+// Cumulative changelog (versions newer than the running one) for the update
+// banner's "what's new".
+export const getChangelog = (): Promise<ReleaseNote[]> =>
+  invoke("get_changelog");
 // Window/app controls for keyboard shortcuts. quitApp exits unconditionally;
 // closeWindow runs the normal close flow (hide to tray or quit per settings).
 export const quitApp = (): Promise<void> => invoke("quit_app");

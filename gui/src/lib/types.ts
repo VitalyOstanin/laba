@@ -84,6 +84,18 @@ export interface Settings {
   timezone: string;
   // interface scale factor (1 = no scaling)
   ui_scale: number;
+  // release version dismissed in the update banner (omitted when nothing dismissed)
+  dismissed_update_version?: string | null;
+}
+
+// One release in the update changelog, newest first (see core `update`).
+export interface ReleaseNote {
+  version: string;
+  name: string | null;
+  body: string;
+  published_at: string | null;
+}
+
 }
 
 export type TimelogState = "red" | "yellow" | "green" | "over";

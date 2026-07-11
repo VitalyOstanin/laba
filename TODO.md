@@ -112,7 +112,7 @@ Backlog of ideas to evaluate. Not commitments.
 
 ## Updates / self-update
 
-- [ ] Periodic update check against the GitHub releases of this project. Poll the
+- [~] Periodic update check against the GitHub releases of this project. Poll the
       releases API on an interval, compare the latest tag to the running version,
       and surface an available update **unobtrusively** (a quiet banner/indicator,
       not a modal), with a control to **dismiss/hide** it (and not nag again for
@@ -121,6 +121,14 @@ Backlog of ideas to evaluate. Not commitments.
       the new release asset, replace the binary, and restart. Never update
       silently in the background. Respect the no-proxy / network constraints and
       verify the download (checksum/signature) before applying.
+      Phase A DONE (code/config/UI): Tauri updater + process plugins, updater
+      config (pubkey + GitHub latest.json endpoint), cumulative changelog via the
+      anonymous GitHub releases API (`core::update`), `UpdateBanner` with a
+      changelog panel and four actions (update & restart / what's new / remind me
+      later / skip this version). Phase B TODO (needs release infra): put the
+      minisign private key in CI secrets and extend `release.yml` to build, sign,
+      and upload the GUI **AppImage** bundle + `latest.json` (the updater plugin
+      only self-updates AppImage on Linux; current release.yml ships the CLI only).
 - [ ] Fully automatic self-update (separate, opt-in): once the user-triggered
       update flow above is solid, add an opt-in setting to apply available updates
       automatically without a per-update click. Off by default; the manual

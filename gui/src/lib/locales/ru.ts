@@ -128,4 +128,12 @@ export const ru: Dict = {
     "socks5://host:port, http://host:port или direct",
   "settings.proxy.hint":
     "Направлять HTTP этого сервера через прокси. Пусто — наследовать глобальный по умолчанию, затем переменные окружения HTTP(S)_PROXY, затем прямое соединение. Введите «direct» для принудительного прямого соединения.",
+  "update.available": "Доступна новая версия:",
+  "update.whatsNew": "Что нового",
+  "update.hideNotes": "Скрыть",
+  "update.install": "Обновить и перезапустить",
+  "update.installing": "Установка…",
+  "update.remindLater": "Напомнить позже",
+  "update.skip": "Пропустить версию",
+  "update.failed": "Не удалось обновить",
 };

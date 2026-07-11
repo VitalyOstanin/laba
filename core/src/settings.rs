@@ -120,6 +120,11 @@ pub struct Settings {
     /// root font size. Clamp with [`clamp_ui_scale`] before use.
     #[serde(default = "default_ui_scale")]
     pub ui_scale: f64,
+    /// Release version the user dismissed in the update banner, so the same
+    /// available update does not nag again. `None` means nothing dismissed; a
+    /// newer available version than this still shows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dismissed_update_version: Option<String>,
 }
 
 fn default_true() -> bool {
@@ -176,6 +181,7 @@ impl Default for Settings {
             week_start: WeekStart::default(),
             timezone: default_timezone(),
             ui_scale: DEFAULT_UI_SCALE,
+            dismissed_update_version: None,
         }
     }
 }
@@ -258,6 +264,7 @@ mod tests {
             week_start: WeekStart::Sunday,
             timezone: "Europe/Moscow".into(),
             ui_scale: 1.25,
+            dismissed_update_version: Some("9.9.9".into()),
         };
         s.save(&path).unwrap();
         assert_eq!(Settings::load(&path).unwrap(), s);
@@ -320,6 +327,19 @@ mod tests {
         assert_eq!(clamp_ui_scale(0.1), MIN_UI_SCALE);
         assert_eq!(clamp_ui_scale(10.0), MAX_UI_SCALE);
         assert_eq!(clamp_ui_scale(1.25), 1.25);
+    }
+
+    #[test]
+    fn dismissed_update_version_defaults_none_and_is_skipped_when_empty() {
+        // Absent in older settings -> None.
+        let s: Settings = serde_json::from_str("{}").unwrap();
+        assert_eq!(s.dismissed_update_version, None);
+        // None is omitted from the serialized file (skip_serializing_if).
+        let json = serde_json::to_string(&Settings::default()).unwrap();
+        assert!(!json.contains("dismissed_update_version"));
+        // A set value roundtrips.
+        let s: Settings = serde_json::from_str(r#"{"dismissed_update_version": "1.2.3"}"#).unwrap();
+        assert_eq!(s.dismissed_update_version.as_deref(), Some("1.2.3"));
     }
 
     #[test]

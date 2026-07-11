@@ -15,6 +15,7 @@ import type {
   TimelogResult,
   Activity,
   Candidate,
+  ReleaseNote,
 } from "./types";
 
 // --- mutable in-memory state (a session's edits are reflected until reload) ---
@@ -82,6 +83,26 @@ let settings: Settings = {
 };
 
 let globalProxy: string | null = null;
+
+// Cumulative changelog fixture so the update banner renders under `npm run dev`.
+const CHANGELOG: ReleaseNote[] = [
+  {
+    version: "0.2.0",
+    name: "0.2.0 — Timeline & proxies",
+    body: "- Per-day timelog timeline panel\n- SOCKS5 / HTTP proxy support, per server and global\n- Faster startup",
+    published_at: "2026-02-01T10:00:00Z",
+  },
+  {
+    version: "0.1.5",
+    name: "0.1.5 — Fixes",
+    body: "- Tray badge no longer flickers\n- Settings save is now instant",
+    published_at: "2026-01-15T10:00:00Z",
+  },
+];
+
+// gh dependency fixture so the hint banner renders under `npm run dev`. Flip
+// `status` to "ready" to hide it, or "unauthenticated" for the login variant.
+const GH_DEPENDENCY: GhDependency = { used: true, status: "missing" };
 
 // --- fixtures keyed by server ------------------------------------------------
 
@@ -331,6 +352,8 @@ export async function mockInvoke(
       return null;
     case "get_timelog":
       return TIMELOG;
+    case "get_changelog":
+      return CHANGELOG;
     case "get_global_proxy":
       return globalProxy;
     case "set_global_proxy":

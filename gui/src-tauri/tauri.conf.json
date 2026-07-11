@@ -24,6 +24,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -31,5 +32,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM5NUE0N0IxMEEzM0E2MDAKUldRQXBqTUtzVWRheVN1ZmNjRFllbEZkS1dvcGJtSE5GcklBWTFJNnZqbEEzZW9PYVRrZWIzQUMK",
+      "endpoints": [
+        "https://github.com/VitalyOstanin/taskstream/releases/latest/download/latest.json"
+      ]
+    }
   }
 }
