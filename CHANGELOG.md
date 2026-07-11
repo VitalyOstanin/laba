@@ -5,6 +5,11 @@ The format follows Keep a Changelog and Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-11
+
+### Changed
+- Release bump to exercise the end-to-end self-update path from 0.1.0.
+
 ## [0.1.0] - 2026-07-11
 
 ### Added
