@@ -1,12 +1,11 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
   import { filterTasks, filterText } from "../store";
   import { t } from "../i18n";
-  import { addComment } from "../api";
-  import { refreshServer } from "../poller";
   import { onVisible } from "../scroll";
   import { openExternal } from "../external";
   import FilterRow from "./FilterRow.svelte";
-  import type { Task, ServerInfo } from "../types";
+  import type { Task, ServerInfo, CustomField } from "../types";
 
   let {
     tasks = [],
@@ -79,10 +78,57 @@
     return `tone-${token}`;
   }
 
+  // Extra columns: the server's configured display fields (custom-field names,
+  // e.g. Rank), matched against each task's expanded customFields.
+  const displayFields = $derived(server?.display_fields ?? []);
+
+  // Sorting of the resident list: by last change (default), task number, or one
+  // of the display fields (e.g. Rank). Sorting applies to the loaded tasks; more
+  // load in as the user scrolls.
+  type SortKey = "updated" | "number" | `field:${string}`;
+  let sortKey = $state<SortKey>("updated");
+  const sortOptions = $derived<{ key: SortKey; label: string }[]>([
+    { key: "updated", label: $t("sort.updated") },
+    { key: "number", label: $t("sort.number") },
+    ...displayFields.map((f) => ({ key: `field:${f}` as SortKey, label: f })),
+  ]);
+  function setSort(key: SortKey): void {
+    sortKey = key;
+    limit = PAGE;
+  }
+  function num(v: unknown): number | null {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  function sortTasks(list: Task[]): Task[] {
+    const s = [...list];
+    if (sortKey === "updated") {
+      // Most recently changed first.
+      s.sort((a, b) =>
+        String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? "")),
+      );
+    } else if (sortKey === "number") {
+      s.sort((a, b) => (num(a.id) ?? 0) - (num(b.id) ?? 0));
+    } else {
+      const name = sortKey.slice("field:".length);
+      s.sort((a, b) => {
+        const va = fieldValue(a, name);
+        const vb = fieldValue(b, name);
+        const na = num(va);
+        const nb = num(vb);
+        if (na != null && nb != null) return na - nb;
+        return String(va ?? "").localeCompare(String(vb ?? ""));
+      });
+    }
+    return s;
+  }
+
   const shown = $derived(
-    filterTasks(
-      tasks.filter((task) => matchesTab(task, tabs[activeTab] ?? tabs[0])),
-      $filterText,
+    sortTasks(
+      filterTasks(
+        tasks.filter((task) => matchesTab(task, tabs[activeTab] ?? tabs[0])),
+        $filterText,
+      ),
     ),
   );
 
@@ -98,8 +144,30 @@
     else if (hasMore) onLoadMore();
   }
 
-  // Commenting exists only on OpenProject backends.
-  const canComment = $derived(server?.backend === "openproject");
+  function customFields(task: Task): CustomField[] {
+    const cf = task.customFields;
+    return Array.isArray(cf) ? (cf as CustomField[]) : [];
+  }
+  // Raw value of a display field on a task (by field name), or undefined.
+  function fieldValue(task: Task, name: string): unknown {
+    const hit = customFields(task).find((c) => c.name === name);
+    return hit?.value;
+  }
+  // Display value of a field: scalars as text, arrays joined, empty as "—".
+  function fieldText(task: Task, name: string): string {
+    const v = fieldValue(task, name);
+    if (v == null || v === "") return "—";
+    return Array.isArray(v) ? v.join(", ") : String(v);
+  }
+
+  // Opening the detail screen (description + comments) is a backend capability.
+  const canDetail = $derived(server?.supports_task_detail ?? false);
+  function openDetail(task: Task): void {
+    if (!server || task.id == null) return;
+    goto(
+      `/task?server=${encodeURIComponent(server.name)}&id=${encodeURIComponent(String(task.id))}`,
+    );
+  }
 
   // Semantic row tint for a task, looked up by its exact status string in the
   // server's per-status color map. Unmapped statuses render neutral.
@@ -120,27 +188,6 @@
     if (!base || task.id == null) return null;
     return `${base.replace(/\/+$/, "")}/work_packages/${task.id}`;
   }
-  let openId = $state<number | null>(null);
-  let text = $state("");
-  let busy = $state(false);
-
-  function startComment(id: number): void {
-    openId = openId === id ? null : id;
-    text = "";
-  }
-
-  async function submit(id: number): Promise<void> {
-    if (!server || busy || !text.trim()) return;
-    busy = true;
-    try {
-      await addComment(server.name, id, text.trim());
-      await refreshServer(server.name);
-      openId = null;
-      text = "";
-    } finally {
-      busy = false;
-    }
-  }
 </script>
 
 <section class="card" aria-label={$t("col.tasks")}>
@@ -160,13 +207,25 @@
       {/each}
     </nav>
   {/if}
+  <div class="sortbar">
+    <span class="sort-label">{$t("sort.by")}</span>
+    <span class="seg">
+      {#each sortOptions as opt (opt.key)}
+        <button
+          type="button"
+          aria-pressed={sortKey === opt.key}
+          onclick={() => setSort(opt.key)}>{opt.label}</button
+        >
+      {/each}
+    </span>
+  </div>
   <FilterRow count={shown.length} />
   {#if shown.length === 0}
     <p class="empty">{$t("empty.tasks")}</p>
   {:else}
     <ul class="list">
       {#each visible as task (task.id)}
-        <li class="task {tone(task)}">
+        <li class="task {tone(task)}" class:clickable={canDetail}>
           {#if taskHref(task)}
             <button
               type="button"
@@ -178,41 +237,21 @@
           {:else}
             <span class="id">{task.id}</span>
           {/if}
-          <span class="subject">{task.subject}</span>
-          <span class="status">{task.status}</span>
-          {#if canComment}
+          {#if canDetail}
             <button
               type="button"
-              class="linkbtn"
-              onclick={() => startComment(Number(task.id))}
-              >{$t("task.comment")}</button
+              class="subject subject-btn"
+              onclick={() => openDetail(task)}
+              title={$t("task.openDetail")}>{task.subject}</button
             >
+          {:else}
+            <span class="subject">{task.subject}</span>
           {/if}
+          {#each displayFields as f (f)}
+            <span class="field" title={f}>{fieldText(task, f)}</span>
+          {/each}
+          <span class="status">{task.status}</span>
         </li>
-        {#if canComment && openId === Number(task.id)}
-          <li class="compose">
-            <textarea
-              bind:value={text}
-              rows="2"
-              aria-label={$t("task.comment")}
-              placeholder={$t("task.commentPlaceholder")}
-            ></textarea>
-            <div class="compose-actions">
-              <button
-                type="button"
-                class="btn"
-                disabled={busy || !text.trim()}
-                onclick={() => submit(Number(task.id))}
-                >{$t("task.send")}</button
-              >
-              <button
-                type="button"
-                class="linkbtn"
-                onclick={() => (openId = null)}>{$t("task.cancel")}</button
-              >
-            </div>
-          </li>
-        {/if}
       {/each}
     </ul>
     {#if canReveal || hasMore}

@@ -23,6 +23,20 @@ export interface ServerInfo {
   supports_status_filters: boolean;
   // named status filters (label -> statuses) shown as task-list tabs
   status_filters: StatusFilter[];
+  // whether tasks carry custom fields (drives the display-fields editor)
+  supports_custom_fields: boolean;
+  // whether a task opens a detail screen (description + comments)
+  supports_task_detail: boolean;
+  // custom-field names shown as extra task-list columns (and sort keys), e.g. Rank
+  display_fields: string[];
+}
+
+// One expanded custom field on a task: {key, name, value}. `name` is the human
+// field label used both to match a display field and as the column header.
+export interface CustomField {
+  key: string;
+  name: string | null;
+  value: unknown;
 }
 
 // A named task filter: a label plus the statuses it groups. Shown as a tab.

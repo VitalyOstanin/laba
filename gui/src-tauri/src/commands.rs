@@ -43,6 +43,12 @@ pub struct ServerInfo {
     pub supports_status_filters: bool,
     /// Named status filters (label -> statuses) shown as task-list tabs.
     pub status_filters: Vec<StatusFilter>,
+    /// Whether tasks carry custom fields (drives the display-fields editor).
+    pub supports_custom_fields: bool,
+    /// Whether a task opens a detail screen (description + comments).
+    pub supports_task_detail: bool,
+    /// Custom-field names shown as extra task-list columns (and sort keys).
+    pub display_fields: Vec<String>,
 }
 
 fn backend_str(b: Backend) -> &'static str {
@@ -76,6 +82,9 @@ pub fn server_infos(cfg: &Config) -> Vec<ServerInfo> {
             can_toggle_read: p.backend.supports_notification_read_toggle(),
             supports_status_filters: p.backend.supports_status_filters(),
             status_filters: p.status_filters.clone(),
+            supports_custom_fields: p.backend.supports_custom_fields(),
+            supports_task_detail: p.backend.supports_task_detail(),
+            display_fields: p.display_fields.clone(),
         })
         .collect()
 }
@@ -574,6 +583,7 @@ pub fn add_server(
                 timelog_start: None,
                 status_colors: Default::default(),
                 status_filters: Vec::new(),
+                display_fields: Vec::new(),
             },
         );
         if cfg.default_server.is_none() {
@@ -618,6 +628,21 @@ pub fn set_server_status_filters(name: String, filters: Vec<StatusFilter>) -> Re
         profile_mut(cfg, &name)?.status_filters = filters
             .into_iter()
             .filter(|f| !f.label.trim().is_empty())
+            .collect();
+        Ok(())
+    })
+}
+
+/// Replace a server's display fields (extra task-list columns / sort keys). The
+/// GUI sends the whole ordered list of custom-field names; blank entries are
+/// dropped. An empty list shows no extra columns.
+#[tauri::command]
+pub fn set_server_display_fields(name: String, fields: Vec<String>) -> Result<(), String> {
+    with_config(|cfg| {
+        profile_mut(cfg, &name)?.display_fields = fields
+            .into_iter()
+            .map(|f| f.trim().to_owned())
+            .filter(|f| !f.is_empty())
             .collect();
         Ok(())
     })
@@ -688,6 +713,7 @@ mod tests {
                 timelog_start: None,
                 status_colors: Default::default(),
                 status_filters: Vec::new(),
+                display_fields: Vec::new(),
             },
         );
         servers.insert(
@@ -704,6 +730,7 @@ mod tests {
                 timelog_start: None,
                 status_colors: Default::default(),
                 status_filters: Vec::new(),
+                display_fields: Vec::new(),
             },
         );
         Config {

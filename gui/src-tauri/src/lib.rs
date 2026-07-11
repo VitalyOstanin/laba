@@ -149,6 +149,7 @@ pub fn run() {
             commands::set_server_timelog_start,
             commands::set_server_status_color,
             commands::set_server_status_filters,
+            commands::set_server_display_fields,
             commands::rename_server,
             commands::list_tasks,
             commands::list_notifications,

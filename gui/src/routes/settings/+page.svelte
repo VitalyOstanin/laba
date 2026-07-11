@@ -10,6 +10,7 @@
     setServerTimelogStart,
     setServerStatusColor,
     setServerStatusFilters,
+    setServerDisplayFields,
     renameServer,
     addServer,
   } from "$lib/api";
@@ -200,6 +201,29 @@
     ]);
     filterDraftLabel[s.name] = "";
     filterDraftStatuses[s.name] = "";
+  }
+
+  // Per-server display fields (extra task-list columns / sort keys). Ordered
+  // list of custom-field names; the whole list is saved on each change.
+  let displayFieldDraft = $state<Record<string, string>>({});
+  async function addDisplayField(s: ServerInfo): Promise<void> {
+    const name = (displayFieldDraft[s.name] ?? "").trim();
+    if (name === "") return;
+    if (!s.display_fields.includes(name)) {
+      await setServerDisplayFields(s.name, [...s.display_fields, name]);
+      await refreshServers();
+    }
+    displayFieldDraft[s.name] = "";
+  }
+  async function removeDisplayField(
+    s: ServerInfo,
+    name: string,
+  ): Promise<void> {
+    await setServerDisplayFields(
+      s.name,
+      s.display_fields.filter((f) => f !== name),
+    );
+    await refreshServers();
   }
 
   // Add-server form. GitHub needs no token (uses gh); OpenProject needs a token
@@ -515,6 +539,42 @@
                 />
                 <button type="button" class="btn" onclick={() => addFilter(s)}
                   >{$t("settings.statusColors.add")}</button
+                >
+              </div>
+            </div>
+          {/if}
+          {#if s.supports_custom_fields}
+            <div class="srv-colors">
+              <span class="srv-colors-title"
+                >{$t("settings.displayFields")}</span
+              >
+              <span class="hint">{$t("settings.displayFields.hint")}</span>
+              {#each s.display_fields as f (f)}
+                <div class="srv-color-row">
+                  <span class="srv-field-name">{f}</span>
+                  <button
+                    type="button"
+                    class="linkbtn"
+                    onclick={() => removeDisplayField(s, f)}
+                    >{$t("settings.displayFields.remove")}</button
+                  >
+                </div>
+              {/each}
+              <div class="srv-color-row">
+                <input
+                  type="text"
+                  class="srv-color-input"
+                  placeholder={$t("settings.displayFields.field")}
+                  bind:value={displayFieldDraft[s.name]}
+                  onkeydown={(e) => {
+                    if (e.key === "Enter") addDisplayField(s);
+                  }}
+                />
+                <button
+                  type="button"
+                  class="btn"
+                  onclick={() => addDisplayField(s)}
+                  >{$t("settings.displayFields.add")}</button
                 >
               </div>
             </div>

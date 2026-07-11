@@ -57,6 +57,12 @@ export const setServerStatusFilters = (
   name: string,
   filters: StatusFilter[],
 ): Promise<void> => invoke("set_server_status_filters", { name, filters });
+// Replace a server's display fields (extra task-list columns / sort keys), an
+// ordered list of custom-field names. Empty clears them.
+export const setServerDisplayFields = (
+  name: string,
+  fields: string[],
+): Promise<void> => invoke("set_server_display_fields", { name, fields });
 export const renameServer = (old: string, next: string): Promise<void> =>
   invoke("rename_server", { old, new: next });
 // Add a server profile. backend "github" needs no token (uses gh); "openproject"

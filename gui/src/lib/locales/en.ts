@@ -102,6 +102,24 @@ export const en = {
   "task.commentPlaceholder": "Write a comment…",
   "task.send": "Send",
   "task.cancel": "Cancel",
+  "task.openDetail": "Open task",
+  "sort.by": "Sort:",
+  "sort.updated": "Updated",
+  "sort.number": "Number",
+  "detail.back": "Back to tasks",
+  "detail.loading": "Loading…",
+  "detail.type": "Type",
+  "detail.assignee": "Assignee",
+  "detail.description": "Description",
+  "detail.noDescription": "No description.",
+  "detail.comments": "Comments",
+  "detail.noComments": "No comments yet.",
+  "settings.displayFields": "Extra columns (custom fields)",
+  "settings.displayFields.hint":
+    "Show these custom fields as task-list columns and sort options. Type the field name exactly as the server names it.",
+  "settings.displayFields.field": "Field name",
+  "settings.displayFields.add": "Add",
+  "settings.displayFields.remove": "Remove",
 } as const;
 
 export type Key = keyof typeof en;
