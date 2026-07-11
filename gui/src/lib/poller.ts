@@ -75,7 +75,8 @@ function routeNotification(payload: unknown): void {
 /** Subscribe to click-through events from Linux desktop notifications. No-op in
  * a plain browser (dev-mock) where the Tauri event bus is absent. */
 async function registerNotificationClick(): Promise<void> {
-  if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) return;
+  if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window))
+    return;
   const { listen } = await import("@tauri-apps/api/event");
   await listen("open-notification", (e) => routeNotification(e.payload));
 }

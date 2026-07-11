@@ -105,7 +105,9 @@ export function freshUnread(
   notifications: Notification[],
 ): { fresh: Notification[]; seen: Set<string> } {
   const unread = notifications.filter(unreadOf);
-  const seen = new Set(unread.map((n) => String((n as Record<string, unknown>).id)));
+  const seen = new Set(
+    unread.map((n) => String((n as Record<string, unknown>).id)),
+  );
   const fresh =
     prevSeen === undefined
       ? []

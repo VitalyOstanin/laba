@@ -77,6 +77,8 @@ describe("freshUnread", () => {
     expect(afterRead.fresh).toEqual([]);
     expect(afterRead.seen).toEqual(new Set());
     const backToUnread = freshUnread(afterRead.seen, [{ id: 1, read: false }]);
-    expect(backToUnread.fresh.map((n) => (n as Record<string, unknown>).id)).toEqual([1]);
+    expect(
+      backToUnread.fresh.map((n) => (n as Record<string, unknown>).id),
+    ).toEqual([1]);
   });
 });
