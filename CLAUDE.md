@@ -52,6 +52,24 @@ Business logic lives in `core`. The CLI and GUI are adapters — keep them thin.
   `beforeBuildCommand` and embeds the frontend via custom-protocol.
 - The container-built binary runs on the host (runtime `libdbus-1-3` is present).
 
+**Fast dev loop (avoid the ~3 min release build).** The slow part is release
+optimization, not the container: `target/` is mounted from the host, so builds
+are incremental, and the image already links with `lld`.
+
+- **UI-only work — no container, no Rust.** `cd gui && npm run dev` serves the
+  SvelteKit app in a browser with Vite HMR. With no Tauri runtime present,
+  `$lib/invoke` routes `invoke()` calls to `$lib/dev-mock` (fictional fixtures),
+  so screens render and edits reflect in-session. Fastest loop for the UI.
+- **Full app, live reload.** `./scripts/gui-dev.sh` runs `tauri dev` in the
+  container with the host display forwarded (Wayland/X11) — frontend hot-reloads
+  and Rust changes recompile incrementally in the *debug* profile. Display
+  forwarding is environment-specific; adjust the mounts in the script if the
+  window does not appear.
+- **Quick full build.** `./scripts/gui-build-debug.sh` builds the debug profile
+  (`build --no-bundle --debug`) — ~30 s incremental vs minutes for release; the
+  binary at `target/debug/taskstream-gui` runs on the host. Use the release
+  command above for a shippable/verified build.
+
 **Verify (host):**
 
 - Rust: `cargo nextest run -p taskstream-core -p taskstream-cli`,
