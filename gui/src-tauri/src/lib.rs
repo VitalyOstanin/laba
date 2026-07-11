@@ -159,6 +159,8 @@ pub fn run() {
             commands::set_notification_read,
             commands::mark_all_read,
             commands::add_comment,
+            commands::get_task_detail,
+            commands::list_task_comments,
             commands::list_activities,
             commands::create_time_entry,
             commands::pick_candidates,

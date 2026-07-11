@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { svelteTesting } from "@testing-library/svelte/vite";
@@ -6,6 +7,18 @@ import { svelteTesting } from "@testing-library/svelte/vite";
 // component tests (@testing-library/svelte) run under one config.
 export default defineConfig({
   plugins: [svelte(), svelteTesting()],
+  resolve: {
+    // The SvelteKit Vite plugin (which provides `$app/*`) is not loaded here,
+    // so stub the `$app` modules that components import.
+    alias: {
+      "$app/navigation": fileURLToPath(
+        new URL("./src/test-stubs/app-navigation.ts", import.meta.url),
+      ),
+      "$app/state": fileURLToPath(
+        new URL("./src/test-stubs/app-state.ts", import.meta.url),
+      ),
+    },
+  },
   test: {
     environment: "jsdom",
     include: ["src/**/*.test.ts"],

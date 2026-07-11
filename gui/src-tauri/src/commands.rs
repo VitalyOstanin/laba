@@ -9,7 +9,7 @@ use taskstream_core::client::Client;
 use taskstream_core::config::{
     default_config_path, Backend, Config, ServerProfile, StatusColor, StatusFilter, TimelogStart,
 };
-use taskstream_core::resources::{comment, notification, time};
+use taskstream_core::resources::{comment, notification, time, work_packages};
 use taskstream_core::secrets::Secrets;
 use taskstream_core::settings::{default_settings_path, Settings};
 use taskstream_core::timelog::{self, DayCell, TimelogStatus};
@@ -369,6 +369,26 @@ pub async fn add_comment(server: String, work_package: i64, text: String) -> Res
     comment::create(&client, work_package, &text, false)
         .await
         .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+/// Fetch one work package with its description and expanded custom fields, for
+/// the task-detail screen.
+#[tauri::command]
+pub async fn get_task_detail(server: String, id: i64) -> Result<Value, String> {
+    let client = op_client(&server)?;
+    work_packages::get(&client, id, false)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// List a work package's comments (activities that carry a comment body) for the
+/// task-detail screen, oldest first.
+#[tauri::command]
+pub async fn list_task_comments(server: String, id: i64) -> Result<Value, String> {
+    let client = op_client(&server)?;
+    comment::list(&client, id, true, 1, None, false)
+        .await
         .map_err(|e| e.to_string())
 }
 

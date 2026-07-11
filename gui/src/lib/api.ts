@@ -90,6 +90,14 @@ export const addComment = (
   workPackage: number,
   text: string,
 ): Promise<void> => invoke("add_comment", { server, workPackage, text });
+// Task-detail screen: one work package with description + custom fields, and its
+// comment thread (oldest first). OpenProject only (supports_task_detail).
+export const getTaskDetail = (server: string, id: number): Promise<Task> =>
+  invoke("get_task_detail", { server, id });
+export const listTaskComments = (
+  server: string,
+  id: number,
+): Promise<Notification[]> => invoke("list_task_comments", { server, id });
 export const listActivities = (server: string): Promise<Activity[]> =>
   invoke("list_activities", { server });
 export const createTimeEntry = (
