@@ -39,6 +39,9 @@ laba-core = { path = "../../core" }
 # the window. On Windows/macOS the Tauri tray is used instead.
 [target.'cfg(target_os = "linux")'.dependencies]
 ksni = "0.3"
+# Decode the bundled PNG app icon into the ARGB pixmap the SNI tray draws, so
+# the tray shows the wrench with a small count badge instead of a bare number.
+png = "0.17"
 
 # The self-update plugin is desktop-only (checks GitHub releases, downloads and
 # swaps the bundle). Excluded on mobile targets where it does not build.

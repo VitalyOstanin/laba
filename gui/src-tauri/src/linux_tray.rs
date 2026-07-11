@@ -51,26 +51,19 @@ impl Tray for LabaTray {
         "laba".into()
     }
 
-    /// Themed icon installed under the name `laba-gui`; resolved by the
-    /// tray host through the icon theme. Cleared when a badge is shown so the
-    /// host prefers `icon_pixmap` (the red count badge) instead.
+    /// Themed icon name (`laba-gui`), kept as a fallback for hosts that render
+    /// `icon_name` in preference to the pixmap. The pixmap below carries the
+    /// same wrench plus the attention badge.
     fn icon_name(&self) -> String {
-        if self.count > 0 {
-            String::new()
-        } else {
-            "laba-gui".into()
-        }
+        "laba-gui".into()
     }
 
-    /// A red badge with the attention count, drawn as an ARGB pixmap so it does
-    /// not depend on a themed asset. Empty when there is nothing to flag, so the
-    /// host falls back to the plain themed `icon_name`.
+    /// The app icon (wrench) with a small red count badge composited into the
+    /// bottom-right corner when there is something to flag. Always a pixmap so
+    /// the badge shows on hosts (GNOME) that ignore SNI overlay icons, while the
+    /// icon itself keeps the app recognisable instead of a bare red number.
     fn icon_pixmap(&self) -> Vec<Icon> {
-        if self.count == 0 {
-            vec![]
-        } else {
-            vec![badge_icon(self.count)]
-        }
+        vec![tray_icon(self.count)]
     }
 
     fn tool_tip(&self) -> ToolTip {
@@ -152,42 +145,70 @@ pub fn spawn(app: AppHandle) {
 // --- Badge rendering -------------------------------------------------------
 
 /// A red rounded square (22×22) with the count drawn in white, as an SNI
-/// ARGB32 icon. Self-contained: digits come from a hand-coded 3×5 bitmap font,
-/// so no image/font dependency is pulled in. Counts over 99 render as `99+`
-/// truncated to fit.
-fn badge_icon(count: u32) -> Icon {
-    const W: i32 = 22;
-    const H: i32 = 22;
-    const RADIUS: i32 = 5;
-    // straight ARGB (network byte order per the SNI spec): bytes are A, R, G, B.
-    let mut data = vec![0u8; (W * H * 4) as usize];
-    let put = |data: &mut [u8], x: i32, y: i32, argb: [u8; 4]| {
-        if x < 0 || y < 0 || x >= W || y >= H {
+/// The bundled 64×64 app icon decoded once into a straight-ARGB32 pixmap (SNI
+/// byte order: A, R, G, B), cached for the process so repaints do not re-parse
+/// the PNG.
+fn base_icon() -> &'static Icon {
+    static BASE: OnceLock<Icon> = OnceLock::new();
+    BASE.get_or_init(|| {
+        const PNG: &[u8] = include_bytes!("../icons/64x64.png");
+        let mut reader = png::Decoder::new(PNG)
+            .read_info()
+            .expect("tray icon: PNG header");
+        let mut buf = vec![0u8; reader.output_buffer_size()];
+        let info = reader.next_frame(&mut buf).expect("tray icon: PNG frame");
+        let (w, h) = (info.width as i32, info.height as i32);
+        let src_bpp = match info.color_type {
+            png::ColorType::Rgba => 4,
+            png::ColorType::Rgb => 3,
+            other => panic!("tray icon: unexpected PNG color type {other:?}"),
+        };
+        let mut data = vec![0u8; (w * h * 4) as usize];
+        for px in 0..(w * h) as usize {
+            let o = px * src_bpp;
+            let a = if src_bpp == 4 { buf[o + 3] } else { 0xff };
+            data[px * 4..px * 4 + 4].copy_from_slice(&[a, buf[o], buf[o + 1], buf[o + 2]]);
+        }
+        Icon {
+            width: w,
+            height: h,
+            data,
+        }
+    })
+}
+
+/// The app icon, with the attention count drawn as a red corner badge when
+/// non-zero. Counts over 99 render as `99+`.
+fn tray_icon(count: u32) -> Icon {
+    let mut icon = base_icon().clone();
+    if count > 0 {
+        draw_badge(&mut icon, count);
+    }
+    icon
+}
+
+/// Composite a filled red circle with the count (white 3×5 bitmap digits, so no
+/// font dependency) into the bottom-right corner of `icon`.
+fn draw_badge(icon: &mut Icon, count: u32) {
+    let (w, h) = (icon.width, icon.height);
+    let diameter = (w * 9 / 16).max(16);
+    let cx = w - diameter / 2 - 1;
+    let cy = h - diameter / 2 - 1;
+    let radius = diameter / 2;
+    let red = [0xff, 0xd0, 0x39, 0x2b];
+    let white = [0xff, 0xff, 0xff, 0xff];
+    let mut put = |x: i32, y: i32, argb: [u8; 4]| {
+        if x < 0 || y < 0 || x >= w || y >= h {
             return;
         }
-        let i = ((y * W + x) * 4) as usize;
-        data[i..i + 4].copy_from_slice(&argb);
+        let i = ((y * w + x) * 4) as usize;
+        icon.data[i..i + 4].copy_from_slice(&argb);
     };
-    // Rounded-rect red fill (skip the corner pixels outside the radius).
-    let red = [0xff, 0xd0, 0x39, 0x2b];
-    for y in 0..H {
-        for x in 0..W {
-            let dx = if x < RADIUS {
-                RADIUS - x
-            } else if x >= W - RADIUS {
-                x - (W - RADIUS - 1)
-            } else {
-                0
-            };
-            let dy = if y < RADIUS {
-                RADIUS - y
-            } else if y >= H - RADIUS {
-                y - (H - RADIUS - 1)
-            } else {
-                0
-            };
-            if dx * dx + dy * dy <= RADIUS * RADIUS {
-                put(&mut data, x, y, red);
+    for y in (cy - radius)..=(cy + radius) {
+        for x in (cx - radius)..=(cx + radius) {
+            let (dx, dy) = (x - cx, y - cy);
+            if dx * dx + dy * dy <= radius * radius {
+                put(x, y, red);
             }
         }
     }
@@ -199,38 +220,29 @@ fn badge_icon(count: u32) -> Icon {
     } else {
         vec![count as u8]
     };
-    let scale = if text.len() >= 3 { 2 } else { 3 };
+    // Largest scale whose glyphs still fit inside the circle, width and height.
+    let glyphs = text.len() as i32;
+    let inner = diameter - diameter / 4;
+    let scale = ((inner / (glyphs * 4 - 1)).min(inner / 5)).max(1);
     let glyph_w = 3 * scale;
-    let glyph_h = 5 * scale;
     let gap = scale;
-    let total_w = text.len() as i32 * glyph_w + (text.len() as i32 - 1) * gap;
-    let mut x0 = (W - total_w) / 2;
-    let y0 = (H - glyph_h) / 2;
-    let white = [0xff, 0xff, 0xff, 0xff];
+    let total_w = glyphs * glyph_w + (glyphs - 1) * gap;
+    let mut x0 = cx - total_w / 2;
+    let y0 = cy - 5 * scale / 2;
     for &g in &text {
         let rows = glyph(g);
         for (ry, row) in rows.iter().enumerate() {
-            for cx in 0..3 {
-                if row & (1 << (2 - cx)) != 0 {
+            for gx in 0..3 {
+                if row & (1 << (2 - gx)) != 0 {
                     for sy in 0..scale {
                         for sx in 0..scale {
-                            put(
-                                &mut data,
-                                x0 + cx * scale + sx,
-                                y0 + ry as i32 * scale + sy,
-                                white,
-                            );
+                            put(x0 + gx * scale + sx, y0 + ry as i32 * scale + sy, white);
                         }
                     }
                 }
             }
         }
         x0 += glyph_w + gap;
-    }
-    Icon {
-        width: W,
-        height: H,
-        data,
     }
 }
 
