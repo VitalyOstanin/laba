@@ -52,7 +52,11 @@ pub fn require_openproject(profile: &ServerProfile, what: &str) -> Result<(), Er
 /// backends so their commands fail with a clear message rather than a confusing
 /// "no token" error.
 pub fn build_client(g: &Globals) -> Result<(String, Client), Error> {
-    let (name, profile) = load_profile(g)?;
+    // Load the config directly (not via `load_profile`) so the global proxy
+    // default is available alongside the profile without a second read.
+    let cfg = Config::load(&config_path(&g.config))?;
+    let name = cfg.resolve_server_name(g.server.as_deref())?;
+    let profile = cfg.servers[&name].clone();
     require_openproject(&profile, "this command")?;
     let secrets = Secrets::new(Secrets::default_fallback_path());
     let token = g
@@ -60,7 +64,13 @@ pub fn build_client(g: &Globals) -> Result<(String, Client), Error> {
         .clone()
         .or(secrets.get(&name)?)
         .ok_or_else(|| Error::Auth(format!("no token for '{name}'")))?;
-    let client = Client::new(&name, &profile, token, g.proxy.as_deref())?;
+    let client = Client::new_with_global(
+        &name,
+        &profile,
+        token,
+        g.proxy.as_deref(),
+        cfg.proxy.as_deref(),
+    )?;
     Ok((name, client))
 }
 

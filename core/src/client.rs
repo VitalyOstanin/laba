@@ -22,12 +22,73 @@ fn join_err(e: tokio::task::JoinError) -> Error {
     Error::Io(format!("cache task failed: {e}"))
 }
 
+/// The resolved proxy decision for one server, after folding the override /
+/// per-server / global levels.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProxyChoice {
+    /// Route HTTP through this proxy URL (`socks5://…`, `http://…`).
+    Explicit(String),
+    /// Force a direct connection, ignoring any ambient proxy env.
+    Direct,
+    /// No configured choice — defer to reqwest's default (ambient
+    /// `HTTP(S)_PROXY` / `NO_PROXY` env), then direct.
+    Inherit,
+}
+
+/// Interpret one configured proxy level: `Some(url)` is an explicit proxy,
+/// `Some("direct"|"none"|"")` forces a direct connection, and `None` defers to
+/// the next level.
+fn proxy_level(v: Option<&str>) -> Option<ProxyChoice> {
+    match v {
+        None => None,
+        Some(s)
+            if s.is_empty()
+                || s.eq_ignore_ascii_case("direct")
+                || s.eq_ignore_ascii_case("none") =>
+        {
+            Some(ProxyChoice::Direct)
+        }
+        Some(s) => Some(ProxyChoice::Explicit(s.to_owned())),
+    }
+}
+
+/// Resolve the effective proxy for a server. Precedence, highest first:
+/// invocation `override_` (CLI `--proxy`) > per-server `profile` > `global`
+/// default > ambient env ([`ProxyChoice::Inherit`]). At any level a URL selects
+/// that proxy and `"direct"`/`"none"`/empty forces a direct connection.
+pub fn resolve_proxy(
+    override_: Option<&str>,
+    profile: Option<&str>,
+    global: Option<&str>,
+) -> ProxyChoice {
+    proxy_level(override_)
+        .or_else(|| proxy_level(profile))
+        .or_else(|| proxy_level(global))
+        .unwrap_or(ProxyChoice::Inherit)
+}
+
 impl Client {
+    /// Build a client, resolving the proxy from the invocation override and the
+    /// per-server profile only (no global default — used by tests and callers
+    /// without a loaded [`Config`]). See [`Client::new_with_global`].
     pub fn new(
         server_name: &str,
         profile: &ServerProfile,
         token: String,
         proxy_override: Option<&str>,
+    ) -> Result<Client, Error> {
+        Client::new_with_global(server_name, profile, token, proxy_override, None)
+    }
+
+    /// Build a client, resolving the proxy across all levels, highest first:
+    /// invocation override, then per-server `profile.proxy`, then the `global`
+    /// default, then the ambient env. See [`resolve_proxy`] for the sentinel rules.
+    pub fn new_with_global(
+        server_name: &str,
+        profile: &ServerProfile,
+        token: String,
+        proxy_override: Option<&str>,
+        global_proxy: Option<&str>,
     ) -> Result<Client, Error> {
         let mut builder = reqwest::Client::builder()
             // A redirect could forward the Basic token to another host — never follow.
@@ -35,18 +96,19 @@ impl Client {
             .timeout(Duration::from_secs(profile.timeout))
             .danger_accept_invalid_certs(!profile.verify_ssl);
 
-        let proxy = match proxy_override {
-            Some("none") | Some("") => None,
-            Some(p) => Some(p.to_owned()),
-            None => profile.proxy.clone(),
-        };
-        if let Some(p) = proxy {
-            let proxy = reqwest::Proxy::all(&p)
-                .map_err(|e| Error::Config(format!("invalid proxy '{p}': {e}")))?;
-            builder = builder.proxy(proxy);
-        } else {
-            // Explicitly ignore any ambient HTTP(S)_PROXY env for determinism.
-            builder = builder.no_proxy();
+        match resolve_proxy(proxy_override, profile.proxy.as_deref(), global_proxy) {
+            ProxyChoice::Explicit(p) => {
+                let proxy = reqwest::Proxy::all(&p)
+                    .map_err(|e| Error::Config(format!("invalid proxy '{p}': {e}")))?;
+                builder = builder.proxy(proxy);
+            }
+            // Force a direct connection, ignoring any ambient HTTP(S)_PROXY env.
+            ProxyChoice::Direct => {
+                builder = builder.no_proxy();
+            }
+            // No configured choice: leave reqwest's default, which reads the
+            // ambient HTTP(S)_PROXY / NO_PROXY env (env fallback).
+            ProxyChoice::Inherit => {}
         }
 
         let http = builder
@@ -82,6 +144,60 @@ impl Client {
         } else {
             format!("{}/api/v3/{}", self.base_url, p)
         }
+    }
+}
+
+#[cfg(test)]
+mod proxy_resolve_tests {
+    use super::*;
+
+    #[test]
+    fn override_wins_over_profile_and_global() {
+        assert_eq!(
+            resolve_proxy(
+                Some("http://ovr:1"),
+                Some("http://prof:2"),
+                Some("http://glob:3")
+            ),
+            ProxyChoice::Explicit("http://ovr:1".into())
+        );
+    }
+
+    #[test]
+    fn profile_wins_over_global() {
+        assert_eq!(
+            resolve_proxy(None, Some("socks5://prof:2"), Some("http://glob:3")),
+            ProxyChoice::Explicit("socks5://prof:2".into())
+        );
+    }
+
+    #[test]
+    fn global_used_when_no_override_or_profile() {
+        assert_eq!(
+            resolve_proxy(None, None, Some("http://glob:3")),
+            ProxyChoice::Explicit("http://glob:3".into())
+        );
+    }
+
+    #[test]
+    fn nothing_configured_inherits_env() {
+        assert_eq!(resolve_proxy(None, None, None), ProxyChoice::Inherit);
+    }
+
+    #[test]
+    fn direct_sentinels_force_direct_at_each_level() {
+        for s in ["direct", "none", "", "DIRECT", "None"] {
+            assert_eq!(
+                resolve_proxy(Some(s), Some("http://prof:2"), Some("http://glob:3")),
+                ProxyChoice::Direct,
+                "override {s:?}"
+            );
+        }
+        // A per-server "direct" overrides a configured global proxy.
+        assert_eq!(
+            resolve_proxy(None, Some("direct"), Some("http://glob:3")),
+            ProxyChoice::Direct
+        );
     }
 }
 

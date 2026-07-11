@@ -165,6 +165,10 @@ pub struct ServerProfile {
     pub timeout: u64,
     #[serde(default = "default_true")]
     pub verify_ssl: bool,
+    /// Per-server proxy override. A proxy URL routes this server's HTTP through it;
+    /// `"direct"` (also `"none"`/empty) forces a direct connection, ignoring the
+    /// global default and env. Absent defers to the global [`Config::proxy`], then
+    /// the ambient env, then direct. See [`crate::client::resolve_proxy`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub proxy: Option<String>,
     /// Whether the server is active in the GUI. A disabled server is not polled,
@@ -235,6 +239,14 @@ fn default_true() -> bool {
 pub struct Config {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_server: Option<String>,
+    /// Global default proxy applied to every server that does not set its own.
+    /// A proxy URL (`socks5://…`, `http://…`) routes all backend HTTP through it;
+    /// `"direct"` (also `"none"`/empty) forces a direct connection. Absent means
+    /// no global default — each server falls back to the ambient
+    /// `HTTP(S)_PROXY`/`NO_PROXY` env, then direct. A per-server `proxy` and the
+    /// CLI `--proxy` override still win over this. See [`crate::client::resolve_proxy`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub proxy: Option<String>,
     #[serde(default)]
     pub servers: BTreeMap<String, ServerProfile>,
 }
@@ -306,6 +318,7 @@ mod tests {
         let path = dir.path().join("config.json");
         let mut cfg = Config::default();
         cfg.default_server = Some("primary".into());
+        cfg.proxy = Some("http://proxy.example:8080".into());
         cfg.servers.insert(
             "primary".into(),
             ServerProfile {
