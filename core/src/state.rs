@@ -7,8 +7,8 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 /// Resolve the state file path, honoring (in priority order):
-/// `OPENPROJECT_STATE`, `XDG_STATE_HOME/taskstream/...`, then
-/// `~/.local/state/taskstream/assignee-history.json`.
+/// `OPENPROJECT_STATE`, `XDG_STATE_HOME/laboro/...`, then
+/// `~/.local/state/laboro/assignee-history.json`.
 fn state_path() -> PathBuf {
     if let Some(p) = std::env::var_os("OPENPROJECT_STATE") {
         return PathBuf::from(p);
@@ -22,7 +22,7 @@ fn state_path() -> PathBuf {
                 .unwrap_or_default();
             home.join(".local").join("state")
         });
-    base.join("taskstream").join("assignee-history.json")
+    base.join("laboro").join("assignee-history.json")
 }
 
 fn key(base_url: &str, uid: &str) -> String {

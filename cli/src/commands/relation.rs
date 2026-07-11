@@ -1,7 +1,7 @@
 use clap::builder::PossibleValuesParser;
 use clap::Subcommand;
-use taskstream_core::error::Error;
-use taskstream_core::resources::relation::{self, RELATION_TYPES};
+use laboro_core::error::Error;
+use laboro_core::resources::relation::{self, RELATION_TYPES};
 
 use crate::cli::Globals;
 

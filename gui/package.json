@@ -1,7 +1,7 @@
 {
-  "name": "taskstream-gui",
+  "name": "laboro-gui",
   "version": "0.1.0",
-  "description": "taskstream desktop dashboard frontend",
+  "description": "laboro desktop dashboard frontend",
   "type": "module",
   "scripts": {
     "dev": "vite dev",

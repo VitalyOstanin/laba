@@ -218,7 +218,7 @@ fn is_fresh(ts: u64) -> bool {
 }
 
 /// Cache base directory: `$OPENPROJECT_CACHE`, else
-/// `$XDG_CACHE_HOME/taskstream`, else `~/.cache/taskstream`.
+/// `$XDG_CACHE_HOME/laboro`, else `~/.cache/laboro`.
 fn cache_base_dir() -> PathBuf {
     if let Some(dir) = std::env::var_os("OPENPROJECT_CACHE") {
         return PathBuf::from(dir);
@@ -227,7 +227,7 @@ fn cache_base_dir() -> PathBuf {
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cache")))
         .unwrap_or_else(|| PathBuf::from(".cache"));
-    base.join("taskstream")
+    base.join("laboro")
 }
 
 fn server_cache_path(server: &str) -> PathBuf {

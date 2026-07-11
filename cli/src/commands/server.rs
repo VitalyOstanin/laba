@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
 use clap::Subcommand;
-use taskstream_core::config::{Backend, Config, ServerProfile, StatusColor};
-use taskstream_core::error::Error;
-use taskstream_core::secrets::Secrets;
+use laboro_core::config::{Backend, Config, ServerProfile, StatusColor};
+use laboro_core::error::Error;
+use laboro_core::secrets::Secrets;
 
 #[derive(Debug, Subcommand)]
 pub enum ServerCmd {

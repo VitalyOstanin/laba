@@ -1,7 +1,7 @@
 use std::process::ExitCode;
 
 use clap::Parser;
-use taskstream_core::Error;
+use laboro_core::Error;
 
 mod cli;
 mod commands;
@@ -12,7 +12,7 @@ async fn main() -> ExitCode {
     match run().await {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("taskstream: {e}");
+            eprintln!("laboro: {e}");
             ExitCode::from(e.exit_code())
         }
     }

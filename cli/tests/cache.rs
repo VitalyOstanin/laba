@@ -5,7 +5,7 @@ use predicates::str::contains;
 fn cache_clear_all_reports_cleared() {
     let cache_dir = tempfile::tempdir().unwrap();
 
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .env("OPENPROJECT_CACHE", cache_dir.path())
         .args(["cache", "clear", "--all"])
@@ -16,7 +16,7 @@ fn cache_clear_all_reports_cleared() {
 
 #[test]
 fn help_lists_cache_subcommand() {
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .arg("--help")
         .assert()

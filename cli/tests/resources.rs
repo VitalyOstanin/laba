@@ -8,7 +8,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 #[test]
 fn wp_help_lists_actions() {
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .args(["wp", "--help"])
         .assert()
@@ -20,7 +20,7 @@ fn wp_help_lists_actions() {
 
 #[test]
 fn time_create_help_shows_duration_and_hours() {
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .args(["time", "create", "--help"])
         .assert()
@@ -31,7 +31,7 @@ fn time_create_help_shows_duration_and_hours() {
 
 #[test]
 fn relation_create_help_shows_type_values() {
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .args(["relation", "create", "--help"])
         .assert()
@@ -42,7 +42,7 @@ fn relation_create_help_shows_type_values() {
 
 #[test]
 fn api_help_shows_fields_and_input() {
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .args(["api", "--help"])
         .assert()
@@ -54,7 +54,7 @@ fn api_help_shows_fields_and_input() {
 
 #[test]
 fn comment_help_lists_actions() {
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .args(["comment", "--help"])
         .assert()
@@ -65,7 +65,7 @@ fn comment_help_lists_actions() {
 
 #[test]
 fn attachment_help_lists_download() {
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .args(["attachment", "--help"])
         .assert()
@@ -76,7 +76,7 @@ fn attachment_help_lists_download() {
 
 #[test]
 fn notification_help_lists_actions() {
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .args(["notification", "--help"])
         .assert()
@@ -101,7 +101,7 @@ fn api_field_without_equals_is_usage_error() {
     )
     .unwrap();
 
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .env("OPENPROJECT_CACHE", dir.path())
         .args([
@@ -155,7 +155,7 @@ async fn wp_list_returns_normalized_json() {
     let dir = tempfile::tempdir().unwrap();
     let cfg = write_config(dir.path(), &server.uri());
 
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .env("OPENPROJECT_CACHE", dir.path())
         .env("OPENPROJECT_PROXY", "none")
@@ -185,7 +185,7 @@ async fn time_create_sends_iso_duration() {
     let dir = tempfile::tempdir().unwrap();
     let cfg = write_config(dir.path(), &server.uri());
 
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .env("OPENPROJECT_CACHE", dir.path())
         .env("OPENPROJECT_PROXY", "none")
@@ -229,7 +229,7 @@ async fn api_get_sends_query_field() {
     let dir = tempfile::tempdir().unwrap();
     let cfg = write_config(dir.path(), &server.uri());
 
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .env("OPENPROJECT_CACHE", dir.path())
         .env("OPENPROJECT_PROXY", "none")

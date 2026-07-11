@@ -2,8 +2,8 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use clap::Subcommand;
-use taskstream_core::error::Error;
-use taskstream_core::resources::attachment;
+use laboro_core::error::Error;
+use laboro_core::resources::attachment;
 
 use crate::cli::Globals;
 

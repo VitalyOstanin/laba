@@ -6,7 +6,7 @@ fn add_list_setdefault_remove() {
     let dir = tempfile::tempdir().unwrap();
     let cfg = dir.path().join("config.json");
 
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .args([
             "--config",
@@ -21,14 +21,14 @@ fn add_list_setdefault_remove() {
         .success()
         .stdout(contains("added server 'primary'"));
 
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .args(["--config", cfg.to_str().unwrap(), "server", "list"])
         .assert()
         .success()
         .stdout(contains("\"default\": true"));
 
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .args([
             "--config",
@@ -57,10 +57,7 @@ fn add_rejects_duplicate_name_unless_forced() {
             url,
         ];
         args.extend_from_slice(extra);
-        Command::cargo_bin("taskstream")
-            .unwrap()
-            .args(args)
-            .assert()
+        Command::cargo_bin("laboro").unwrap().args(args).assert()
     };
 
     add("https://h/openproject", &[])
@@ -77,7 +74,7 @@ fn add_rejects_duplicate_name_unless_forced() {
         .success()
         .stdout(contains("replaced server 'primary'"));
 
-    Command::cargo_bin("taskstream")
+    Command::cargo_bin("laboro")
         .unwrap()
         .args([
             "--config",

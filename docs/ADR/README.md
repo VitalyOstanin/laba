@@ -19,3 +19,4 @@ ADR that supersedes the old one.
 | [0009](0009-token-input-stdin-only.md) | Token input via stdin or `--token` only, no interactive prompt | Accepted |
 | [0010](0010-webview-content-security-policy.md) | Restrictive Content-Security-Policy for the webview | Accepted |
 | [0011](0011-reqwest-ring-crypto-provider.md) | Stay on reqwest 0.12 with the ring rustls provider | Accepted |
+| [0012](0012-signed-self-update.md) | Signed in-app self-update via the Tauri updater | Accepted |

@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    taskstream_gui_lib::run()
+    laboro_gui_lib::run()
 }

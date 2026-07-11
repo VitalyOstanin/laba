@@ -18,7 +18,7 @@ Backlog of ideas to evaluate. Not commitments.
       (`createdAt`/`updatedAt`, notification times) through `Zone::format_datetime`
       once the GUI/CLI actually display them — no timestamp is shown today, so the
       primitive exists but has no call site yet; (2) give the CLI a `--tz` /
-      `TASKSTREAM_TZ` override so its `spentOn` default and future datetime display
+      `LABORO_TZ` override so its `spentOn` default and future datetime display
       match the GUI (the CLI has no persisted settings, so it needs a flag/env).
 - [ ] First-day-of-week: add the `auto` (locale-derived) option. The explicit
       Monday/Sunday choice is implemented (`Settings::week_start`, used by the
@@ -104,10 +104,10 @@ Backlog of ideas to evaluate. Not commitments.
 ## Branding
 
 - [x] Replace the stock Tauri placeholder icon set in `gui/src-tauri/icons/`
-      with a real taskstream icon. Done: `icons/icon.svg` (checklist on an
+      with a real laboro icon. Done: `icons/icon.svg` (checklist on an
       accent-blue tile) is the source; all sizes regenerated via `tauri icon`.
       The tray uses `default_window_icon()` in `gui/src-tauri/src/lib.rs`; the
-      Linux window `app_id` is `taskstream-gui` (StartupWMClass must match for
+      Linux window `app_id` is `laboro-gui` (StartupWMClass must match for
       dev `--no-bundle` runs).
 
 ## Updates / self-update

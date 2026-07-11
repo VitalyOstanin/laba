@@ -59,7 +59,7 @@ impl Backend {
         matches!(self, Backend::OpenProject)
     }
 
-    /// Whether taskstream keeps a local assignee history for this backend
+    /// Whether laboro keeps a local assignee history for this backend
     /// because the server does not reliably expose work packages the user was
     /// *previously* assigned to. OpenProject drops the assignee link on
     /// reassignment, so the "was mine" set is tracked locally and merged back in
@@ -353,13 +353,13 @@ impl Config {
     }
 }
 
-/// Default config path: `$XDG_CONFIG_HOME/taskstream/config.json`.
+/// Default config path: `$XDG_CONFIG_HOME/laboro/config.json`.
 pub fn default_config_path() -> PathBuf {
     let base = std::env::var_os("XDG_CONFIG_HOME")
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
         .unwrap_or_else(|| PathBuf::from(".config"));
-    base.join("taskstream").join("config.json")
+    base.join("laboro").join("config.json")
 }
 
 #[cfg(test)]
@@ -368,7 +368,7 @@ mod tests {
 
     #[test]
     fn load_missing_returns_default() {
-        let p = std::path::Path::new("/nonexistent/taskstream/config.json");
+        let p = std::path::Path::new("/nonexistent/laboro/config.json");
         assert_eq!(Config::load(p).unwrap(), Config::default());
     }
 

@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
 use clap::Subcommand;
+use laboro_core::cache::Cache;
+use laboro_core::config::Config;
+use laboro_core::error::Error;
 use serde_json::json;
-use taskstream_core::cache::Cache;
-use taskstream_core::config::Config;
-use taskstream_core::error::Error;
 
 #[derive(Debug, Subcommand)]
 pub enum CacheCmd {

@@ -1,8 +1,8 @@
 use std::io::Read;
 
 use clap::Args;
-use taskstream_core::error::Error;
-use taskstream_core::resources::api;
+use laboro_core::error::Error;
+use laboro_core::resources::api;
 
 use crate::cli::Globals;
 

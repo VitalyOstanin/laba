@@ -1,6 +1,6 @@
 use clap::Subcommand;
-use taskstream_core::error::Error;
-use taskstream_core::resources::time;
+use laboro_core::error::Error;
+use laboro_core::resources::time;
 
 use crate::cli::Globals;
 

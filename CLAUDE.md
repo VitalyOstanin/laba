@@ -1,4 +1,4 @@
-# taskstream — contributor & agent guide
+# laboro — contributor & agent guide
 
 Rules and conventions for working in this repository. Read this before making
 changes. It complements `README.md` (what the project is) and `docs/ADR/`
@@ -30,9 +30,9 @@ A single Cargo workspace plus a Tauri desktop app:
 
 | Path            | Crate / package     | Responsibility                                   |
 |-----------------|---------------------|--------------------------------------------------|
-| `core/`         | `taskstream-core`   | Pure library: API client, normalization, config, timelog, capabilities. No UI. |
-| `cli/`          | `taskstream-cli`    | Thin CLI over core (`taskstream` binary, JSON by default). |
-| `gui/src-tauri/`| `taskstream-gui`    | Thin Tauri commands over core; window/tray/lifecycle. |
+| `core/`         | `laboro-core`   | Pure library: API client, normalization, config, timelog, capabilities. No UI. |
+| `cli/`          | `laboro-cli`    | Thin CLI over core (`laboro` binary, JSON by default). |
+| `gui/src-tauri/`| `laboro-gui`    | Thin Tauri commands over core; window/tray/lifecycle. |
 | `gui/src/`      | SvelteKit frontend  | Svelte 5 + TypeScript UI; talks to Rust via `invoke`. |
 
 Business logic lives in `core`. The CLI and GUI are adapters — keep them thin.
@@ -67,16 +67,16 @@ are incremental, and the image already links with `lld`.
   window does not appear.
 - **Quick full build.** `./scripts/gui-build-debug.sh` builds the debug profile
   (`build --no-bundle --debug`) — ~30 s incremental vs minutes for release; the
-  binary at `target/debug/taskstream-gui` runs on the host. Use the release
+  binary at `target/debug/laboro-gui` runs on the host. Use the release
   command above for a shippable/verified build.
 
 **Verify (host):**
 
-- Rust: `cargo nextest run -p taskstream-core -p taskstream-cli`,
+- Rust: `cargo nextest run -p laboro-core -p laboro-cli`,
   `cargo clippy`, `cargo fmt --all --check`. Prefer `nextest` over `cargo test`.
 - Frontend (`gui/`): `npm run check` (svelte-check), `npm run lint`,
   `npm run test` (vitest), `npm run format:check` (prettier).
-- `taskstream-gui` clippy needs the container (same libdbus reason).
+- `laboro-gui` clippy needs the container (same libdbus reason).
 
 Never raise parallelism / resource limits (test workers, etc.) to "speed things
 up".

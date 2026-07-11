@@ -1,6 +1,6 @@
 [package]
-name = "taskstream-gui"
-description = "taskstream desktop dashboard (Tauri)"
+name = "laboro-gui"
+description = "laboro desktop dashboard (Tauri)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -14,7 +14,7 @@ authors.workspace = true
 # The `_lib` suffix may seem redundant but it is necessary
 # to make the lib name unique and wouldn't conflict with the bin name.
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
-name = "taskstream_gui_lib"
+name = "laboro_gui_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -30,7 +30,7 @@ tauri-plugin-log = "2"
 log = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-taskstream-core = { path = "../../core" }
+laboro-core = { path = "../../core" }
 
 # Linux tray via the native StatusNotifierItem protocol. Tauri's built-in tray
 # (libayatana-appindicator) does not deliver click events on Linux, so the

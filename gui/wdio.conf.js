@@ -9,7 +9,7 @@ let tauriDriver;
 // frontend from devUrl (a running dev server), while release builds serve the
 // embedded frontendDist assets the e2e needs. This is a Cargo workspace, so the
 // binary lands in the workspace-root target dir (../target), not under src-tauri.
-const application = path.resolve("../target/release/taskstream-gui");
+const application = path.resolve("../target/release/laboro-gui");
 
 export const config = {
   runner: "local",
@@ -27,7 +27,7 @@ export const config = {
   // Build a production binary with embedded frontend assets. `tauri build`
   // enables the `custom-protocol` feature (plain `cargo build` does not, so its
   // binary would load the dev server instead); `--no-bundle` skips packaging
-  // (.deb/.appimage) and just produces target/release/taskstream-gui. It runs
+  // (.deb/.appimage) and just produces target/release/laboro-gui. It runs
   // the configured beforeBuildCommand (`npm run build`) for the frontend.
   onPrepare: () => {
     const r = spawnSync("npx", ["tauri", "build", "--no-bundle"], {

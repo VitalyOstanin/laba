@@ -4,7 +4,7 @@
 # link incrementally in seconds because `target/` is mounted from the host and
 # the mold linker (set up by tauri-container.sh) speeds linking.
 #
-# Output: target/debug/taskstream-gui, which runs on the host. For a release
+# Output: target/debug/laboro-gui, which runs on the host. For a release
 # build use: scripts/tauri-container.sh 'cd gui && npm run tauri -- build --no-bundle'
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

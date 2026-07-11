@@ -11,10 +11,10 @@ pub mod wp;
 
 use std::path::PathBuf;
 
-use taskstream_core::client::Client;
-use taskstream_core::config::{default_config_path, Backend, Config, ServerProfile};
-use taskstream_core::error::Error;
-use taskstream_core::secrets::Secrets;
+use laboro_core::client::Client;
+use laboro_core::config::{default_config_path, Backend, Config, ServerProfile};
+use laboro_core::error::Error;
+use laboro_core::secrets::Secrets;
 
 use crate::cli::Globals;
 
@@ -38,7 +38,7 @@ pub fn load_profile(g: &Globals) -> Result<(String, ServerProfile), Error> {
 /// returning a friendly, actionable error otherwise. A no-op for OpenProject.
 /// The update checker does not use `gh`; only the GitHub task backend does.
 pub fn ensure_gh_ready(profile: &ServerProfile) -> Result<(), Error> {
-    use taskstream_core::github::{gh_status_for_host, GhStatus};
+    use laboro_core::github::{gh_status_for_host, GhStatus};
     if profile.backend != Backend::Github {
         return Ok(());
     }

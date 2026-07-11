@@ -807,7 +807,7 @@ impl Client {
                     let base = Duration::from_millis(200u64 << attempt).min(MAX_RETRY_SLEEP);
                     let backoff = jitter(base);
                     eprintln!(
-                        "taskstream: retrying after error ({}), attempt {}",
+                        "laboro: retrying after error ({}), attempt {}",
                         e,
                         attempt + 1
                     );

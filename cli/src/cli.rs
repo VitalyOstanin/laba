@@ -2,13 +2,13 @@ use clap::{Parser, Subcommand};
 
 const AFTER_LONG_HELP: &str = "\
 EXAMPLES:
-  taskstream server add primary --url https://host/openproject
-  taskstream auth login --server primary
-  taskstream --server primary auth status
+  laboro server add primary --url https://host/openproject
+  laboro auth login --server primary
+  laboro --server primary auth status
 ";
 
 #[derive(Debug, Parser)]
-#[command(name = "taskstream", version, after_long_help = AFTER_LONG_HELP)]
+#[command(name = "laboro", version, after_long_help = AFTER_LONG_HELP)]
 pub struct Cli {
     #[command(flatten)]
     pub globals: Globals,
