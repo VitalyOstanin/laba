@@ -75,9 +75,16 @@ Backlog of ideas to evaluate. Not commitments.
 - [ ] NFC-normalize names before matching in `core/src/resolve.rs` (canonical
       Unicode equivalence). Needs a `unicode-normalization` dependency — evaluate
       whether the edge case justifies it.
-- [ ] Design-token consistency in `gui/src/app.css`: replace the remaining
-      literal `rgba(...)` values with tokens and regularize the spacing / radius /
-      font-size scale.
+- [~] Design-token consistency in `gui/src/app.css`. Done: there were no literal
+      `rgba(...)` left (colors already go through tokens + `color-mix`); the radius
+      and font-size scales are now named token sets (`--radius`/`--radius-sm`/`-xs`/
+      `-2xs`/`-pill`; `--fs-2xs`..`--fs-2xl`) and every px literal was mapped 1:1
+      to a token (byte-identical rendering; `50%` dots and relative `em` markdown
+      sizes left as-is). Remaining: regularize the spacing scale
+      (padding/margin/gap) — deliberately deferred, as those values are far more
+      scattered (8/10/4/6/1/12/5/3/18/2/14/16/7/20/34/48 px across hundreds of
+      sites) and consolidating them risks visual drift; needs a spacing token set
+      plus per-site review, not a mechanical 1:1 swap.
 - [ ] Clean up leftover `.part` download temp files on SIGINT/SIGTERM: needs a
       process-wide registry of in-flight temp paths plus a cross-platform signal
       handler. Currently self-corrects (unique pid+counter names, cleaned on the

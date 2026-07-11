@@ -19,7 +19,25 @@
 }
 
 :root {
+  /* Radius scale: cards/panels (--radius), controls (--radius-sm), and smaller
+     insets down to pills. */
   --radius: 8px;
+  --radius-sm: 6px;
+  --radius-xs: 4px;
+  --radius-2xs: 3px;
+  --radius-pill: 999px;
+
+  /* Font-size scale (px), from dense metadata up to headings. --fs-base is the
+     root size. */
+  --fs-2xs: 10px;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-base: 14px;
+  --fs-lg: 15px;
+  --fs-xl: 18px;
+  --fs-2xl: 20px;
+
   --gap: 12px;
 
   font-family:
@@ -29,7 +47,7 @@
     "Segoe UI",
     Roboto,
     sans-serif;
-  font-size: 14px;
+  font-size: var(--fs-base);
   line-height: 1.45;
   color: var(--text);
   background: var(--bg);
@@ -84,7 +102,7 @@ body {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 3px;
+  border-radius: var(--radius-2xs);
 }
 
 .topbar {
@@ -101,9 +119,9 @@ body {
   flex: none;
   color: var(--text-dim);
   text-decoration: none;
-  font-size: 13px;
+  font-size: var(--fs-md);
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 .settings-link:hover {
@@ -148,10 +166,10 @@ body {
 }
 
 .bk {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--text-dim) 22%, transparent);
 }
 
@@ -161,7 +179,7 @@ body {
 }
 
 .server-switch .off-tag {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-dim);
@@ -206,7 +224,7 @@ body {
 
 .update-banner button {
   font: inherit;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   padding: 4px 10px;
   border: 1px solid transparent;
@@ -257,7 +275,7 @@ body {
 
 .update-version h4 {
   margin: 0 0 4px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.03em;
   color: var(--text-dim);
 }
@@ -301,7 +319,7 @@ body {
 
 .gh-text span {
   color: var(--text-dim);
-  font-size: 13px;
+  font-size: var(--fs-md);
 }
 
 .gh-actions {
@@ -312,7 +330,7 @@ body {
 
 .gh-banner button {
   font: inherit;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   padding: 4px 10px;
   border: 1px solid var(--border);
@@ -399,7 +417,7 @@ body {
 
 .timelog .tl-hint {
   margin: 6px 2px 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-dim);
 }
 
@@ -413,7 +431,7 @@ body {
 
 .timelog-panel h3 {
   margin: 0 0 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-dim);
@@ -434,18 +452,18 @@ body {
   align-items: center;
   min-width: 52px;
   padding: 5px 6px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   font-variant-numeric: tabular-nums;
 }
 
 .timelog-panel .timeline .tl-date {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-dim);
 }
 
 .timelog-panel .timeline .tl-delta {
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .timelog-panel .timeline li.deficit {
@@ -477,7 +495,7 @@ body {
 
 .candidates h3 {
   margin: 0 0 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-dim);
@@ -514,7 +532,7 @@ body {
 .candidate-list > li.logform {
   flex-wrap: wrap;
   background: var(--surface-2);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 8px;
 }
 
@@ -522,7 +540,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-dim);
 }
 
@@ -535,7 +553,7 @@ body {
 .lf-field select {
   padding: 4px 8px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--text);
   font: inherit;
@@ -593,10 +611,10 @@ body {
   background: none;
   color: var(--accent);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   cursor: pointer;
   padding: 2px 4px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 .linkbtn:hover:not(:disabled) {
   background: var(--surface-2);
@@ -611,9 +629,9 @@ body {
   background: var(--accent);
   color: var(--accent-text);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   padding: 4px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 .btn:disabled {
@@ -637,7 +655,7 @@ body {
   width: 100%;
   padding: 6px 8px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--text);
   font: inherit;
@@ -653,7 +671,7 @@ body {
 
 .card > header h2 {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -674,11 +692,11 @@ body {
   gap: 6px;
   padding: 3px 10px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-2);
   color: var(--text-dim);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 .tab:hover:not([aria-current="true"]) {
@@ -692,9 +710,9 @@ body {
 }
 .tab-count {
   font-variant-numeric: tabular-nums;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   padding: 0 5px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--text-dim) 20%, transparent);
 }
 .tab[aria-current="true"] .tab-count {
@@ -744,7 +762,7 @@ body {
   flex: 1;
   padding: 5px 9px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--text);
   font: inherit;
@@ -923,7 +941,7 @@ button.readdot.busy {
   flex: none;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   white-space: nowrap;
 }
 
@@ -933,18 +951,18 @@ button.readdot.busy {
   align-items: center;
   gap: 8px;
   padding: 8px 12px 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-dim);
 }
 .seg {
   display: inline-flex;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 .seg button {
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   border: none;
   background: var(--surface);
   color: var(--text-dim);
@@ -985,18 +1003,18 @@ button.readdot.busy {
 
 .settings-head h1 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--fs-xl);
 }
 
 .settings-head .back {
   color: var(--accent);
   text-decoration: none;
-  font-size: 13px;
+  font-size: var(--fs-md);
 }
 
 .settings-head .saved {
   color: var(--ok);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .settings fieldset {
@@ -1009,7 +1027,7 @@ button.readdot.busy {
 .settings legend {
   padding: 0 6px;
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -1031,7 +1049,7 @@ button.readdot.busy {
 .settings .hint {
   margin: 0 0 10px;
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .settings .server-settings {
@@ -1069,14 +1087,14 @@ button.readdot.busy {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-dim);
 }
 
 .settings .srv-field input {
   padding: 4px 8px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--text);
   font: inherit;
@@ -1101,7 +1119,7 @@ button.readdot.busy {
   gap: 8px;
 }
 .settings .add-server-title {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-dim);
@@ -1116,7 +1134,7 @@ button.readdot.busy {
 .settings .add-server-row select {
   padding: 5px 8px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--text);
   font: inherit;
@@ -1132,7 +1150,7 @@ button.readdot.busy {
 }
 .settings .add-error {
   color: var(--danger);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 /* Per-server status-color editor: takes the full row width below the inline
@@ -1146,7 +1164,7 @@ button.readdot.busy {
 }
 
 .settings .srv-colors-title {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-dim);
@@ -1156,7 +1174,7 @@ button.readdot.busy {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .settings .srv-color-status {
@@ -1171,7 +1189,7 @@ button.readdot.busy {
   width: 160px;
   padding: 4px 8px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--text);
   font: inherit;
@@ -1182,7 +1200,7 @@ button.readdot.busy {
   min-width: 200px;
   padding: 4px 8px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--text);
   font: inherit;
@@ -1191,7 +1209,7 @@ button.readdot.busy {
 .settings .srv-color-row select {
   padding: 4px 6px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--text);
   font: inherit;
@@ -1200,7 +1218,7 @@ button.readdot.busy {
 .settings .swatch {
   width: 14px;
   height: 14px;
-  border-radius: 3px;
+  border-radius: var(--radius-2xs);
   border: 1px solid var(--border);
 }
 .settings .swatch.tone-danger {
@@ -1222,7 +1240,7 @@ button.readdot.busy {
 .settings .tz-field input {
   padding: 4px 8px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--text);
   font: inherit;
@@ -1239,7 +1257,7 @@ button.readdot.busy {
   width: 32px;
   height: 32px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--text);
   font: inherit;
@@ -1260,7 +1278,7 @@ button.readdot.busy {
 .settings .scale-reset {
   padding: 4px 10px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--text);
   font: inherit;
@@ -1296,14 +1314,14 @@ button.readdot.busy {
   color: var(--accent);
   cursor: pointer;
   padding: 3px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 .backlink:hover {
   background: var(--surface-2);
 }
 .detail-screen .muted {
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 .detail-status {
   color: var(--text-dim);
@@ -1317,7 +1335,7 @@ button.readdot.busy {
   align-items: center;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   color: var(--accent);
   border: none;
   background: none;
@@ -1331,7 +1349,7 @@ button.readdot.busy {
   text-decoration: underline;
 }
 .detail-subject {
-  font-size: 20px;
+  font-size: var(--fs-2xl);
   line-height: 1.3;
   margin: 4px 0 14px;
   text-wrap: balance;
@@ -1347,9 +1365,9 @@ button.readdot.busy {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: var(--surface-2);
 }
@@ -1384,7 +1402,7 @@ button.readdot.busy {
   margin-top: 18px;
 }
 .detail-sec > h2 {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-dim);
@@ -1439,7 +1457,7 @@ button.readdot.busy {
   font-size: 0.9em;
   background: var(--surface-2);
   padding: 0.1em 0.35em;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 .md-body pre {
   margin: 0 0 10px;
@@ -1489,7 +1507,7 @@ button.readdot.busy {
 }
 .cmt {
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 8px 12px;
   background: var(--surface);
 }
@@ -1503,7 +1521,7 @@ button.readdot.busy {
   font-weight: 600;
 }
 .cmt-h .when {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
@@ -1512,7 +1530,7 @@ button.readdot.busy {
 }
 .detail-sec .compose {
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--surface);
   overflow: hidden;
 }
