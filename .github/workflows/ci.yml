@@ -41,6 +41,18 @@ jobs:
       - run: cargo nextest run --workspace --exclude laba-gui
       - run: cargo test --workspace --exclude laba-gui --doc
 
+  scripts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install shellcheck and jq
+        run: sudo apt-get update && sudo apt-get install -y shellcheck jq
+      - name: Lint shell scripts
+        run: shellcheck scripts/*.sh scripts/tests/*.sh
+      - name: Run script tests
+        run: scripts/tests/build-updater-json.test.sh
+
   gui:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
