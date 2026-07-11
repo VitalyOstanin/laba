@@ -39,6 +39,10 @@ pub struct Globals {
     /// defaults to the machine-local zone). Matches the GUI's timezone setting.
     #[arg(long, global = true, env = "LABA_TZ")]
     pub tz: Option<String>,
+    /// Increase logging: -v logs request method/URL/status/timing (debug), -vv
+    /// also logs request/response bodies (trace). RUST_LOG overrides this.
+    #[arg(short = 'v', long = "verbose", global = true, action = clap::ArgAction::Count)]
+    pub verbose: u8,
     /// Human-friendly output instead of JSON.
     #[arg(long, global = true)]
     pub human: bool,

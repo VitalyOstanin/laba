@@ -293,3 +293,39 @@ async fn api_get_sends_query_field() {
         .success()
         .stdout(contains("\"ok\": true"));
 }
+
+#[tokio::test]
+async fn verbose_logs_request_to_stderr() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v3/projects"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"ok": true})))
+        .mount(&server)
+        .await;
+
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = write_config(dir.path(), &server.uri());
+
+    Command::cargo_bin("laba")
+        .unwrap()
+        .env("OPENPROJECT_CACHE", dir.path())
+        .env("OPENPROJECT_PROXY", "none")
+        .env_remove("RUST_LOG")
+        .args([
+            "--config",
+            cfg.to_str().unwrap(),
+            "--token",
+            "t",
+            "-vv",
+            "api",
+            "GET",
+            "projects",
+        ])
+        .assert()
+        .success()
+        // Debug request log goes to stderr (stdout stays clean JSON).
+        .stdout(contains("\"ok\": true"))
+        .stderr(contains("GET"))
+        .stderr(contains("/api/v3/projects"))
+        .stderr(contains("-> 200"));
+}

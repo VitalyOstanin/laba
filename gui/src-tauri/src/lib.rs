@@ -13,6 +13,21 @@ use tauri::{
     tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
 };
 
+/// Log level for the plugin, from a bare `RUST_LOG` level word (error/warn/info/
+/// debug/trace, case-insensitive); anything else (unset or per-module syntax)
+/// keeps the `info` default. Lets `RUST_LOG=debug` surface `laba_core` request
+/// logs in the webview console, paralleling the CLI's `-v`.
+fn log_level_from_env() -> log::LevelFilter {
+    match std::env::var("RUST_LOG").ok().as_deref().map(str::trim) {
+        Some(v) if v.eq_ignore_ascii_case("error") => log::LevelFilter::Error,
+        Some(v) if v.eq_ignore_ascii_case("warn") => log::LevelFilter::Warn,
+        Some(v) if v.eq_ignore_ascii_case("info") => log::LevelFilter::Info,
+        Some(v) if v.eq_ignore_ascii_case("debug") => log::LevelFilter::Debug,
+        Some(v) if v.eq_ignore_ascii_case("trace") => log::LevelFilter::Trace,
+        _ => log::LevelFilter::Info,
+    }
+}
+
 /// Reveal and focus the main window (from the tray menu or a tray click).
 fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
     if let Some(w) = app.get_webview_window("main") {
@@ -93,7 +108,7 @@ pub fn run() {
     builder
         .plugin(
             tauri_plugin_log::Builder::new()
-                .level(log::LevelFilter::Info)
+                .level(log_level_from_env())
                 .targets([
                     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
                     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),

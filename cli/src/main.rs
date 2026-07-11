@@ -18,9 +18,26 @@ async fn main() -> ExitCode {
     }
 }
 
+/// Install the logger. `RUST_LOG` wins when set; otherwise `-v`/`-vv` raise the
+/// level (warn by default, debug at `-v`, trace at `-vv`). Records go to stderr
+/// so stdout stays clean for JSON output.
+fn init_logging(verbose: u8) {
+    let mut builder = env_logger::Builder::from_env(env_logger::Env::default());
+    if std::env::var_os("RUST_LOG").is_none() {
+        let level = match verbose {
+            0 => log::LevelFilter::Warn,
+            1 => log::LevelFilter::Debug,
+            _ => log::LevelFilter::Trace,
+        };
+        builder.filter_level(level);
+    }
+    builder.init();
+}
+
 async fn run() -> Result<(), Error> {
     let cli = cli::Cli::parse();
     let g = &cli.globals;
+    init_logging(g.verbose);
     match cli.command {
         cli::Command::Server(cmd) => commands::server::run(cmd, &g.config).await,
         cli::Command::Auth(cmd) => {

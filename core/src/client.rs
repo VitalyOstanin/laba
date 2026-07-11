@@ -300,24 +300,33 @@ impl Client {
         body: Option<serde_json::Value>,
     ) -> Result<serde_json::Value, Error> {
         let url = self.resolve_url(path)?;
+        log::debug!("{method} {url}");
         let mut req = self
             .http
-            .request(method, &url)
+            .request(method.clone(), &url)
             .basic_auth("apikey", Some(&self.token))
             .header(reqwest::header::ACCEPT, "application/json")
             .query(query);
         if let Some(b) = body {
+            log::trace!("request body: {b}");
             req = req.json(&b);
         }
+        let started = std::time::Instant::now();
         let resp = req
             .send()
             .await
             .map_err(|e| Error::Api(format!("request {url}: {e}")))?;
         let status = resp.status();
+        log::debug!(
+            "{method} {url} -> {} ({} ms)",
+            status.as_u16(),
+            started.elapsed().as_millis()
+        );
         let text = resp
             .text()
             .await
             .map_err(|e| Error::Api(format!("read body: {e}")))?;
+        log::trace!("response body: {text}");
         if !status.is_success() {
             return Err(api_error(status, text));
         }
@@ -331,6 +340,8 @@ impl Client {
     /// rejects the request with 406 otherwise). Non-2xx maps to `Error::Api`.
     pub async fn delete(&self, path: &str) -> Result<(), Error> {
         let url = self.resolve_url(path)?;
+        log::debug!("DELETE {url}");
+        let started = std::time::Instant::now();
         let resp = self
             .http
             .request(reqwest::Method::DELETE, &url)
@@ -341,6 +352,11 @@ impl Client {
             .await
             .map_err(|e| Error::Api(format!("request {url}: {e}")))?;
         let status = resp.status();
+        log::debug!(
+            "DELETE {url} -> {} ({} ms)",
+            status.as_u16(),
+            started.elapsed().as_millis()
+        );
         if status.is_success() {
             return Ok(());
         }

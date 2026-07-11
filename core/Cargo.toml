@@ -27,6 +27,10 @@ semver = "1"
 futures-util = "0.3"
 # Local date for the default spentOn on time-entry create.
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
+# Diagnostic logging facade; the CLI installs env_logger and the GUI routes it
+# through tauri-plugin-log. Request method/URL/status/timing at debug, bodies at
+# trace (the auth token lives in the Authorization header and is never logged).
+log = "0.4"
 # IANA timezone database for the configurable day-boundary/display zone.
 chrono-tz = { version = "0.10", default-features = false }
 

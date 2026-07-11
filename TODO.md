@@ -191,12 +191,19 @@ Backlog of ideas to evaluate. Not commitments.
 
 ## Observability / debugging
 
-- [ ] Request tracing in `core`: add `tracing` + `tracing-subscriber` driven by
-      `RUST_LOG` and a `-v/-vv` flag. At debug level log method, URL, status and
-      timing; at trace level log request/response bodies with the auth token
-      redacted. The same logging code serves both the CLI and the GUI backend,
-      since both go through `core`. (`--raw` and the `api` passthrough already act
-      as built-in diagnostics — compare raw vs normalized output.)
+- [~] Request logging in `core`: DONE for the JSON API path via the `log` facade
+      (not `tracing`: the GUI already routes the `log` facade through
+      `tauri-plugin-log`, so a facade avoids a second logging system there — a
+      `tracing` bridge would be extra wiring for no gain here). `core` logs
+      method/URL/status/timing at debug and request/response bodies at trace in
+      `Client::request_json_query` and `delete`; the auth token lives in the
+      Authorization header and is never logged. The CLI installs `env_logger`
+      (stderr, so stdout stays clean JSON) with a global `-v`/`-vv` (warn → debug →
+      trace) that `RUST_LOG` overrides; the GUI maps a bare `RUST_LOG` level word
+      onto the `tauri-plugin-log` level (default info). Remaining: extend the same
+      debug lines to the streaming attachment paths (`stream_download`,
+      `download_to_path`, the upload POST) — metadata only, never bodies (binary);
+      optionally structured fields / spans if richer tracing is ever needed.
 - [x] GUI (Tauri) debugging: webview DevTools open automatically in debug builds
       (`open_devtools()` in `setup`, right-click Inspect also available), and
       `tauri-plugin-log` bridges Rust `log` records to stdout and the webview
