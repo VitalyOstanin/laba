@@ -10,6 +10,7 @@ vi.mock("./api", () => ({
   listTasks: vi.fn(async () => emptyPage<Task>()),
   listNotifications: vi.fn(async () => emptyPage<Notification>()),
   getTimelog: vi.fn(async () => null),
+  notifyItems: vi.fn(async () => {}),
 }));
 
 import * as api from "./api";

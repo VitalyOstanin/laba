@@ -36,6 +36,7 @@ export const en = {
   "settings.scale.hint":
     "Shortcuts: Ctrl+= zoom in, Ctrl+- zoom out, Ctrl+0 reset.",
   "settings.tray": "Hide to tray when closing the window",
+  "settings.notifications": "Show desktop notifications for new items",
   "settings.poll": "Poll interval per server (seconds)",
   "settings.poll.hint": "Leave blank to use the backend default.",
   "settings.saved": "Saved",
@@ -98,6 +99,7 @@ export const en = {
   "notif.unread": "Unread",
   "notif.isUnread": "Unread",
   "notif.isRead": "Read",
+  "notif.newCountSuffix": "new notifications",
   "task.comment": "Comment",
   "task.commentPlaceholder": "Write a comment…",
   "task.send": "Send",

@@ -23,6 +23,16 @@ export const getChangelog = (): Promise<ReleaseNote[]> =>
 // UI can show a friendly install/login hint.
 export const ghDependency = (): Promise<GhDependency> =>
   invoke("gh_dependency");
+// Show desktop notifications for newly-arrived unread items. `target` is an
+// opaque routing payload echoed back on click (Linux) via the `open-notification`
+// event, so the frontend decides where a click leads.
+export interface NotifyItem {
+  title: string;
+  body: string;
+  target: unknown;
+}
+export const notifyItems = (items: NotifyItem[]): Promise<void> =>
+  invoke("notify_items", { items });
 // Window/app controls for keyboard shortcuts. quitApp exits unconditionally;
 // closeWindow runs the normal close flow (hide to tray or quit per settings).
 export const quitApp = (): Promise<void> => invoke("quit_app");

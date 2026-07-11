@@ -1,6 +1,7 @@
 mod commands;
 #[cfg(target_os = "linux")]
 mod linux_tray;
+mod notify;
 
 use tauri::{AppHandle, Manager, Runtime};
 
@@ -76,6 +77,12 @@ pub fn run() {
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init());
+    // Windows/macOS desktop notifications go through the Tauri plugin; Linux uses
+    // notify-rust directly (in `notify`), so the plugin is not needed there.
+    #[cfg(not(target_os = "linux"))]
+    {
+        builder = builder.plugin(tauri_plugin_notification::init());
+    }
     // Desktop-only self-update against the project's GitHub releases. The
     // frontend drives it (check on start, install on an explicit click); this
     // just wires the plugin so those JS calls have a backend.
@@ -179,6 +186,7 @@ pub fn run() {
             commands::set_tray_status,
             commands::get_changelog,
             commands::gh_dependency,
+            notify::notify_items,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

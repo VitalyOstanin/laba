@@ -78,6 +78,8 @@ export interface Settings {
   theme: Theme;
   language: Lang;
   minimize_to_tray: boolean;
+  // show a desktop notification when new unread items arrive
+  desktop_notifications: boolean;
   // first day of the week for week-based grouping; "system" follows the locale
   week_start: WeekStart;
   // IANA timezone name for the day boundary and datetime display; "system" = local

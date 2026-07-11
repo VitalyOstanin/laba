@@ -1,15 +1,119 @@
 import { get } from "svelte/store";
-import { listServers, listTasks, listNotifications, getTimelog } from "./api";
+import {
+  listServers,
+  listTasks,
+  listNotifications,
+  getTimelog,
+  notifyItems,
+  type NotifyItem,
+} from "./api";
 import {
   servers,
   byServer,
   summaries,
   activeServer,
   timelog,
+  settings,
   unreadOf,
+  freshUnread,
   type ServerState,
 } from "./store";
-import type { ServerInfo } from "./types";
+import { t } from "./i18n";
+import { goto } from "$app/navigation";
+import { openExternal } from "./external";
+import type { ServerInfo, Notification } from "./types";
+
+// Unread notification ids observed on the previous poll of each server, so a
+// desktop notification fires only for ids that are new (see `freshUnread`).
+const seenUnread = new Map<string, Set<string>>();
+// More than this many new items at once collapse into a single summary banner
+// instead of one banner per item.
+const NOTIFY_COLLAPSE = 3;
+
+/**
+ * Desktop-notify the unread items that are new since the last poll of `s`. The
+ * first poll only establishes a baseline (no startup burst); the settings toggle
+ * suppresses banners but the baseline is still tracked so enabling it later does
+ * not dump the whole backlog.
+ */
+function maybeNotify(s: ServerInfo, notifications: Notification[]): void {
+  const prev = seenUnread.get(s.name);
+  const { fresh, seen } = freshUnread(prev, notifications);
+  seenUnread.set(s.name, seen);
+  if (prev === undefined || fresh.length === 0) return;
+  if (!get(settings).desktop_notifications) return;
+  // A notification failure must never abort the poll (which also refreshes the
+  // task/notification lists), so swallow any error here.
+  try {
+    const items = buildNotifyItems(s, fresh);
+    if (items.length > 0) void notifyItems(items).catch(() => {});
+  } catch (e) {
+    console.error("desktop notification failed", e);
+  }
+}
+
+/** Route a click on a desktop notification to the item it announced. Mirrors the
+ * in-app targets: an OpenProject task opens its detail screen, a GitHub item
+ * opens in the browser, a summary just focuses the server. */
+function routeNotification(payload: unknown): void {
+  const p = payload as Record<string, unknown> | null;
+  if (!p || typeof p.kind !== "string") return;
+  if (p.kind === "external" && typeof p.url === "string") {
+    void openExternal(p.url);
+    return;
+  }
+  if (typeof p.server === "string") activeServer.set(p.server);
+  if (p.kind === "task" && p.server != null && p.id != null) {
+    void goto(
+      `/task?server=${encodeURIComponent(String(p.server))}&id=${encodeURIComponent(String(p.id))}`,
+    );
+  } else {
+    void goto("/");
+  }
+}
+
+/** Subscribe to click-through events from Linux desktop notifications. No-op in
+ * a plain browser (dev-mock) where the Tauri event bus is absent. */
+async function registerNotificationClick(): Promise<void> {
+  if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) return;
+  const { listen } = await import("@tauri-apps/api/event");
+  await listen("open-notification", (e) => routeNotification(e.payload));
+}
+
+/**
+ * Turn fresh notifications into banner items. A click target routes the banner:
+ * an OpenProject item opens its detail screen, a GitHub item opens the issue/PR
+ * in the browser, anything else just focuses the server. Many at once collapse
+ * into one summary that focuses the server.
+ */
+function buildNotifyItems(s: ServerInfo, fresh: Notification[]): NotifyItem[] {
+  const label = s.display_name || s.name;
+  if (fresh.length > NOTIFY_COLLAPSE) {
+    const suffix = get(t)("notif.newCountSuffix");
+    return [
+      {
+        title: label,
+        body: `${fresh.length} ${suffix}`,
+        target: { kind: "server", server: s.name },
+      },
+    ];
+  }
+  return fresh.map((raw) => {
+    const n = raw as Record<string, unknown>;
+    const subject = String(n.wpTitle ?? n.subject ?? "");
+    const reason = n.reason ? `${String(n.reason)}: ` : "";
+    const wpId = Number(n.wpId);
+    let target: unknown;
+    if (s.supports_task_detail && Number.isFinite(wpId)) {
+      target = { kind: "task", server: s.name, id: wpId };
+    } else if (typeof n.htmlUrl === "string" && n.htmlUrl) {
+      target = { kind: "external", url: n.htmlUrl };
+    } else {
+      target = { kind: "server", server: s.name };
+    }
+    return { title: label, body: reason + subject, target };
+  });
+}
 
 const timers = new Map<string, ReturnType<typeof setInterval>>();
 let timelogTimer: ReturnType<typeof setInterval> | undefined;
@@ -55,6 +159,9 @@ export async function startPolling(): Promise<void> {
   resumeHandler = () => void refreshAll();
   window.addEventListener("focus", resumeHandler);
   window.addEventListener("online", resumeHandler);
+
+  // Route clicks on Linux desktop notifications to the item they announced.
+  void registerNotificationClick();
 }
 
 export function stopPolling(): void {
@@ -128,6 +235,9 @@ async function pollOnce(s: ServerInfo): Promise<void> {
     ]);
     const unread = notifs.items.filter(unreadOf).length;
     summaries.update((m) => ({ ...m, [s.name]: { error: null, unread } }));
+    // Announce items that became unread since the last poll (all servers, not
+    // just the active one).
+    maybeNotify(s, notifs.items);
     // Re-read after the await: the user may have switched servers while the
     // requests were in flight. Deciding by the pre-await snapshot would let a
     // stale poll leave resident arrays on a now-inactive server.

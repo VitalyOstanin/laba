@@ -78,6 +78,7 @@ let settings: Settings = {
   theme: "system",
   language: "system",
   minimize_to_tray: true,
+  desktop_notifications: true,
   week_start: "system",
   timezone: "system",
   ui_scale: 1,

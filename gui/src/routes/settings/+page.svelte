@@ -74,6 +74,10 @@
     settings.update((s) => ({ ...s, minimize_to_tray: v }));
     void persist();
   }
+  function setDesktopNotifications(v: boolean): void {
+    settings.update((s) => ({ ...s, desktop_notifications: v }));
+    void persist();
+  }
   function setUiScale(scale: number): void {
     const v = clampUiScale(scale);
     settings.update((s) => ({ ...s, ui_scale: v }));
@@ -395,6 +399,18 @@
         onchange={(e) => setTray(e.currentTarget.checked)}
       />
       {$t("settings.tray")}
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>{$t("settings.notifications")}</legend>
+    <label class="toggle">
+      <input
+        type="checkbox"
+        checked={$settings.desktop_notifications}
+        onchange={(e) => setDesktopNotifications(e.currentTarget.checked)}
+      />
+      {$t("settings.notifications")}
     </label>
   </fieldset>
 

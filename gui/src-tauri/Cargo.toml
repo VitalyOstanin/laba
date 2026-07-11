@@ -42,9 +42,19 @@ ksni = "0.3"
 # Decode the bundled PNG app icon into the ARGB pixmap the SNI tray draws, so
 # the tray shows the wrench with a small count badge instead of a bare number.
 png = "0.17"
+# Desktop notifications with a click action. Tauri's notification plugin exposes
+# click actions only on mobile, so Linux uses freedesktop notifications directly
+# (via zbus — no libdbus C dependency) to get click-through to the item.
+notify-rust = { version = "4", default-features = false, features = ["z"] }
 
 # The self-update plugin is desktop-only (checks GitHub releases, downloads and
 # swaps the bundle). Excluded on mobile targets where it does not build.
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
+
+# Windows/macOS desktop notifications fall back to the Tauri notification plugin
+# (basic banner, no click-through — the Actions API is mobile-only). Linux uses
+# notify-rust above instead.
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+tauri-plugin-notification = "2"
 

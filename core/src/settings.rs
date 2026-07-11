@@ -105,6 +105,10 @@ pub struct Settings {
     /// Hide to tray on window close instead of quitting.
     #[serde(default = "default_true")]
     pub minimize_to_tray: bool,
+    /// Show a desktop notification when new unread items arrive (with
+    /// click-through to the item on platforms that support it).
+    #[serde(default = "default_true")]
+    pub desktop_notifications: bool,
     /// First day of the week for week-based grouping.
     #[serde(default)]
     pub week_start: WeekStart,
@@ -178,6 +182,7 @@ impl Default for Settings {
             theme: Theme::default(),
             language: Lang::default(),
             minimize_to_tray: true,
+            desktop_notifications: true,
             week_start: WeekStart::default(),
             timezone: default_timezone(),
             ui_scale: DEFAULT_UI_SCALE,
@@ -261,6 +266,7 @@ mod tests {
             theme: Theme::Dark,
             language: Lang::Ru,
             minimize_to_tray: false,
+            desktop_notifications: false,
             week_start: WeekStart::Sunday,
             timezone: "Europe/Moscow".into(),
             ui_scale: 1.25,

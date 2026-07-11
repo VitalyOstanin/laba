@@ -11,6 +11,7 @@ export const defaultSettings: Settings = {
   theme: "system",
   language: "system",
   minimize_to_tray: true,
+  desktop_notifications: true,
   week_start: "system",
   timezone: "system",
   ui_scale: 1,
@@ -87,6 +88,31 @@ export function unreadOf(n: Notification): boolean {
 /** Number of unread notifications in a loaded server state. */
 export function unreadIn(s: ServerState): number {
   return s.notifications.filter(unreadOf).length;
+}
+
+/**
+ * Detect unread notifications that are new since the last poll of a server, for
+ * desktop notification. `prevSeen` is the set of unread ids observed on the
+ * previous poll, or `undefined` on the first poll (which establishes a baseline
+ * silently — no burst of banners for the existing backlog at startup).
+ *
+ * Returns the fresh notifications to announce and the `seen` set to carry to the
+ * next poll. `seen` is the current unread ids only, so a notification marked read
+ * elsewhere drops out and would announce again if it later returns to unread.
+ */
+export function freshUnread(
+  prevSeen: Set<string> | undefined,
+  notifications: Notification[],
+): { fresh: Notification[]; seen: Set<string> } {
+  const unread = notifications.filter(unreadOf);
+  const seen = new Set(unread.map((n) => String((n as Record<string, unknown>).id)));
+  const fresh =
+    prevSeen === undefined
+      ? []
+      : unread.filter(
+          (n) => !prevSeen.has(String((n as Record<string, unknown>).id)),
+        );
+  return { fresh, seen };
 }
 
 /** Reduce a loaded server state to its retained summary. */

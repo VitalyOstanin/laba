@@ -38,6 +38,7 @@ export const ru: Dict = {
   "settings.scale.hint":
     "Горячие клавиши: Ctrl+= увеличить, Ctrl+- уменьшить, Ctrl+0 сброс.",
   "settings.tray": "Сворачивать в трей при закрытии окна",
+  "settings.notifications": "Показывать уведомления рабочего стола о новых элементах",
   "settings.poll": "Интервал опроса по серверам (секунды)",
   "settings.poll.hint": "Пусто — использовать значение по умолчанию бэкенда.",
   "settings.saved": "Сохранено",
@@ -100,6 +101,7 @@ export const ru: Dict = {
   "notif.unread": "Не прочитано",
   "notif.isUnread": "Не прочитано",
   "notif.isRead": "Прочитано",
+  "notif.newCountSuffix": "новых уведомлений",
   "task.comment": "Комментарий",
   "task.commentPlaceholder": "Напишите комментарий…",
   "task.send": "Отправить",
