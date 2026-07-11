@@ -62,8 +62,38 @@ pub enum ServerCmd {
         #[arg(long)]
         clear: bool,
     },
+    /// Set, clear, or show a server's proxy override. A URL routes through that
+    /// proxy; `direct` forces a direct connection; empty or --clear inherits the
+    /// global default, then the ambient env. With no value, prints the current
+    /// override.
+    Proxy {
+        /// Server short name (defaults to the default server).
+        #[arg(long)]
+        server: Option<String>,
+        /// Proxy URL, `direct`, or empty to clear. Omit to print the current value.
+        proxy: Option<String>,
+        /// Clear the override (inherit the global default / env).
+        #[arg(long)]
+        clear: bool,
+    },
+    /// Set, clear, or show the global default proxy (used by servers without
+    /// their own override). A URL or `direct`; empty or --clear clears it. With no
+    /// value, prints the current default.
+    GlobalProxy {
+        /// Proxy URL, `direct`, or empty to clear. Omit to print the current value.
+        proxy: Option<String>,
+        /// Clear the global default (each server falls back to env, then direct).
+        #[arg(long)]
+        clear: bool,
+    },
     /// Show a profile (token not shown).
     Show { name: Option<String> },
+}
+
+/// Trim a proxy value; an empty string becomes `None` (clear / inherit), mirroring
+/// the GUI's `normalize_proxy` so both entry points behave identically.
+fn normalize_proxy(v: Option<String>) -> Option<String> {
+    v.map(|s| s.trim().to_owned()).filter(|s| !s.is_empty())
 }
 
 pub async fn run(cmd: ServerCmd, config_flag: &Option<PathBuf>) -> Result<(), Error> {
@@ -216,6 +246,39 @@ pub async fn run(cmd: ServerCmd, config_flag: &Option<PathBuf>) -> Result<(), Er
                     } else {
                         println!("no color set for status '{status}' on '{name}'");
                     }
+                }
+            }
+        }
+        ServerCmd::Proxy {
+            server,
+            proxy,
+            clear,
+        } => {
+            let name = cfg.resolve_server_name(server.as_deref())?;
+            if proxy.is_none() && !clear {
+                let current = cfg.servers[&name].proxy.as_deref().unwrap_or("");
+                println!("{current}");
+            } else {
+                let value = if clear { None } else { normalize_proxy(proxy) };
+                let profile = cfg.servers.get_mut(&name).expect("resolved server exists");
+                profile.proxy = value.clone();
+                cfg.save(&path)?;
+                match value {
+                    Some(v) => println!("proxy for '{name}' -> {v}"),
+                    None => println!("cleared proxy override for '{name}'"),
+                }
+            }
+        }
+        ServerCmd::GlobalProxy { proxy, clear } => {
+            if proxy.is_none() && !clear {
+                println!("{}", cfg.proxy.as_deref().unwrap_or(""));
+            } else {
+                let value = if clear { None } else { normalize_proxy(proxy) };
+                cfg.proxy = value.clone();
+                cfg.save(&path)?;
+                match value {
+                    Some(v) => println!("global proxy -> {v}"),
+                    None => println!("cleared global proxy"),
                 }
             }
         }

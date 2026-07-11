@@ -167,10 +167,13 @@ Backlog of ideas to evaluate. Not commitments.
       at any level. GUI exposes a per-server proxy field and a global default;
       commands `set_server_proxy`/`get_global_proxy`/`set_global_proxy`. CLI honors
       `Config.proxy` on every command plus the existing `--proxy` override and
-      `server add --proxy`. Unit tests cover the resolution ladder. Follow-ups: a
-      CLI setter for the global proxy and for editing a per-server proxy after
-      `server add`; an integration test that actually proxies through a stub
-      SOCKS/HTTP proxy (the unit tests cover resolution, not on-the-wire proxying).
+      `server add --proxy`. Unit tests cover the resolution ladder. CLI setters
+      done: `server proxy` (per-server override: set / clear / show, resolves the
+      default server) and `server global-proxy` (global default: set / clear /
+      show), both mirroring the GUI's `normalize_proxy` (trim, empty clears,
+      `direct` kept literal). Follow-up still open: an integration test that
+      actually proxies through a stub SOCKS/HTTP proxy (the unit/CLI tests cover
+      resolution and config wiring, not on-the-wire proxying).
 
 ## Documentation
 
