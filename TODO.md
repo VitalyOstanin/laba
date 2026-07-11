@@ -136,7 +136,7 @@ Backlog of ideas to evaluate. Not commitments.
 
 ## Networking / proxy
 
-- [ ] Proxy support for backend HTTP: both **SOCKS5** and **HTTP(S)** proxies,
+- [x] Proxy support for backend HTTP: both **SOCKS5** and **HTTP(S)** proxies,
       configurable at two levels — a **global** default and a **per-server**
       override (a server may need a different proxy or none). Per-server wins over
       global; allow an explicit "no proxy / direct" per server. Honor standard
@@ -145,6 +145,16 @@ Backlog of ideas to evaluate. Not commitments.
       SOCKS5 needs the `socks` feature. Apply the resolved proxy when building the
       per-server client in `core`. Surface it in server settings (GUI) and as a
       CLI flag/config. Cover proxied vs direct in tests (wiremock + a stub proxy).
+      Done: `core::client::{ProxyChoice, resolve_proxy, Client::new_with_global}`
+      resolves override > per-server `ServerProfile.proxy` > global `Config.proxy`
+      > ambient env > direct; `"direct"`/`"none"`/empty forces a direct connection
+      at any level. GUI exposes a per-server proxy field and a global default;
+      commands `set_server_proxy`/`get_global_proxy`/`set_global_proxy`. CLI honors
+      `Config.proxy` on every command plus the existing `--proxy` override and
+      `server add --proxy`. Unit tests cover the resolution ladder. Follow-ups: a
+      CLI setter for the global proxy and for editing a per-server proxy after
+      `server add`; an integration test that actually proxies through a stub
+      SOCKS/HTTP proxy (the unit tests cover resolution, not on-the-wire proxying).
 
 ## Documentation
 

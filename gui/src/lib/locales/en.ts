@@ -120,6 +120,12 @@ export const en = {
   "settings.displayFields.field": "Field name",
   "settings.displayFields.add": "Add",
   "settings.displayFields.remove": "Remove",
+  "settings.proxy": "Proxy",
+  "settings.proxy.global": "Proxy (global default)",
+  "settings.proxy.placeholder":
+    "socks5://host:port, http://host:port, or direct",
+  "settings.proxy.hint":
+    "Route this backend's HTTP through a proxy. Leave empty to inherit the global default, then the HTTP(S)_PROXY environment, then a direct connection. Enter “direct” to force a direct connection.",
 } as const;
 
 export type Key = keyof typeof en;

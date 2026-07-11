@@ -122,4 +122,10 @@ export const ru: Dict = {
   "settings.displayFields.field": "Имя поля",
   "settings.displayFields.add": "Добавить",
   "settings.displayFields.remove": "Удалить",
+  "settings.proxy": "Прокси",
+  "settings.proxy.global": "Прокси (глобальный по умолчанию)",
+  "settings.proxy.placeholder":
+    "socks5://host:port, http://host:port или direct",
+  "settings.proxy.hint":
+    "Направлять HTTP этого сервера через прокси. Пусто — наследовать глобальный по умолчанию, затем переменные окружения HTTP(S)_PROXY, затем прямое соединение. Введите «direct» для принудительного прямого соединения.",
 };

@@ -29,6 +29,8 @@ export interface ServerInfo {
   supports_task_detail: boolean;
   // custom-field names shown as extra task-list columns (and sort keys), e.g. Rank
   display_fields: string[];
+  // per-server proxy override (URL, "direct", or null = inherit global/env)
+  proxy: string | null;
 }
 
 // One expanded custom field on a task: {key, name, value}. `name` is the human

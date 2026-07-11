@@ -49,6 +49,8 @@ pub struct ServerInfo {
     pub supports_task_detail: bool,
     /// Custom-field names shown as extra task-list columns (and sort keys).
     pub display_fields: Vec<String>,
+    /// Per-server proxy override (URL, `"direct"`, or absent = inherit global/env).
+    pub proxy: Option<String>,
 }
 
 fn backend_str(b: Backend) -> &'static str {
@@ -85,6 +87,7 @@ pub fn server_infos(cfg: &Config) -> Vec<ServerInfo> {
             supports_custom_fields: p.backend.supports_custom_fields(),
             supports_task_detail: p.backend.supports_task_detail(),
             display_fields: p.display_fields.clone(),
+            proxy: p.proxy.clone(),
         })
         .collect()
 }
@@ -155,12 +158,13 @@ async fn server_time_minutes(
     p: &ServerProfile,
     since: &str,
     today: &str,
+    global_proxy: Option<&str>,
 ) -> Result<Vec<(String, i64)>, String> {
     let token = match token_for(name, p.backend)? {
         Some(t) => t,
         None => return Ok(Vec::new()),
     };
-    let client = match Client::new("", p, token, None) {
+    let client = match Client::new_with_global("", p, token, None, global_proxy) {
         Ok(c) => c,
         Err(e) => {
             log::warn!("timelog skipped server '{name}': {e}");
@@ -217,6 +221,8 @@ pub async fn get_timelog() -> Result<TimelogResult, String> {
     let mut starts: Vec<String> = Vec::new();
     let mut any_auto = false;
     let mut dirty = false;
+    // Snapshot the global proxy before borrowing `cfg.servers` mutably below.
+    let global_proxy = cfg.proxy.clone();
 
     for (name, p) in cfg.servers.iter_mut() {
         // Disabled servers are skipped entirely.
@@ -243,7 +249,8 @@ pub async fn get_timelog() -> Result<TimelogResult, String> {
             starts.push(since.clone());
         }
 
-        entries.extend(server_time_minutes(name, p, &since, &today).await?);
+        entries
+            .extend(server_time_minutes(name, p, &since, &today, global_proxy.as_deref()).await?);
     }
 
     if dirty {
@@ -337,7 +344,7 @@ fn op_client(server: &str) -> Result<Client, String> {
         ));
     }
     let token = token_for(server, p.backend)?.ok_or_else(|| format!("no token for '{server}'"))?;
-    Client::new("", &p, token, None).map_err(|e| e.to_string())
+    Client::new_with_global("", &p, token, None, cfg.proxy.as_deref()).map_err(|e| e.to_string())
 }
 
 /// Toggle a notification's read state (requirement 17).
@@ -467,7 +474,8 @@ pub async fn pick_candidates() -> Result<Vec<timelog::Candidate>, String> {
             Some(t) => t,
             None => continue,
         };
-        let client = match Client::new("", p, token.clone(), None) {
+        let client = match Client::new_with_global("", p, token.clone(), None, cfg.proxy.as_deref())
+        {
             Ok(c) => c,
             Err(_) => continue,
         };
@@ -681,6 +689,39 @@ pub fn set_server_display_fields(name: String, fields: Vec<String>) -> Result<()
     })
 }
 
+/// Normalize a proxy input from the settings UI: trim; an empty value clears the
+/// override (inherit the next level); a URL or the `"direct"`/`"none"` sentinel
+/// is kept verbatim (interpreted by [`taskstream_core::client::resolve_proxy`]).
+fn normalize_proxy(v: Option<String>) -> Option<String> {
+    v.map(|s| s.trim().to_owned()).filter(|s| !s.is_empty())
+}
+
+/// Set a server's proxy override. Empty clears it (inherit global/env); a URL
+/// routes through that proxy; `"direct"` forces a direct connection.
+#[tauri::command]
+pub fn set_server_proxy(name: String, proxy: Option<String>) -> Result<(), String> {
+    with_config(|cfg| {
+        profile_mut(cfg, &name)?.proxy = normalize_proxy(proxy);
+        Ok(())
+    })
+}
+
+/// The global default proxy (applies to servers without their own override).
+#[tauri::command]
+pub fn get_global_proxy() -> Result<Option<String>, String> {
+    Ok(load_cfg()?.proxy)
+}
+
+/// Set the global default proxy. Empty clears it (each server falls back to
+/// env, then direct); a URL or `"direct"` sets the default.
+#[tauri::command]
+pub fn set_global_proxy(proxy: Option<String>) -> Result<(), String> {
+    with_config(|cfg| {
+        cfg.proxy = normalize_proxy(proxy);
+        Ok(())
+    })
+}
+
 /// Rename a server: re-key its profile, update the default, and move its stored
 /// token to the new key. The short name is the identifier, so renaming it is a
 /// key move rather than a field edit.
@@ -768,6 +809,7 @@ mod tests {
         );
         Config {
             default_server: Some("work".into()),
+            proxy: None,
             servers,
         }
     }

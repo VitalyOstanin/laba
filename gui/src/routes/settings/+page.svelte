@@ -11,6 +11,9 @@
     setServerStatusColor,
     setServerStatusFilters,
     setServerDisplayFields,
+    setServerProxy,
+    getGlobalProxy,
+    setGlobalProxy,
     renameServer,
     addServer,
   } from "$lib/api";
@@ -110,6 +113,20 @@
   async function setStart(name: string, date: string): Promise<void> {
     await setServerTimelogStart(name, date === "" ? null : date);
     await refreshServers();
+  }
+  async function setProxy(name: string, value: string): Promise<void> {
+    await setServerProxy(name, value.trim() === "" ? null : value.trim());
+    await refreshServers();
+  }
+
+  // Global default proxy (Config-level, applies to servers without an override).
+  // Loaded once on mount; edits persist immediately.
+  let globalProxy = $state("");
+  getGlobalProxy().then((p) => (globalProxy = p ?? ""));
+  async function saveGlobalProxy(value: string): Promise<void> {
+    const v = value.trim();
+    globalProxy = v;
+    await setGlobalProxy(v === "" ? null : v);
   }
 
   // Per-server status-color editor. Drafts for the "add" row are keyed by server
@@ -382,6 +399,20 @@
   </fieldset>
 
   <fieldset>
+    <legend>{$t("settings.proxy.global")}</legend>
+    <label class="tz-field">
+      <input
+        type="text"
+        placeholder={$t("settings.proxy.placeholder")}
+        value={globalProxy}
+        onchange={(e) => saveGlobalProxy(e.currentTarget.value)}
+        use:fieldKeys={() => globalProxy}
+      />
+    </label>
+    <p class="hint">{$t("settings.proxy.hint")}</p>
+  </fieldset>
+
+  <fieldset>
     <legend>{$t("settings.servers")}</legend>
     <p class="hint">{$t("settings.poll.hint")} {$t("settings.timelog.hint")}</p>
     <ul class="server-settings">
@@ -425,6 +456,16 @@
               value={s.poll_override ?? ""}
               onchange={(e) => setPoll(s.name, e.currentTarget.value)}
               use:fieldKeys={() => String(s.poll_override ?? "")}
+            />
+          </label>
+          <label class="srv-field">
+            <span>{$t("settings.proxy")}</span>
+            <input
+              type="text"
+              placeholder={$t("settings.proxy.placeholder")}
+              value={s.proxy ?? ""}
+              onchange={(e) => setProxy(s.name, e.currentTarget.value)}
+              use:fieldKeys={() => s.proxy ?? ""}
             />
           </label>
           {#if s.backend !== "github"}

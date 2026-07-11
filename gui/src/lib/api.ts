@@ -63,6 +63,17 @@ export const setServerDisplayFields = (
   name: string,
   fields: string[],
 ): Promise<void> => invoke("set_server_display_fields", { name, fields });
+// Per-server proxy override. Empty/null clears it (inherit global/env); a URL
+// routes through that proxy; "direct" forces a direct connection.
+export const setServerProxy = (
+  name: string,
+  proxy: string | null,
+): Promise<void> => invoke("set_server_proxy", { name, proxy });
+// Global default proxy (applies to servers without their own override).
+export const getGlobalProxy = (): Promise<string | null> =>
+  invoke("get_global_proxy");
+export const setGlobalProxy = (proxy: string | null): Promise<void> =>
+  invoke("set_global_proxy", { proxy });
 export const renameServer = (old: string, next: string): Promise<void> =>
   invoke("rename_server", { old, new: next });
 // Add a server profile. backend "github" needs no token (uses gh); "openproject"
