@@ -5,6 +5,12 @@ The format follows Keep a Changelog and Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-07-11
+
+### Fixed
+- Linux AppImage: drop the bundled libwayland-client so the webview renders on modern distributions instead of showing a blank window.
+- Tray: show the app icon with a small red count badge in the corner instead of replacing it with a bare number.
+
 ## [0.1.1] - 2026-07-11
 
 ### Changed
