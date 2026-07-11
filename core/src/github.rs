@@ -203,7 +203,49 @@ pub fn normalize_notification(v: &Value) -> Value {
             .cloned()
             .unwrap_or(Value::Null),
     );
+    // A browser URL for the notification's subject. `subject.url` is the REST API
+    // address (`api.github.com/repos/O/R/issues/N`), which is not viewable in a
+    // browser, so derive the web address from the repository and the issue/PR
+    // number instead. Only Issue and PullRequest map cleanly; other subject types
+    // (Discussion, Release, CheckSuite, …) get no link and stay plain text.
+    m.insert(
+        "htmlUrl".into(),
+        notification_html_url(v)
+            .map(Value::String)
+            .unwrap_or(Value::Null),
+    );
     Value::Object(m)
+}
+
+/// Browser URL for a notification's subject, or `None` when it cannot be built
+/// (unsupported subject type, or missing repository/number). Built from the
+/// repository web address plus the subject number so it works on GitHub
+/// Enterprise hosts too, not only `github.com`.
+fn notification_html_url(v: &Value) -> Option<String> {
+    let subject = v.get("subject")?;
+    let path = match subject.get("type").and_then(Value::as_str)? {
+        "Issue" => "issues",
+        "PullRequest" => "pull",
+        _ => return None,
+    };
+    // Number is the last path segment of the subject API URL.
+    let number = subject
+        .get("url")
+        .and_then(Value::as_str)?
+        .rsplit('/')
+        .next()
+        .filter(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))?;
+    let repo = v.get("repository")?;
+    let base = repo
+        .get("html_url")
+        .and_then(Value::as_str)
+        .map(|u| u.trim_end_matches('/').to_string())
+        .or_else(|| {
+            repo.get("full_name")
+                .and_then(Value::as_str)
+                .map(|fname| format!("https://github.com/{fname}"))
+        })?;
+    Some(format!("{base}/{path}/{number}"))
 }
 
 fn parse_tasks(raw: &[u8], kind: TaskKind) -> Result<Vec<Value>, Error> {
@@ -387,7 +429,7 @@ mod tests {
             "id": "9001",
             "reason": "mention",
             "subject": {"title": "Ping", "type": "Issue", "url": "https://api.github.com/repos/acme/app/issues/42"},
-            "repository": {"full_name": "acme/app"},
+            "repository": {"full_name": "acme/app", "html_url": "https://github.com/acme/app"},
             "updated_at": "2026-07-02T00:00:00Z"
         });
         let n = normalize_notification(&v);
@@ -396,6 +438,35 @@ mod tests {
         assert_eq!(n["subject"], json!("Ping"));
         assert_eq!(n["type"], json!("Issue"));
         assert_eq!(n["project"], json!("acme/app"));
+        assert_eq!(n["htmlUrl"], json!("https://github.com/acme/app/issues/42"));
+    }
+
+    #[test]
+    fn normalize_notification_html_url_for_pr_and_fallback() {
+        // PullRequest maps to the `/pull/N` web path (not the API `/pulls/N`).
+        let pr = json!({
+            "subject": {"title": "PR", "type": "PullRequest", "url": "https://api.github.com/repos/acme/app/pulls/7"},
+            "repository": {"full_name": "acme/app", "html_url": "https://github.com/acme/app"}
+        });
+        assert_eq!(
+            normalize_notification(&pr)["htmlUrl"],
+            json!("https://github.com/acme/app/pull/7")
+        );
+        // No html_url on the repository: fall back to github.com/<full_name>.
+        let fallback = json!({
+            "subject": {"title": "I", "type": "Issue", "url": "https://api.github.com/repos/acme/app/issues/3"},
+            "repository": {"full_name": "acme/app"}
+        });
+        assert_eq!(
+            normalize_notification(&fallback)["htmlUrl"],
+            json!("https://github.com/acme/app/issues/3")
+        );
+        // Unsupported subject type: no link.
+        let disc = json!({
+            "subject": {"title": "D", "type": "Discussion", "url": "https://api.github.com/repos/acme/app/discussions/1"},
+            "repository": {"full_name": "acme/app"}
+        });
+        assert_eq!(normalize_notification(&disc)["htmlUrl"], json!(null));
     }
 
     #[test]

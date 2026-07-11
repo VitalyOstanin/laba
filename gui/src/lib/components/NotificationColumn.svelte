@@ -5,6 +5,7 @@
   import { setNotificationRead, markAllRead } from "../api";
   import { refreshServer } from "../poller";
   import { onVisible } from "../scroll";
+  import { openExternal } from "../external";
   import type { Notification, ServerInfo } from "../types";
 
   let {
@@ -79,6 +80,12 @@
       `/task?server=${encodeURIComponent(server.name)}&id=${encodeURIComponent(String(id))}`,
     );
   }
+  // Browser URL for a notification whose task has no in-app detail screen
+  // (GitHub): the subject's web address (`htmlUrl`), or null when absent.
+  function hrefOf(n: Notification): string | null {
+    const u = n.htmlUrl;
+    return typeof u === "string" && u ? u : null;
+  }
 </script>
 
 <section class="card" aria-label={$t("col.notifications")}>
@@ -135,6 +142,13 @@
               class="subject subject-btn"
               onclick={() => openTask(n)}
               title={$t("task.openDetail")}>{n.wpTitle ?? n.subject}</button
+            >
+          {:else if hrefOf(n)}
+            <button
+              type="button"
+              class="subject subject-btn"
+              onclick={() => openExternal(hrefOf(n) ?? "")}
+              title={hrefOf(n)}>{n.wpTitle ?? n.subject}</button
             >
           {:else}
             <span class="subject">{n.wpTitle ?? n.subject}</span>

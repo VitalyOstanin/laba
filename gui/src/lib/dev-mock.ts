@@ -215,6 +215,7 @@ const NOTIFICATIONS: Record<string, Notification[]> = {
       reason: "review_requested",
       subject: "Crash on empty config file",
       wpTitle: "Crash on empty config file",
+      htmlUrl: "https://github.com/acme/app/issues/5521",
       read: false,
       createdAt: "2026-07-10T08:05:00Z",
       user: "octocat",
