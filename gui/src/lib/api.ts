@@ -98,6 +98,9 @@ export const listTaskComments = (
   server: string,
   id: number,
 ): Promise<Notification[]> => invoke("list_task_comments", { server, id });
+// Push the aggregate attention count (unread + red-tab tasks) to the tray icon.
+export const setTrayStatus = (count: number): Promise<void> =>
+  invoke("set_tray_status", { count });
 export const listActivities = (server: string): Promise<Activity[]> =>
   invoke("list_activities", { server });
 export const createTimeEntry = (

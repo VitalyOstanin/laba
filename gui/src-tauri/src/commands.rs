@@ -392,6 +392,19 @@ pub async fn list_task_comments(server: String, id: i64) -> Result<Value, String
         .map_err(|e| e.to_string())
 }
 
+/// Push the aggregate attention count (unread notifications + tasks in red
+/// status filters) to the system tray. A count > 0 paints a red badge with the
+/// number; 0 restores the plain icon. Linux-only for now (native SNI tray);
+/// a no-op elsewhere until a Windows/macOS overlay is wired up.
+#[tauri::command]
+pub fn set_tray_status(count: u32) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    crate::linux_tray::update_badge(count);
+    #[cfg(not(target_os = "linux"))]
+    let _ = count;
+    Ok(())
+}
+
 /// List a server's time-entry activity types for the log-time form.
 #[tauri::command]
 pub async fn list_activities(server: String) -> Result<Value, String> {

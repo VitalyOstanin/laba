@@ -164,6 +164,7 @@ pub fn run() {
             commands::list_activities,
             commands::create_time_entry,
             commands::pick_candidates,
+            commands::set_tray_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

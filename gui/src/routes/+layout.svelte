@@ -3,8 +3,20 @@
   import { onMount } from "svelte";
   import { get } from "svelte/store";
   import { attachConsole } from "@tauri-apps/plugin-log";
-  import { getSettings, saveSettings, quitApp, closeWindow } from "$lib/api";
-  import { settings } from "$lib/store";
+  import {
+    getSettings,
+    saveSettings,
+    quitApp,
+    closeWindow,
+    setTrayStatus,
+  } from "$lib/api";
+  import {
+    settings,
+    unreadCount,
+    byServer,
+    activeServer,
+    servers,
+  } from "$lib/store";
   import { applyTheme } from "$lib/theme";
   import {
     applyUiScale,
@@ -15,6 +27,25 @@
   import { language } from "$lib/i18n";
 
   let { children } = $props();
+
+  // Tray attention badge: unread notifications (aggregate) plus the active
+  // server's tasks in a red (danger) status. A count > 0 paints a red badge in
+  // the system tray; 0 clears it.
+  const redTaskCount = $derived.by((): number => {
+    const name = $activeServer;
+    if (!name) return 0;
+    const st = $byServer[name];
+    const info = $servers.find((s) => s.name === name);
+    if (!st || !info) return 0;
+    return (st.tasks ?? []).filter((tk) => {
+      const status = tk.status == null ? "" : String(tk.status);
+      return info.status_colors?.[status] === "danger";
+    }).length;
+  });
+  const attention = $derived($unreadCount + redTaskCount);
+  $effect(() => {
+    void setTrayStatus(attention);
+  });
 
   // Apply and persist a new interface scale (shared by the keyboard shortcuts).
   function setUiScale(next: number): void {
