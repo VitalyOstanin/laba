@@ -49,7 +49,7 @@ let servers: ServerInfo[] = [
     ],
     supports_custom_fields: true,
     supports_task_detail: true,
-    display_fields: ["Rank"],
+    display_fields: ["НПП"],
     proxy: null,
   },
   {
@@ -108,7 +108,7 @@ const GH_DEPENDENCY: GhDependency = { used: true, status: "missing" };
 // --- fixtures keyed by server ------------------------------------------------
 
 function rank(n: number) {
-  return { key: "customField1", name: "Rank", value: n };
+  return { key: "customField1", name: "НПП", value: n };
 }
 
 const TASKS: Record<string, Task[]> = {
