@@ -4,9 +4,15 @@ Backlog of ideas to evaluate. Not commitments.
 
 ## Desktop integration
 
-- [ ] Integrate with the OS notification system (native desktop notifications):
-      surface new/unread items as system notifications (freedesktop/`org.freedesktop.Notifications`
-      on Linux, native on macOS/Windows), with click-through to the item.
+- [x] Integrate with the OS notification system (native desktop notifications):
+      surface new/unread items as system notifications with click-through to the
+      item. Implemented: Linux uses freedesktop notifications directly
+      (notify-rust/zbus) with a `default` action for click-through, because the
+      Tauri notification plugin's Actions API is mobile-only; Windows/macOS fall
+      back to the plugin (basic banner, no click-through). Gated by the
+      `desktop_notifications` setting. Follow-ups: macOS notification permission
+      (`requestPermission`) is not requested yet (best-effort fallback), and
+      Windows/macOS have no click-through.
 
 ## Dates / timezone
 
