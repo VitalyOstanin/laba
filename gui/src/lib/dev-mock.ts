@@ -121,7 +121,7 @@ const TASKS: Record<string, Task[]> = {
       assignee: "Sam Rivera",
       updatedAt: "2026-07-10T09:20:00Z",
       description:
-        "When a session expires mid-request the app redirects back to the\nexpired page, causing a loop.\n\nRepro: let the token lapse, then click any nav item.",
+        "When a session expires mid-request the app redirects back to the\nexpired page, causing a **loop**.\n\n## Steps to reproduce\n\n1. Let the token lapse\n2. Click any nav item\n3. Observe the redirect bounce\n\nWorkaround: clear `localStorage.session` and reload. See the [tracker](https://example.com/issues/101) for logs.",
       customFields: [rank(1)],
     },
     {

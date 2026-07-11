@@ -45,6 +45,16 @@ export default ts.config(
     },
   },
   {
+    // The task screen renders task descriptions and comments with {@html}. The
+    // input is Markdown rendered by $lib/markdown with html:false, which escapes
+    // raw HTML and drops dangerous link schemes, so the output is safe by
+    // construction and the no-at-html-tags rule would be a false positive.
+    files: ["src/routes/task/+page.svelte"],
+    rules: {
+      "svelte/no-at-html-tags": "off",
+    },
+  },
+  {
     // WebdriverIO + Mocha e2e specs run in the test runner's global scope.
     files: ["e2e/**"],
     languageOptions: {

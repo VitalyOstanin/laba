@@ -1379,9 +1379,94 @@ button.readdot.busy {
   color: var(--text-dim);
   margin: 0 0 10px;
 }
-.desc-p {
+/* Rendered Markdown (task description and comments). */
+.md-body {
+  overflow-wrap: anywhere;
+}
+.md-body > :first-child {
+  margin-top: 0;
+}
+.md-body > :last-child {
+  margin-bottom: 0;
+}
+.md-body p {
   margin: 0 0 10px;
-  white-space: pre-wrap;
+}
+.md-body h1,
+.md-body h2,
+.md-body h3,
+.md-body h4 {
+  margin: 14px 0 8px;
+  line-height: 1.3;
+}
+.md-body h1 {
+  font-size: 1.3em;
+}
+.md-body h2 {
+  font-size: 1.15em;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text);
+}
+.md-body h3 {
+  font-size: 1.05em;
+}
+.md-body ul,
+.md-body ol {
+  margin: 0 0 10px;
+  padding-left: 1.4em;
+}
+.md-body li {
+  margin: 2px 0;
+}
+.md-body a {
+  color: var(--accent);
+}
+.md-body code {
+  font-family:
+    ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--surface-2);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+.md-body pre {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+.md-body pre code {
+  background: none;
+  padding: 0;
+}
+.md-body blockquote {
+  margin: 0 0 10px;
+  padding: 2px 12px;
+  border-left: 3px solid var(--border);
+  color: var(--text-dim);
+}
+.md-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 14px 0;
+}
+.md-body img {
+  max-width: 100%;
+  height: auto;
+}
+.md-body table {
+  border-collapse: collapse;
+  margin: 0 0 10px;
+  display: block;
+  overflow-x: auto;
+}
+.md-body th,
+.md-body td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
 }
 .cmts {
   list-style: none;
@@ -1412,7 +1497,7 @@ button.readdot.busy {
   font-variant-numeric: tabular-nums;
 }
 .cmt-b {
-  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .detail-sec .compose {
   border: 1px solid var(--border);

@@ -1,3 +1,9 @@
+<!--
+  Task descriptions and comments are rendered with {@html} from Markdown via
+  $lib/markdown (html:false → raw HTML escaped, dangerous link schemes dropped),
+  so the content is safe by construction. svelte/no-at-html-tags is turned off
+  for this file in eslint.config.js for that reason.
+-->
 <script lang="ts">
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
@@ -5,6 +11,7 @@
   import { servers } from "$lib/store";
   import { getTaskDetail, listTaskComments, addComment } from "$lib/api";
   import { openExternal } from "$lib/external";
+  import { renderMarkdown, isExternalHref } from "$lib/markdown";
   import type { Task, Notification, ServerInfo, CustomField } from "$lib/types";
 
   // Query params: which server and work package to show.
@@ -45,12 +52,29 @@
   function str(v: unknown): string {
     return v == null ? "" : String(v);
   }
-  const paragraphs = $derived(
-    str(detail?.description)
-      .split(/\n{2,}/)
-      .map((p) => p.trim())
-      .filter(Boolean),
-  );
+  // Description and comments arrive as Markdown (OpenProject's `raw`); render
+  // them to HTML. See $lib/markdown for the security rationale (html: false).
+  const descriptionHtml = $derived(renderMarkdown(str(detail?.description)));
+
+  // Svelte action: open in-content links in the system browser instead of
+  // navigating the webview. Used as an action (not an onclick attribute) so the
+  // rendered anchors stay keyboard-accessible and no a11y warning is raised.
+  function interceptLinks(node: HTMLElement) {
+    function onClick(e: MouseEvent): void {
+      const anchor = (e.target as HTMLElement).closest("a");
+      const href = anchor?.getAttribute("href");
+      if (isExternalHref(href)) {
+        e.preventDefault();
+        void openExternal(href!);
+      }
+    }
+    node.addEventListener("click", onClick);
+    return {
+      destroy() {
+        node.removeEventListener("click", onClick);
+      },
+    };
+  }
 
   function customFields(task: Task | null): CustomField[] {
     const cf = task?.customFields;
@@ -177,12 +201,10 @@
 
       <section class="detail-sec">
         <h2>{$t("detail.description")}</h2>
-        {#if paragraphs.length === 0}
+        {#if descriptionHtml === ""}
           <p class="muted">{$t("detail.noDescription")}</p>
         {:else}
-          {#each paragraphs as p, i (i)}
-            <p class="desc-p">{p}</p>
-          {/each}
+          <div class="md-body" use:interceptLinks>{@html descriptionHtml}</div>
         {/if}
       </section>
 
@@ -193,12 +215,15 @@
         {:else}
           <ul class="cmts">
             {#each comments as c (c.id)}
+              {@const commentHtml = renderMarkdown(str(c.comment))}
               <li class="cmt">
                 <div class="cmt-h">
                   <span class="who">{c.user ?? ""}</span>
                   <span class="when">{str(c.createdAt).slice(0, 10)}</span>
                 </div>
-                <div class="cmt-b">{c.comment ?? ""}</div>
+                <div class="cmt-b md-body" use:interceptLinks>
+                  {@html commentHtml}
+                </div>
               </li>
             {/each}
           </ul>
