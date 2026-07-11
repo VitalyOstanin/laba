@@ -130,6 +130,7 @@ export const en = {
   "update.whatsNew": "What's new",
   "update.hideNotes": "Hide",
   "update.install": "Update & restart",
+  "update.openReleasePage": "Open the release page",
   "update.installing": "Installing…",
   "update.remindLater": "Remind me later",
   "update.skip": "Skip this version",

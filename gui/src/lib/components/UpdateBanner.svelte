@@ -9,8 +9,15 @@
     checkForUpdate,
     installUpdate,
     shouldShowUpdate,
+    canSelfUpdate,
+    RELEASES_URL,
     type AvailableUpdate,
   } from "$lib/updater";
+  import { openExternal } from "$lib/external";
+
+  // On platforms without self-update (macOS), the primary action opens the
+  // release page for a manual download instead of installing in place.
+  const selfUpdate = canSelfUpdate();
 
   let available = $state<AvailableUpdate | null>(null);
   // Cumulative changelog from the running version up to the latest, newest first.
@@ -130,22 +137,32 @@
             {showNotes ? $t("update.hideNotes") : $t("update.whatsNew")}
           </button>
         {/if}
-        <button
-          type="button"
-          class="update-install"
-          onclick={install}
-          disabled={installing}
-          aria-busy={installing}
-        >
-          {#if installing}
-            <span class="spinner" aria-hidden="true"></span>
-            {percent == null
-              ? $t("update.installing")
-              : `${$t("update.installing")} ${percent}%`}
-          {:else}
-            {$t("update.install")}
-          {/if}
-        </button>
+        {#if selfUpdate}
+          <button
+            type="button"
+            class="update-install"
+            onclick={install}
+            disabled={installing}
+            aria-busy={installing}
+          >
+            {#if installing}
+              <span class="spinner" aria-hidden="true"></span>
+              {percent == null
+                ? $t("update.installing")
+                : `${$t("update.installing")} ${percent}%`}
+            {:else}
+              {$t("update.install")}
+            {/if}
+          </button>
+        {:else}
+          <button
+            type="button"
+            class="update-install"
+            onclick={() => openExternal(RELEASES_URL)}
+          >
+            {$t("update.openReleasePage")}
+          </button>
+        {/if}
         <button
           type="button"
           class="update-later"

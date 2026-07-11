@@ -117,9 +117,10 @@ jobs:
 
   # GUI desktop bundle for Linux. Built on the oldest supported Ubuntu so the
   # AppImage links against an older glibc and runs on a wider range of distros.
-  # tauri-action signs the updater artifacts (AppImage + .sig) when the signing
-  # secrets are present and generates latest.json (uploadUpdaterJson).
-  gui-bundle:
+  # tauri-action signs the AppImage updater artifact (AppImage + .sig) when the
+  # signing secrets are present. latest.json is assembled later by updater-json,
+  # so uploadUpdaterJson is disabled here to avoid concurrent writes.
+  gui-linux:
     needs: [create-release, gate]
     permissions:
       contents: write
@@ -142,7 +143,7 @@ jobs:
       - name: Install frontend dependencies
         working-directory: gui
         run: npm ci
-      - name: Build, sign and upload the GUI bundle
+      - name: Build, sign and upload the Linux GUI bundle
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -151,7 +152,7 @@ jobs:
         with:
           projectPath: gui
           releaseId: ${{ needs.create-release.outputs.release_id }}
-          uploadUpdaterJson: true
+          uploadUpdaterJson: false
           args: --bundles appimage,deb
       # Portable tarball of the self-contained AppImage, for users who install
       # neither the .deb nor run the AppImage in place.
@@ -166,3 +167,117 @@ jobs:
           tar czf "$asset" -C "$(dirname "$appimage")" "$(basename "$appimage")"
           sha256sum "$asset" > "${asset}.sha256"
           gh release upload "$tag" "$asset" "${asset}.sha256" --clobber
+
+  # GUI desktop bundle for Windows (NSIS installer). The NSIS target is the one
+  # the Tauri updater consumes on Windows; its .sig is signed when the secrets
+  # are present. latest.json is assembled by updater-json (uploadUpdaterJson off).
+  gui-windows:
+    needs: [create-release, gate]
+    permissions:
+      contents: write
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: gui/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install frontend dependencies
+        working-directory: gui
+        run: npm ci
+      - name: Build, sign and upload the Windows GUI bundle
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: gui
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          uploadUpdaterJson: false
+          args: --bundles nsis
+
+  # GUI desktop bundle for macOS (DMG, both architectures). Without a paid Apple
+  # signing key the app cannot self-update, so updater artifacts are disabled via
+  # the macos-noupdater config override and macOS ships as a notification-only
+  # download (the GUI opens the release page instead of self-installing).
+  gui-macos:
+    needs: [create-release, gate]
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: aarch64
+            target: aarch64-apple-darwin
+          - arch: x86_64
+            target: x86_64-apple-darwin
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: gui/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Install frontend dependencies
+        working-directory: gui
+        run: npm ci
+      - name: Build and upload the macOS GUI bundle (no updater artifacts)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: gui
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          uploadUpdaterJson: false
+          args: >-
+            --target ${{ matrix.target }}
+            --bundles dmg
+            --config src-tauri/tauri.macos-noupdater.conf.json
+
+  # Assemble latest.json deterministically from the .sig files uploaded by the
+  # Linux and Windows GUI jobs, then upload it to the release. Running after both
+  # jobs (instead of uploadUpdaterJson on each) avoids the race on latest.json.
+  # An unsigned build has no .sig assets, in which case latest.json is skipped.
+  updater-json:
+    needs: [create-release, gate, gui-linux, gui-windows]
+    permissions:
+      contents: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Assemble and upload latest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ needs.gate.outputs.tag }}"
+          version="${{ needs.gate.outputs.version }}"
+          sigdir="$(mktemp -d)"
+          gh release download "$tag" --dir "$sigdir" --pattern '*.sig' || true
+          if ! ls "$sigdir"/*.sig >/dev/null 2>&1; then
+            echo "no .sig assets on the release (unsigned build?); skipping latest.json" >&2
+            exit 0
+          fi
+          chmod +x scripts/build-updater-json.sh
+          if scripts/build-updater-json.sh "${{ github.repository }}" "$tag" "$version" "$sigdir" latest.json; then
+            gh release upload "$tag" latest.json --clobber
+          else
+            rc=$?
+            if [ "$rc" -eq 3 ]; then
+              echo "no mappable signatures; skipping latest.json" >&2
+            else
+              exit "$rc"
+            fi
+          fi

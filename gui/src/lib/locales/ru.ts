@@ -132,6 +132,7 @@ export const ru: Dict = {
   "update.whatsNew": "Что нового",
   "update.hideNotes": "Скрыть",
   "update.install": "Обновить и перезапустить",
+  "update.openReleasePage": "Открыть страницу релиза",
   "update.installing": "Установка…",
   "update.remindLater": "Напомнить позже",
   "update.skip": "Пропустить версию",

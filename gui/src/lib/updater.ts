@@ -16,8 +16,23 @@ export interface AvailableUpdate {
   notes: string | null;
 }
 
+/** The latest-release page, opened on platforms that cannot self-update. */
+export const RELEASES_URL =
+  "https://github.com/VitalyOstanin/laba/releases/latest";
+
 const hasTauri =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+/**
+ * Whether the running platform can install updates in place. macOS is excluded:
+ * without a paid Apple signing key the release ships unsigned, so Gatekeeper
+ * blocks a self-installed swap; there the banner points at the release page for
+ * a manual download instead. Pure and cheap, so it is unit-tested.
+ */
+export function canSelfUpdate(): boolean {
+  if (typeof navigator === "undefined") return true;
+  return !/Mac OS X|Macintosh/i.test(navigator.userAgent);
+}
 
 // The `Update` handle from the last successful `check()`, reused by
 // `installUpdate` so the download targets the version the user was shown.
