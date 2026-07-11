@@ -154,6 +154,22 @@ jobs:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           uploadUpdaterJson: false
           args: --bundles appimage,deb
+      # tauri-action bundles libwayland-client into the AppImage, which makes
+      # the webview come up blank (EGL_BAD_PARAMETER) on modern distros. Drop
+      # that library, repack, re-sign, and replace the uploaded asset + .sig
+      # before the portable tarball is built from it.
+      - name: Fix AppImage for modern distros
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${{ needs.gate.outputs.tag }}"
+          appimage="$(find target/release/bundle/appimage -maxdepth 1 -name '*.AppImage' | head -n1)"
+          test -n "$appimage" || { echo "AppImage not found under target/release/bundle/appimage" >&2; exit 1; }
+          scripts/fix-appimage.sh "$appimage"
+          gh release upload "$tag" "$appimage" "${appimage}.sig" --clobber
       # Portable tarball of the self-contained AppImage, for users who install
       # neither the .deb nor run the AppImage in place.
       - name: Portable tarball
