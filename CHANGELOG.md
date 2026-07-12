@@ -21,6 +21,7 @@ The format follows Keep a Changelog and Semantic Versioning.
 - Create the fallback secrets file with 0600 permissions up front (and tighten a pre-existing loose file) instead of writing then chmod-ing.
 - Pin third-party GitHub Actions (`dtolnay/rust-toolchain`, `Swatinem/rust-cache`, `taiki-e/install-action`, `rustsec/audit-check`, `tauri-apps/tauri-action`) to full commit SHAs with a version comment, so a rewritten upstream tag cannot alter the CI/release pipeline.
 - Enforce a dependency license allow-list (`deny.toml`, `cargo deny check licenses` in the Audit workflow), so an update that pulls in a copyleft crate fails CI instead of shipping in a binary release.
+- Drop `'unsafe-inline'` from the webview CSP `script-src` (Tauri hashes the bundled inline scripts, so no inline JS is silently trusted); verified the app still renders via the e2e smoke.
 
 ### Added
 - Test coverage in CI: the GUI unit suite enforces a coverage threshold on the logic layer (`@vitest/coverage-v8`), and a `cargo llvm-cov` job reports Rust core/cli line coverage with a conservative floor.
