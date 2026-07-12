@@ -266,8 +266,15 @@ Backlog of ideas to evaluate. Not commitments.
       non-active server's unread summary reflects only its first page (up to
       `PAGE_SIZE` unread); a full aggregate would need a count endpoint.
 
-- [ ] UI scale: honor the OS/display scale as the default. The manual scale is
+- [x] UI scale: honor the OS/display scale as the default. The manual scale is
       implemented (`Settings::ui_scale`, percent, clamped 50-200; applied by the
       GUI to the root font size via `applyUiScale`, with −/+/reset on the settings
-      screen). Remaining: derive a sensible default from the OS/display scale
-      instead of a fixed 100 when the user has not chosen one.
+      screen). Not-needed as originally framed: the webview already applies the OS
+      scale via `devicePixelRatio`, so `ui_scale` is a *logical* multiplier on top
+      of correct physical sizing. A fixed 100% logical default is therefore correct
+      whenever the webview honors the OS scale (all integer scales; verified the
+      dev machine runs an integer 2.0 Wayland scale). Deriving the default from the
+      OS scale would double-apply. The only residual case is fractional Wayland
+      scales (1.25/1.5) that WebKitGTK historically under-honors — if that ever
+      bites, add a conservative `auto` mode that compensates only the *unhonored*
+      part (`scale_factor / devicePixelRatio`), never the full OS scale.
