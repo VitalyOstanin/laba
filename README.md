@@ -6,6 +6,17 @@ built on [Tauri](https://tauri.app/) with a shared Rust core.
 > Status: early work in progress. The design and implementation plan are being
 > drafted; APIs and commands are not yet stable.
 
+## Contents
+
+- [Goals](#goals)
+- [Planned capabilities](#planned-capabilities)
+- [Repository layout](#repository-layout)
+- [Building](#building)
+- [Testing](#testing)
+- [Running](#running)
+- [Environment variables](#environment-variables)
+- [License](#license)
+
 ## Goals
 
 - A single Rust workspace providing:
@@ -101,6 +112,7 @@ File locations follow the XDG base directories and can be overridden:
 |----------------------|----------------------------------------|---------------------------------|
 | `OPENPROJECT_CACHE`  | Cache directory (user names, schemas)  | `$XDG_CACHE_HOME/laba`    |
 | `OPENPROJECT_STATE`  | State file (last-seen history)         | `$XDG_STATE_HOME/laba`    |
+| `OPENPROJECT_SECRETS`| Token file; when set, the system keyring is skipped and this file is the only store | `secrets.json` next to `config.json` |
 | `XDG_CONFIG_HOME`    | Config directory (`config.json`, GUI settings) | `~/.config`             |
 
 ## License
