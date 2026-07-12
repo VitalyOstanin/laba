@@ -1045,6 +1045,11 @@ button.readdot.busy {
   font-weight: 600;
 }
 
+.sort-arrow {
+  font-weight: 700;
+  opacity: 0.85;
+}
+
 .empty {
   margin: 0;
   padding: 18px 12px;

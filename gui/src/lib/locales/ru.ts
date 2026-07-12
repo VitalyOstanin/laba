@@ -114,6 +114,8 @@ export const ru: Dict = {
   "sort.by": "Сортировка:",
   "sort.updated": "По изменению",
   "sort.number": "По номеру",
+  "sort.dir.desc": "По убыванию (клик — сменить порядок)",
+  "sort.dir.asc": "По возрастанию (клик — сменить порядок)",
   "detail.back": "К списку задач",
   "detail.loading": "Загрузка…",
   "detail.type": "Тип",

@@ -84,43 +84,51 @@
 
   // Sorting of the resident list: by last change (default), task number, or one
   // of the display fields (e.g. Rank). Sorting applies to the loaded tasks; more
-  // load in as the user scrolls.
+  // load in as the user scrolls. Direction defaults to descending (newest /
+  // highest first) and toggles when the active key is clicked again.
   type SortKey = "updated" | "number" | `field:${string}`;
+  type SortDir = "asc" | "desc";
   let sortKey = $state<SortKey>("updated");
+  let sortDir = $state<SortDir>("desc");
   const sortOptions = $derived<{ key: SortKey; label: string }[]>([
     { key: "updated", label: $t("sort.updated") },
     { key: "number", label: $t("sort.number") },
     ...displayFields.map((f) => ({ key: `field:${f}` as SortKey, label: f })),
   ]);
+  // Clicking the active key flips the direction; a different key selects it and
+  // resets to the descending default.
   function setSort(key: SortKey): void {
-    sortKey = key;
+    if (key === sortKey) {
+      sortDir = sortDir === "desc" ? "asc" : "desc";
+    } else {
+      sortKey = key;
+      sortDir = "desc";
+    }
     limit = PAGE;
   }
   function num(v: unknown): number | null {
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
   }
-  function sortTasks(list: Task[]): Task[] {
-    const s = [...list];
+  // Ascending comparator for the active key; direction is applied in sortTasks.
+  function cmpAsc(a: Task, b: Task): number {
     if (sortKey === "updated") {
-      // Most recently changed first.
-      s.sort((a, b) =>
-        String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? "")),
-      );
-    } else if (sortKey === "number") {
-      s.sort((a, b) => (num(a.id) ?? 0) - (num(b.id) ?? 0));
-    } else {
-      const name = sortKey.slice("field:".length);
-      s.sort((a, b) => {
-        const va = fieldValue(a, name);
-        const vb = fieldValue(b, name);
-        const na = num(va);
-        const nb = num(vb);
-        if (na != null && nb != null) return na - nb;
-        return String(va ?? "").localeCompare(String(vb ?? ""));
-      });
+      return String(a.updatedAt ?? "").localeCompare(String(b.updatedAt ?? ""));
     }
-    return s;
+    if (sortKey === "number") {
+      return (num(a.id) ?? 0) - (num(b.id) ?? 0);
+    }
+    const name = sortKey.slice("field:".length);
+    const va = fieldValue(a, name);
+    const vb = fieldValue(b, name);
+    const na = num(va);
+    const nb = num(vb);
+    if (na != null && nb != null) return na - nb;
+    return String(va ?? "").localeCompare(String(vb ?? ""));
+  }
+  function sortTasks(list: Task[]): Task[] {
+    const mul = sortDir === "asc" ? 1 : -1;
+    return [...list].sort((a, b) => mul * cmpAsc(a, b));
   }
 
   const shown = $derived(
@@ -214,7 +222,14 @@
         <button
           type="button"
           aria-pressed={sortKey === opt.key}
-          onclick={() => setSort(opt.key)}>{opt.label}</button
+          title={sortKey === opt.key
+            ? $t(sortDir === "desc" ? "sort.dir.desc" : "sort.dir.asc")
+            : opt.label}
+          onclick={() => setSort(opt.key)}
+          >{opt.label}{#if sortKey === opt.key}<span
+              class="sort-arrow"
+              aria-hidden="true">{sortDir === "desc" ? " ↓" : " ↑"}</span
+            >{/if}</button
         >
       {/each}
     </span>

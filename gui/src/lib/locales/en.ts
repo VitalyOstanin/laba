@@ -111,6 +111,8 @@ export const en = {
   "sort.by": "Sort:",
   "sort.updated": "Updated",
   "sort.number": "Number",
+  "sort.dir.desc": "Descending (click to reverse)",
+  "sort.dir.asc": "Ascending (click to reverse)",
   "detail.back": "Back to tasks",
   "detail.loading": "Loading…",
   "detail.type": "Type",

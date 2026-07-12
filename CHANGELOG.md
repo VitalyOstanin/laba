@@ -6,6 +6,7 @@ The format follows Keep a Changelog and Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- Task list: sort direction toggle (defaults to descending; click the active sort key to reverse).
 - "Add a server" hint: a "Send a PR" link to the contributing guide alongside "Request a backend".
 - `CONTRIBUTING.md` with a guide for adding a backend.
 
