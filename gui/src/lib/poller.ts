@@ -18,7 +18,7 @@ import {
   freshUnread,
   type ServerState,
 } from "./store";
-import { t } from "./i18n";
+import { t, locale, plural } from "./i18n";
 import { goto } from "$app/navigation";
 import { openExternal } from "./external";
 import type { ServerInfo, Notification } from "./types";
@@ -90,7 +90,7 @@ async function registerNotificationClick(): Promise<void> {
 function buildNotifyItems(s: ServerInfo, fresh: Notification[]): NotifyItem[] {
   const label = s.display_name || s.name;
   if (fresh.length > NOTIFY_COLLAPSE) {
-    const suffix = get(t)("notif.newCountSuffix");
+    const suffix = plural(get(locale), fresh.length, get(t), "notif.newCount");
     return [
       {
         title: label,

@@ -35,3 +35,21 @@ export const t = derived(language, ($lang) => {
   const dict = resolveDict($lang);
   return (key: Key): string => dict[key] ?? key;
 });
+
+/**
+ * Pick the CLDR plural form for `n` in `loc` and return the matching dictionary
+ * string. Keys follow `<prefix>.<category>` (one/few/many/other); the `other`
+ * form is the fallback when a language lacks a category. English uses only
+ * one/other; Russian uses one/few/many.
+ */
+export function plural(
+  loc: Locale,
+  n: number,
+  translate: (key: Key) => string,
+  prefix: string,
+): string {
+  const category = new Intl.PluralRules(loc).select(n);
+  const key = `${prefix}.${category}` as Key;
+  const value = translate(key);
+  return value === key ? translate(`${prefix}.other` as Key) : value;
+}

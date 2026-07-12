@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { parsePollSecs } from "./store";
 import { applyTheme } from "./theme";
 import { fmtMinutes, fmtSigned } from "./format";
+import { plural } from "./i18n";
 
 describe("parsePollSecs", () => {
   it("parses a positive value to seconds", () => {
@@ -35,6 +36,39 @@ describe("fmtMinutes / fmtSigned", () => {
     expect(fmtSigned(-120, "ru")).toBe("−2 ч");
   });
 });
+
+describe("plural", () => {
+  const dict: Record<string, string> = {
+    "notif.newCount.one": "новое уведомление",
+    "notif.newCount.few": "новых уведомления",
+    "notif.newCount.many": "новых уведомлений",
+    "notif.newCount.other": "новых уведомлений",
+  };
+  const tr = (k: string) => dict[k] ?? k;
+
+  it("selects the Russian plural form by count", () => {
+    expect(plural("ru", 1, tr as never, "notif.newCount")).toBe(
+      "новое уведомление",
+    );
+    expect(plural("ru", 3, tr as never, "notif.newCount")).toBe(
+      "новых уведомления",
+    );
+    expect(plural("ru", 5, tr as never, "notif.newCount")).toBe(
+      "новых уведомлений",
+    );
+    expect(plural("ru", 21, tr as never, "notif.newCount")).toBe(
+      "новое уведомление",
+    );
+  });
+
+  it("falls back to the other form for English one/other", () => {
+    expect(plural("en", 1, tr as never, "notif.newCount")).toBe(
+      "новое уведомление",
+    );
+    expect(plural("en", 9, tr as never, "notif.newCount")).toBe(
+      "новых уведомлений",
+    );
+  });
 });
 
 describe("applyTheme", () => {
