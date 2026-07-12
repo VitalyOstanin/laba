@@ -13,6 +13,8 @@ The format follows Keep a Changelog and Semantic Versioning.
 ### Changed
 - Localize time units (`ч`/`мин` in Russian) and the notification-count noun (Russian plural forms) instead of hardcoded `h`/`m` and a single suffix.
 
+### Security
+- Warn at config load when a server disables TLS verification or uses a non-HTTPS `base_url`, since either can expose the API token.
 ### Fixed
 - CLI: exit with the conventional `128 + signum` code on interruption (SIGTERM → 143, SIGHUP → 129) instead of always 130.
 

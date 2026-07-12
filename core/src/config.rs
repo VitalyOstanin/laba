@@ -295,6 +295,35 @@ impl Default for Config {
     }
 }
 
+/// Warn (once, at load) about server profiles whose transport can expose the
+/// API token: TLS verification disabled, or a non-HTTPS `base_url` on a
+/// token-carrying backend. These are deliberate user choices (the safe defaults
+/// stand), so they only log a warning rather than being rejected. Loopback hosts
+/// and the GitHub backend (which authenticates through the `gh` CLI, not an HTTP
+/// token) are exempt from the scheme check.
+fn warn_insecure_servers(cfg: &Config) {
+    for (name, p) in &cfg.servers {
+        if !p.verify_ssl {
+            log::warn!(
+                "server '{name}': TLS certificate verification is disabled (verify_ssl=false); the API token can be intercepted by a man-in-the-middle"
+            );
+        }
+        if matches!(p.backend, Backend::OpenProject) {
+            if let Ok(url) = reqwest::Url::parse(&p.base_url) {
+                let loopback = url
+                    .host_str()
+                    .is_some_and(|h| h == "localhost" || h.starts_with("127.") || h == "::1");
+                if url.scheme() != "https" && !loopback {
+                    log::warn!(
+                        "server '{name}': base_url uses {}:// (not https); the API token will be sent unencrypted",
+                        url.scheme()
+                    );
+                }
+            }
+        }
+    }
+}
+
 impl Config {
     pub fn load(path: &Path) -> Result<Config, Error> {
         let text = match std::fs::read_to_string(path) {
@@ -319,6 +348,7 @@ impl Config {
             migrate::backup(path, &text, from)?;
             cfg.save(path)?;
         }
+        warn_insecure_servers(&cfg);
         Ok(cfg)
     }
 
