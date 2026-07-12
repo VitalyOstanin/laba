@@ -134,14 +134,18 @@ Backlog of ideas to evaluate. Not commitments.
       justifies. Revisit if a profiling pass shows first-render latency dominated by
       these serial lookups (e.g. many distinct authors in a busy thread).
 
-- [ ] Bump `tauri-apps/tauri-action` from the v0 line to v1 (deferred). It is now
-      SHA-pinned to `v0.6.2`, so the tag-rewrite risk is already gone; the remaining
-      step is the v0 → v1 major move. v1 may carry breaking input/output changes to
-      the release/signing/AppImage flow, which cannot be validated here without
-      cutting a real signed release (needs the CI signing secrets and an actual tag
-      push). Revisit alongside the updates Phase B / release-infra work, and verify
-      the v1 changelog against `release.yml` on a throwaway pre-release before
-      switching.
+- [~] `tauri-apps/tauri-action` v0 → v1. Done: bumped to `v1.0.0` (SHA-pinned) via
+      the Dependabot PR. The inputs we pass (`projectPath`, `releaseId`,
+      `uploadUpdaterJson`, `args`) are all v1-compatible — none of the renamed/removed
+      inputs (`assetNamePattern`→`releaseAssetNamePattern`, `includeUpdaterJson`→
+      `uploadUpdaterJson`, `includeRelease`/`includeDebug`/`updaterJsonKeepUniversal`)
+      are used. Remaining (verify on the next real signed release): two behavioral
+      breaking changes not exercisable without cutting a tag — (1) v1 now updates the
+      name/body of the existing release (#1277), which could overwrite the notes our
+      `create-release` job sets; (2) upload assets now carry the filename as their
+      label (#1189), which the AppImage repack/re-sign step relies on when it replaces
+      the asset + `.sig` by name. Watch both on the first v1 release and adjust
+      `release.yml` if they misbehave.
 
 - [~] Third-party license attribution in distributed binaries. Done (policy gate):
       `deny.toml` + `cargo deny check licenses` in CI enforces a permissive
