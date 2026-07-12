@@ -102,13 +102,16 @@ Backlog of ideas to evaluate. Not commitments.
       handshake never releases the internal `wait`; fixed by running the
       container with `--init`. (GitHub's container jobs are unaffected — the step
       shell is not PID 1 there.)
-- [ ] Auth-login duplicate check: add an e2e test for rejecting a second profile
-      that is the same user (same base URL + `users/me` login/id) as an existing
-      one. Blocked on secrets isolation: `Secrets::default_fallback_path()`
-      derives from `default_config_path()` and ignores the `--config` flag, so a
-      test cannot point token storage at a temp dir. Either make the secrets
-      fallback honor the config dir / an env override, then test the rejection,
-      or cover it another way. The pure identity extraction is unit-tested.
+- [x] Auth-login duplicate check: e2e test for rejecting a second profile that is
+      the same user (same base URL + `users/me` login/id) as an existing one. Done:
+      unblocked the secrets isolation. `OPENPROJECT_SECRETS` now overrides the token
+      store path (mirroring `OPENPROJECT_CACHE`); when it is set the file is the
+      *exclusive* store and the system keyring is skipped (`Secrets::resolve` +
+      `file_only`), so a run never touches the real keyring. All entry points (CLI +
+      GUI) build the store via `Secrets::resolve()`. The e2e
+      (`auth_login_rejects_duplicate_user_unless_forced`) configures two profiles on
+      one base URL, logs in the first, and asserts the second login is rejected and
+      `--force` overrides it — isolated locally and in CI alike.
 
 ## UI testing
 

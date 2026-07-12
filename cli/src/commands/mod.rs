@@ -81,7 +81,7 @@ pub fn build_client(g: &Globals) -> Result<(String, Client), Error> {
     let name = cfg.resolve_server_name(g.server.as_deref())?;
     let profile = cfg.servers[&name].clone();
     require_openproject(&profile, "this command")?;
-    let secrets = Secrets::new(Secrets::default_fallback_path());
+    let secrets = Secrets::resolve();
     let token = g
         .token
         .clone()

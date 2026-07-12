@@ -788,7 +788,7 @@ pub fn rename_server(old: String, new: String) -> Result<(), String> {
     cfg.save(&path).map_err(|e| e.to_string())?;
     // Move the stored token from the old key to the new one (best-effort: a
     // missing token just means nothing to move).
-    let secrets = Secrets::new(Secrets::default_fallback_path());
+    let secrets = Secrets::resolve();
     if let Some(token) = secrets.get(&old).map_err(|e| e.to_string())? {
         secrets.set(&new, &token).map_err(|e| e.to_string())?;
         secrets.delete(&old).map_err(|e| e.to_string())?;
@@ -802,7 +802,7 @@ fn token_for(server: &str, backend: Backend) -> Result<Option<String>, String> {
     match backend {
         Backend::Github => Ok(None),
         Backend::OpenProject => {
-            let secrets = Secrets::new(Secrets::default_fallback_path());
+            let secrets = Secrets::resolve();
             secrets.get(server).map_err(|e| e.to_string())
         }
     }

@@ -140,7 +140,7 @@ pub async fn run(
 ) -> Result<(), Error> {
     let path = super::config_path(config_flag);
     let cfg = Config::load(&path)?;
-    let secrets = Secrets::new(Secrets::default_fallback_path());
+    let secrets = Secrets::resolve();
 
     match cmd {
         AuthCmd::Login { with_token, force } => {

@@ -184,7 +184,7 @@ pub async fn run(cmd: ServerCmd, config_flag: &Option<PathBuf>) -> Result<(), Er
                 cfg.default_server = cfg.servers.keys().next().cloned();
             }
             cfg.save(&path)?;
-            Secrets::new(Secrets::default_fallback_path()).delete(&name)?;
+            Secrets::resolve().delete(&name)?;
             println!("removed server '{name}'");
         }
         ServerCmd::Rename { old, new } => {
@@ -205,7 +205,7 @@ pub async fn run(cmd: ServerCmd, config_flag: &Option<PathBuf>) -> Result<(), Er
             }
             cfg.save(&path)?;
             // Move the stored token from the old key to the new one.
-            let secrets = Secrets::new(Secrets::default_fallback_path());
+            let secrets = Secrets::resolve();
             if let Some(token) = secrets.get(&old)? {
                 secrets.set(&new, &token)?;
                 secrets.delete(&old)?;
