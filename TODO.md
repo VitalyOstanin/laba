@@ -119,6 +119,21 @@ Backlog of ideas to evaluate. Not commitments.
       one base URL, logs in the first, and asserts the second login is rejected and
       `--force` overrides it — isolated locally and in CI alike.
 
+- [ ] Concurrent name/schema resolution on first render (deferred). The comment
+      list resolves each unknown author sequentially (`comment::list` loops
+      `user_name(uid).await` per element → one `GET users/{id}` each) and the task
+      list expands `customFields` sequentially (`render_elements` loops
+      `custom_field_names(schema_href).await` per unique schema). Both are cached
+      (`user_name`/`custom_field_names` hit the in-memory + file cache), so only the
+      first render of several distinct authors / task types pays a serial GET each;
+      the count of distinct authors/schemas per view is small and the impact is
+      unmeasured. A `join_all`/`try_join_all` prewarm would parallelize the cold
+      path but shares one `&Client` cache with interior mutability, risking
+      duplicate concurrent fetches for the same id and interleaved cache writes —
+      more complexity and risk than the unmeasured, cache-mitigated benefit
+      justifies. Revisit if a profiling pass shows first-render latency dominated by
+      these serial lookups (e.g. many distinct authors in a busy thread).
+
 ## UI testing
 
 - [x] End-to-end UI tests via the official Tauri WebDriver path: `tauri-driver`

@@ -51,7 +51,10 @@ pub fn to_human(value: &Value) -> String {
             }
         }
         Value::Object(map) => {
-            let width = map.keys().map(|k| k.len() + 1).max().unwrap_or(0);
+            // Width is a display column count, and `{:<width$}` pads by chars, so
+            // measure the key in chars (not bytes) — a non-ASCII key would otherwise
+            // over-pad and skew the column.
+            let width = map.keys().map(|k| k.chars().count() + 1).max().unwrap_or(0);
             map.iter()
                 .map(|(k, v)| format!("{:<width$} {}", format!("{k}:"), scalar(v), width = width))
                 .collect::<Vec<_>>()
@@ -101,6 +104,14 @@ mod tests {
     fn nested_object_field_is_compact_json() {
         let v = json!([{"id": 1, "meta": {"k": "v"}}]);
         assert_eq!(to_human(&v), "id\tmeta\n1\t{\"k\":\"v\"}");
+    }
+
+    #[test]
+    fn object_aligns_non_ascii_keys_by_chars() {
+        // A Cyrillic key is longer in bytes than in chars; padding must follow the
+        // display width (chars), so the value column stays aligned with the ASCII row.
+        let v = json!({"да": 1, "нет": 2});
+        assert_eq!(to_human(&v), "да:  1\nнет: 2");
     }
 
     #[test]

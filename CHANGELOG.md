@@ -22,6 +22,7 @@ The format follows Keep a Changelog and Semantic Versioning.
 
 ### Fixed
 - CLI: exit with the conventional `128 + signum` code on interruption (SIGTERM → 143, SIGHUP → 129) instead of always 130.
+- CLI `--human` output: measure the key-column width in characters, not bytes, so a non-ASCII key no longer over-pads and skews the value column.
 
 ## [0.1.2] - 2026-07-11
 
