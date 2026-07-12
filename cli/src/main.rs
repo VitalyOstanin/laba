@@ -34,10 +34,22 @@ fn init_logging(verbose: u8) {
     builder.init();
 }
 
+/// Remove in-flight download temp files if the process is interrupted
+/// (SIGINT/SIGTERM/SIGHUP). `ctrlc` runs the handler on its own thread, so the
+/// filesystem/lock work in `cleanup_temp_downloads` is safe here. Best-effort:
+/// a failure to install the handler leaves the prior (no-cleanup) behavior.
+fn install_signal_cleanup() {
+    let _ = ctrlc::set_handler(|| {
+        laba_core::client::cleanup_temp_downloads();
+        std::process::exit(130);
+    });
+}
+
 async fn run() -> Result<(), Error> {
     let cli = cli::Cli::parse();
     let g = &cli.globals;
     init_logging(g.verbose);
+    install_signal_cleanup();
     match cli.command {
         cli::Command::Server(cmd) => commands::server::run(cmd, &g.config).await,
         cli::Command::Auth(cmd) => {

@@ -90,10 +90,16 @@ Backlog of ideas to evaluate. Not commitments.
       scattered (8/10/4/6/1/12/5/3/18/2/14/16/7/20/34/48 px across hundreds of
       sites) and consolidating them risks visual drift; needs a spacing token set
       plus per-site review, not a mechanical 1:1 swap.
-- [ ] Clean up leftover `.part` download temp files on SIGINT/SIGTERM: needs a
-      process-wide registry of in-flight temp paths plus a cross-platform signal
-      handler. Currently self-corrects (unique pid+counter names, cleaned on the
-      normal error paths).
+- [x] Clean up leftover `.part` download temp files on SIGINT/SIGTERM. Done:
+      `core` keeps a process-wide registry of in-flight temp paths (`TEMP_DOWNLOADS`)
+      and exposes `cleanup_temp_downloads()`; `download_to_path` registers via an
+      RAII `TempFile` guard that also removes the file on any early return and is
+      committed only after the rename. The CLI installs a `ctrlc` handler
+      (SIGINT/SIGTERM/SIGHUP; runs on its own thread, so the fs/lock work is safe)
+      that calls `cleanup_temp_downloads()` and exits 130. The library never
+      installs a signal handler itself — the application owns signals; the GUI is
+      left as-is (its own lifecycle, rarely signalled) but can call the same
+      cleanup if needed.
 - [x] Run the GUI e2e (wdio) suite in CI: the `e2e` job runs the same
       `ivangabriele/tauri` image (webkit2gtk + WebKitWebDriver + tauri-driver +
       xvfb bundled) with `seccomp=unconfined` and `xvfb-run`. Root-caused a local

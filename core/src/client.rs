@@ -897,6 +897,61 @@ pub struct DownloadInfo {
 /// a process without pulling in a random-number crate.
 static DOWNLOAD_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
+/// Paths of in-flight `.part` download temp files. The application installs a
+/// signal handler that calls [`cleanup_temp_downloads`] to remove them on
+/// SIGINT/SIGTERM; the download path keeps this set in sync via [`TempFile`].
+static TEMP_DOWNLOADS: std::sync::LazyLock<
+    std::sync::Mutex<std::collections::HashSet<std::path::PathBuf>>,
+> = std::sync::LazyLock::new(|| std::sync::Mutex::new(std::collections::HashSet::new()));
+
+/// Remove every in-flight download temp file. Best-effort: it never panics and
+/// ignores IO errors, so it is safe to call from a signal-handler thread (e.g.
+/// the one `ctrlc` runs the handler on). A poisoned lock is ignored.
+pub fn cleanup_temp_downloads() {
+    if let Ok(set) = TEMP_DOWNLOADS.lock() {
+        for path in set.iter() {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
+/// RAII guard for a download temp file: registers the path on creation so a
+/// signal handler can find it, and on drop unregisters it and removes the file
+/// unless [`TempFile::commit`] ran (i.e. the file was renamed into place).
+struct TempFile {
+    path: std::path::PathBuf,
+    committed: bool,
+}
+
+impl TempFile {
+    fn new(path: std::path::PathBuf) -> Self {
+        if let Ok(mut set) = TEMP_DOWNLOADS.lock() {
+            set.insert(path.clone());
+        }
+        Self {
+            path,
+            committed: false,
+        }
+    }
+
+    /// Mark the temp file as consumed (renamed into place) so drop does not try
+    /// to remove it.
+    fn commit(&mut self) {
+        self.committed = true;
+    }
+}
+
+impl Drop for TempFile {
+    fn drop(&mut self) {
+        if let Ok(mut set) = TEMP_DOWNLOADS.lock() {
+            set.remove(&self.path);
+        }
+        if !self.committed {
+            let _ = std::fs::remove_file(&self.path);
+        }
+    }
+}
+
 /// Guess an attachment content-type from its file name extension. Covers the
 /// common cases; anything unknown falls back to `application/octet-stream`.
 fn guess_content_type(name: &str) -> &'static str {
@@ -1012,47 +1067,34 @@ impl Client {
             return Err(api_error(status, text));
         }
 
+        // Register the temp path so a SIGINT/SIGTERM handler can remove it. The
+        // guard also removes the file on every early return below (declared
+        // before `file` so the handle closes first), until we commit the rename.
+        let mut temp = TempFile::new(tmp.clone());
         let mut file =
             std::fs::File::create(&tmp).map_err(|e| Error::Io(format!("create temp file: {e}")))?;
         let mut hasher = Sha256::new();
         let mut total: u64 = 0;
         let mut stream = resp.bytes_stream();
         while let Some(chunk) = stream.next().await {
-            let chunk = match chunk {
-                Ok(c) => c,
-                Err(e) => {
-                    drop(file);
-                    let _ = std::fs::remove_file(&tmp);
-                    return Err(Error::Api(format!("read body: {e}")));
-                }
-            };
+            let chunk = chunk.map_err(|e| Error::Api(format!("read body: {e}")))?;
             total += chunk.len() as u64;
             if let Some(limit) = max_bytes {
                 if total > limit {
-                    drop(file);
-                    let _ = std::fs::remove_file(&tmp);
                     return Err(Error::Usage(format!(
                         "attachment exceeds max-bytes {limit}"
                     )));
                 }
             }
             hasher.update(&chunk);
-            if let Err(e) = file.write_all(&chunk) {
-                drop(file);
-                let _ = std::fs::remove_file(&tmp);
-                return Err(Error::Io(format!("write download: {e}")));
-            }
+            file.write_all(&chunk)
+                .map_err(|e| Error::Io(format!("write download: {e}")))?;
         }
-        if let Err(e) = file.sync_all() {
-            drop(file);
-            let _ = std::fs::remove_file(&tmp);
-            return Err(Error::Io(format!("flush download: {e}")));
-        }
+        file.sync_all()
+            .map_err(|e| Error::Io(format!("flush download: {e}")))?;
         drop(file);
-        std::fs::rename(&tmp, output).map_err(|e| {
-            let _ = std::fs::remove_file(&tmp);
-            Error::Io(format!("rename download: {e}"))
-        })?;
+        std::fs::rename(&tmp, output).map_err(|e| Error::Io(format!("rename download: {e}")))?;
+        temp.commit();
         log::debug!(
             "GET {url} download done: {total} bytes ({} ms)",
             started.elapsed().as_millis()
@@ -1134,6 +1176,61 @@ impl Client {
             return Err(api_error(status, text));
         }
         serde_json::from_str(&text).map_err(|e| Error::Api(format!("parse json: {e}")))
+    }
+}
+
+#[cfg(test)]
+mod temp_file_tests {
+    use super::*;
+    use std::io::Write;
+
+    fn touch(path: &std::path::Path) {
+        std::fs::File::create(path)
+            .unwrap()
+            .write_all(b"x")
+            .unwrap();
+    }
+
+    #[test]
+    fn temp_file_removes_on_drop_unless_committed() {
+        let dir = tempfile::tempdir().unwrap();
+        let uncommitted = dir.path().join("a.part");
+        touch(&uncommitted);
+        {
+            let _t = TempFile::new(uncommitted.clone());
+            assert!(uncommitted.exists());
+        }
+        assert!(
+            !uncommitted.exists(),
+            "an uncommitted temp file must be removed on drop"
+        );
+
+        let committed = dir.path().join("b.part");
+        touch(&committed);
+        {
+            let mut t = TempFile::new(committed.clone());
+            t.commit();
+        }
+        assert!(
+            committed.exists(),
+            "a committed temp file must survive drop"
+        );
+    }
+
+    #[test]
+    fn cleanup_removes_registered_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("c.part");
+        touch(&path);
+        // Leak the guard so Drop does not run, simulating a download interrupted
+        // by a signal; the handler's cleanup must still remove the file.
+        std::mem::forget(TempFile::new(path.clone()));
+        assert!(path.exists());
+        cleanup_temp_downloads();
+        assert!(
+            !path.exists(),
+            "cleanup must remove registered in-flight temp files"
+        );
     }
 }
 

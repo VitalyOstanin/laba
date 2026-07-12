@@ -20,6 +20,9 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 log = "0.4"
 env_logger = "0.11"
+# SIGINT/SIGTERM handler to clean up in-flight download temp files (the
+# "termination" feature also covers SIGTERM/SIGHUP).
+ctrlc = { version = "3", features = ["termination"] }
 
 [dev-dependencies]
 assert_cmd = "2"
