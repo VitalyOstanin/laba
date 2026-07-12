@@ -7,7 +7,8 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
-  import { t } from "$lib/i18n";
+  import { t, locale } from "$lib/i18n";
+  import { fmtDate } from "$lib/format";
   import { servers } from "$lib/store";
   import { getTaskDetail, listTaskComments, addComment } from "$lib/api";
   import { openExternal } from "$lib/external";
@@ -219,7 +220,7 @@
               <li class="cmt">
                 <div class="cmt-h">
                   <span class="who">{c.user ?? ""}</span>
-                  <span class="when">{str(c.createdAt).slice(0, 10)}</span>
+                  <span class="when">{fmtDate(str(c.createdAt), $locale)}</span>
                 </div>
                 <div class="cmt-b md-body" use:interceptLinks>
                   {@html commentHtml}

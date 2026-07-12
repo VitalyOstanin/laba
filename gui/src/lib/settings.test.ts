@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { parsePollSecs } from "./store";
 import { applyTheme } from "./theme";
-import { fmtMinutes, fmtSigned } from "./format";
+import { fmtMinutes, fmtSigned, fmtDate, fmtDayMonth } from "./format";
 import { plural } from "./i18n";
 
 describe("parsePollSecs", () => {
@@ -34,6 +34,24 @@ describe("fmtMinutes / fmtSigned", () => {
     expect(fmtMinutes(90, "ru")).toBe("1 ч 30 мин");
     expect(fmtMinutes(45, "ru")).toBe("45 мин");
     expect(fmtSigned(-120, "ru")).toBe("−2 ч");
+  });
+});
+
+describe("fmtDate / fmtDayMonth", () => {
+  it("formats an ISO date without a timezone day shift", () => {
+    // Date-only value must render the same calendar day in any timezone.
+    expect(fmtDayMonth("2026-07-08", "ru")).toBe("08.07");
+    expect(fmtDayMonth("2026-07-08", "en")).toBe("07/08");
+  });
+
+  it("uses a locale medium date for full timestamps", () => {
+    expect(fmtDate("2026-07-08T09:30:00Z", "en")).toBe("Jul 8, 2026");
+    expect(fmtDate("2026-07-08T09:30:00Z", "ru")).toBe("8 июл. 2026 г.");
+  });
+
+  it("returns the raw string when the date cannot be parsed", () => {
+    expect(fmtDate("not-a-date", "en")).toBe("not-a-date");
+    expect(fmtDayMonth("", "en")).toBe("");
   });
 });
 

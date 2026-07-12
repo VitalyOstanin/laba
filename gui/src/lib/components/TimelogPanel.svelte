@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t, locale, type Locale } from "../i18n";
-  import { fmtMinutes, fmtSigned } from "../format";
+  import { fmtMinutes, fmtSigned, fmtDayMonth } from "../format";
   import type { DayCell } from "../types";
 
   let { timeline = [] }: { timeline?: DayCell[] } = $props();
@@ -29,7 +29,7 @@
         class={cellClass(d)}
         title={`${d.date}: ${fmtMinutes(d.logged_min, $locale)} / ${fmtMinutes(d.plan_min, $locale)}`}
       >
-        <span class="tl-date">{d.date.slice(5)}</span>
+        <span class="tl-date">{fmtDayMonth(d.date, $locale)}</span>
         <span class="tl-delta">{cellDelta(d, $locale)}</span>
       </li>
     {/each}

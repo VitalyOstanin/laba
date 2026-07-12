@@ -29,3 +29,30 @@ export function fmtSigned(min: number, loc: Locale = "en"): string {
   const sign = r > 0 ? "+" : "−";
   return `${sign}${fmtMinutes(Math.abs(r), loc)}`;
 }
+
+/**
+ * Parse a `YYYY-MM-DD…` prefix into a local-midnight Date, so a date-only value
+ * is not shifted a day by timezone conversion. Returns null on no match.
+ */
+function parseIsoDate(iso: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+/** Format an ISO date as a locale medium date (e.g. `Jul 8, 2026` / `8 июл. 2026 г.`). */
+export function fmtDate(iso: string, loc: Locale = "en"): string {
+  const d = parseIsoDate(iso);
+  if (!d) return iso;
+  return new Intl.DateTimeFormat(loc, { dateStyle: "medium" }).format(d);
+}
+
+/** Format an ISO date as a compact locale day/month (e.g. `07/08` / `08.07`). */
+export function fmtDayMonth(iso: string, loc: Locale = "en"): string {
+  const d = parseIsoDate(iso);
+  if (!d) return iso;
+  return new Intl.DateTimeFormat(loc, {
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}

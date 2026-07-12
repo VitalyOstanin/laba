@@ -14,6 +14,7 @@ The format follows Keep a Changelog and Semantic Versioning.
 - Localize time units (`ч`/`мин` in Russian) and the notification-count noun (Russian plural forms) instead of hardcoded `h`/`m` and a single suffix.
 - Route cache, state, and retry warnings in the core library through the `log` facade (honoring `RUST_LOG`) instead of always printing to stderr.
 - Document the `OPENPROJECT_SECRETS` environment variable and add a table of contents to the README.
+- Format displayed dates (comment timestamps, timelog days) with the active locale via `Intl.DateTimeFormat` instead of a raw ISO slice.
 
 ### Security
 - Warn at config load when a server disables TLS verification or uses a non-HTTPS `base_url`, since either can expose the API token.
