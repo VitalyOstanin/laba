@@ -121,7 +121,7 @@ Backlog of ideas to evaluate. Not commitments.
 
 ## UI testing
 
-- [ ] End-to-end UI tests via the official Tauri WebDriver path: `tauri-driver`
+- [x] End-to-end UI tests via the official Tauri WebDriver path: `tauri-driver`
       driving the built native app through WebdriverIO (or Selenium). This runs
       the real webview + Rust backend + native window, not a browser-only mock.
       Platform drivers: WebKitWebDriver on Linux, the Edge WebView2 driver on
@@ -129,6 +129,13 @@ Backlog of ideas to evaluate. Not commitments.
       under xvfb. Keep the fast layers alongside it: Rust/CLI logic tests (already
       present) and frontend component/unit tests. Verify the exact `tauri-driver`
       setup against the pinned Tauri version at implementation time.
+      Done: implemented as the same work as the "Run the GUI e2e (wdio) suite in
+      CI" item above — `gui/wdio.conf.js` launches the built app via
+      `tauri-driver` + WebKitWebDriver under `xvfb`; `gui/e2e/smoke.test.js`
+      asserts the real dashboard renders both columns; the CI `e2e` job runs it
+      on Linux. Fast layers (Rust/CLI logic tests, frontend unit/component tests)
+      remain alongside. Windows WebView2 / macOS drivers not added (Linux-only in
+      CI for now); add if cross-platform e2e is wanted later.
 
 ## Branding
 
@@ -162,7 +169,7 @@ Backlog of ideas to evaluate. Not commitments.
       update flow above is solid, add an opt-in setting to apply available updates
       automatically without a per-update click. Off by default; the manual
       user-action flow remains the default path.
-- [ ] Config/settings compatibility across updates. An update must never break
+- [~] Config/settings compatibility across updates. An update must never break
       the user's existing `config.json` / settings: newer fields load with
       defaults (already the `#[serde(default)]` convention) and older binaries
       tolerate unknown fields. When a change is not backward-compatible, ship a
@@ -170,6 +177,23 @@ Backlog of ideas to evaluate. Not commitments.
       forward on load, and back up the pre-migration file. The update flow should
       verify the migrated config loads before committing to the new binary, and
       be able to roll back (restore the backup + prior binary) if it does not.
+      Done (config side): `core/src/migrate.rs` is a forward-only, per-file
+      schema-version framework wired into both `Config::load` and
+      `Settings::load`. Each file carries `schema_version` (`#[serde(default)]`);
+      on load the raw JSON is parsed to a `Value`, migrated step by step
+      (`vN -> vN+1`) to the current version, then deserialized — which verifies
+      the migrated shape loads — and only when a step actually ran the original
+      is backed up as `<name>.bak-v<from>` before the migrated file is rewritten.
+      A file newer than the binary is left untouched (never downgraded). Absent
+      versions read as `BASE_VERSION`. `config.rs` already ships one real step
+      (`m1_normalize_base_urls`); `settings.rs` has an empty step list (no
+      breaking change yet). Tests cover version clamping, running only the needed
+      steps, no-op at/above current, pre-versioning migration + backup, and a
+      newer-file being preserved. Remaining (blocked on updates Phase B / release
+      infra): couple this into the self-update flow — verify the migrated config
+      loads on the *new* binary before committing to it and roll back (restore
+      the backup + prior binary) if it does not. That belongs to the updater,
+      which needs the signing/AppImage release pipeline first.
 
 ## Networking / proxy
 
