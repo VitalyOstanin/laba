@@ -24,6 +24,11 @@
     return `${base}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
   })();
 
+  // "Send a PR" opens the contributing guide's backend section so a contributor
+  // can add a tracker themselves instead of only requesting it.
+  const CONTRIBUTE_URL =
+    "https://github.com/VitalyOstanin/laba/blob/master/CONTRIBUTING.md#adding-a-backend";
+
   const visible = $derived(!$settings.backends_hint_dismissed);
 
   async function dismiss(): Promise<void> {
@@ -54,6 +59,14 @@
         onclick={() => openExternal(ISSUE_URL)}
       >
         {$t("backends.request")}
+      </button>
+      <button
+        type="button"
+        class="backends-request"
+        title={$t("backends.contributeHint")}
+        onclick={() => openExternal(CONTRIBUTE_URL)}
+      >
+        {$t("backends.contribute")}
       </button>
       <button
         type="button"

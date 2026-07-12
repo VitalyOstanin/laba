@@ -5,6 +5,10 @@ The format follows Keep a Changelog and Semantic Versioning.
 
 ## [Unreleased]
 
+### Added
+- "Add a server" hint: a "Send a PR" link to the contributing guide alongside "Request a backend".
+- `CONTRIBUTING.md` with a guide for adding a backend.
+
 ### Changed
 - Localize time units (`ч`/`мин` in Russian) and the notification-count noun (Russian plural forms) instead of hardcoded `h`/`m` and a single suffix.
 

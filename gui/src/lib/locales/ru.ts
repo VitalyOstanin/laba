@@ -157,5 +157,8 @@ export const ru: Dict = {
   "backends.more": "нужен Jira, YouTrack, GitLab?",
   "backends.add": "Добавить сервер →",
   "backends.request": "Попросить бэкенд",
+  "backends.contribute": "Прислать PR",
+  "backends.contributeHint":
+    "Как добавить бэкенд (откроется руководство для контрибьюторов)",
   "backends.dismiss": "Скрыть",
 };

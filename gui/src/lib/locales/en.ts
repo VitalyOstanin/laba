@@ -154,6 +154,9 @@ export const en = {
   "backends.more": "need Jira, YouTrack, GitLab?",
   "backends.add": "Add server →",
   "backends.request": "Request a backend",
+  "backends.contribute": "Send a PR",
+  "backends.contributeHint":
+    "How to add a backend (opens the contributing guide)",
   "backends.dismiss": "Dismiss",
 } as const;
 
