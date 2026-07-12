@@ -1,9 +1,9 @@
 name: Audit
 on:
   push:
-    paths: ["**/Cargo.toml", "**/Cargo.lock"]
+    paths: ["**/Cargo.toml", "**/Cargo.lock", "deny.toml"]
   pull_request:
-    paths: ["**/Cargo.toml", "**/Cargo.lock"]
+    paths: ["**/Cargo.toml", "**/Cargo.lock", "deny.toml"]
   schedule:
     - cron: "0 6 * * 1"
 
@@ -27,3 +27,15 @@ jobs:
           # rationale). Both are transitive Tauri/GTK deps not reachable from
           # our code: glib 0.18 unsoundness and proc-macro-error unmaintained.
           ignore: RUSTSEC-2024-0429,RUSTSEC-2024-0370
+
+  # Enforce the dependency license policy (deny.toml): a dependency update that
+  # pulls in a copyleft crate fails here instead of shipping in a binary release.
+  licenses:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: taiki-e/install-action@43aecc8d72668fbcfe75c31400bc4f890f1c5853 # v2.83.2
+        with:
+          tool: cargo-deny
+      - run: cargo deny check licenses

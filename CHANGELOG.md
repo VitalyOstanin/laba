@@ -20,6 +20,7 @@ The format follows Keep a Changelog and Semantic Versioning.
 - Warn at config load when a server disables TLS verification or uses a non-HTTPS `base_url`, since either can expose the API token.
 - Create the fallback secrets file with 0600 permissions up front (and tighten a pre-existing loose file) instead of writing then chmod-ing.
 - Pin third-party GitHub Actions (`dtolnay/rust-toolchain`, `Swatinem/rust-cache`, `taiki-e/install-action`, `rustsec/audit-check`, `tauri-apps/tauri-action`) to full commit SHAs with a version comment, so a rewritten upstream tag cannot alter the CI/release pipeline.
+- Enforce a dependency license allow-list (`deny.toml`, `cargo deny check licenses` in the Audit workflow), so an update that pulls in a copyleft crate fails CI instead of shipping in a binary release.
 
 ### Fixed
 - CLI: exit with the conventional `128 + signum` code on interruption (SIGTERM → 143, SIGHUP → 129) instead of always 130.

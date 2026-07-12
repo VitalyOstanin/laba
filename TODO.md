@@ -143,6 +143,16 @@ Backlog of ideas to evaluate. Not commitments.
       the v1 changelog against `release.yml` on a throwaway pre-release before
       switching.
 
+- [~] Third-party license attribution in distributed binaries. Done (policy gate):
+      `deny.toml` + `cargo deny check licenses` in CI enforces a permissive
+      allow-list and fails on a copyleft crate. Remaining (attribution file): bundle
+      an aggregated `THIRD-PARTY-LICENSES` into the release archives — generate the
+      Rust side with `cargo-about` (about.toml + a template) and the GUI JS side with
+      `license-checker`/`oss-attribution-generator`, honoring the NOTICE of Apache-2.0
+      deps, and add the file to the `Package` step in `release.yml` (and the tauri
+      bundle resources). Deferred: it touches the signed release pipeline and needs a
+      real release run to validate, like the other release-infra items.
+
 ## UI testing
 
 - [x] End-to-end UI tests via the official Tauri WebDriver path: `tauri-driver`
