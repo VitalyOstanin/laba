@@ -822,11 +822,7 @@ impl Client {
                     }
                     let base = Duration::from_millis(200u64 << attempt).min(MAX_RETRY_SLEEP);
                     let backoff = jitter(base);
-                    eprintln!(
-                        "laba: retrying after error ({}), attempt {}",
-                        e,
-                        attempt + 1
-                    );
+                    log::warn!("retrying after error ({e}), attempt {}", attempt + 1);
                     tokio::time::sleep(backoff).await;
                     attempt += 1;
                 }

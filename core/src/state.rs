@@ -65,7 +65,7 @@ pub fn save(base_url: &str, uid: &str, ids: &[i64]) {
     *entry = merged;
 
     if let Err(e) = write_map(&path, &map) {
-        eprintln!("warning: could not save assignee history: {e}");
+        log::warn!("could not save assignee history: {e}");
     }
 }
 

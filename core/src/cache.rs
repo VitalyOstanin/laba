@@ -167,13 +167,13 @@ impl Cache {
             Ok(text) => match serde_json::from_str(&text) {
                 Ok(data) => data,
                 Err(e) => {
-                    eprintln!("warning: ignoring corrupt cache for {}: {e}", self.server);
+                    log::warn!("ignoring corrupt cache for {}: {e}", self.server);
                     CacheData::default()
                 }
             },
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => CacheData::default(),
             Err(e) => {
-                eprintln!("warning: cannot read cache for {}: {e}", self.server);
+                log::warn!("cannot read cache for {}: {e}", self.server);
                 CacheData::default()
             }
         }
@@ -182,7 +182,7 @@ impl Cache {
     /// Atomically rewrite the file. Best-effort: errors are logged, not returned.
     fn persist(&self, data: &CacheData) {
         if let Err(e) = self.persist_inner(data) {
-            eprintln!("warning: cannot write cache for {}: {e}", self.server);
+            log::warn!("cannot write cache for {}: {e}", self.server);
         }
     }
 
