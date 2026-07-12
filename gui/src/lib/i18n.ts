@@ -4,19 +4,28 @@ import { ru } from "./locales/ru";
 import type { Dict } from "./locales/en";
 import type { Lang } from "./types";
 
+/** Concrete BCP-47 locale actually rendered (system choice resolved). */
+export type Locale = "en" | "ru";
+
+/** Resolve a language choice to a concrete locale. */
+function resolveLocale(lang: Lang): Locale {
+  if (lang === "ru" || lang === "en") return lang;
+  return navigator.language.startsWith("ru") ? "ru" : "en";
+}
+
 /** Resolve a language choice to a concrete dictionary. */
 function resolveDict(lang: Lang): Dict {
-  const concrete =
-    lang === "system"
-      ? navigator.language.startsWith("ru")
-        ? "ru"
-        : "en"
-      : lang;
-  return concrete === "ru" ? ru : en;
+  return resolveLocale(lang) === "ru" ? ru : en;
 }
 
 /** Active language; drives `t`. Set from settings on startup and on change. */
 export const language = writable<Lang>("system");
+
+/**
+ * Active concrete locale for `Intl.*` formatting (units, plurals, dates).
+ * Use as `$locale` in components, or `get(locale)` outside them.
+ */
+export const locale = derived(language, resolveLocale);
 
 /**
  * Reactive translator: use as `$t("key")` in components. Missing keys return

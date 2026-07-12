@@ -28,6 +28,13 @@ describe("fmtMinutes / fmtSigned", () => {
     expect(fmtSigned(90)).toBe("+1h 30m");
     expect(fmtSigned(-120)).toBe("−2h");
   });
+
+  it("localizes unit labels for Russian", () => {
+    expect(fmtMinutes(90, "ru")).toBe("1 ч 30 мин");
+    expect(fmtMinutes(45, "ru")).toBe("45 мин");
+    expect(fmtSigned(-120, "ru")).toBe("−2 ч");
+  });
+});
 });
 
 describe("applyTheme", () => {

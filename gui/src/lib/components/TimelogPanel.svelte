@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t } from "../i18n";
+  import { t, locale, type Locale } from "../i18n";
   import { fmtMinutes, fmtSigned } from "../format";
   import type { DayCell } from "../types";
 
@@ -14,10 +14,10 @@
     return "met";
   }
 
-  function cellDelta(d: DayCell): string {
-    if (d.deficit_min > 0) return fmtSigned(-d.deficit_min);
-    if (d.surplus_min > 0) return fmtSigned(d.surplus_min);
-    return fmtMinutes(d.logged_min);
+  function cellDelta(d: DayCell, loc: Locale): string {
+    if (d.deficit_min > 0) return fmtSigned(-d.deficit_min, loc);
+    if (d.surplus_min > 0) return fmtSigned(d.surplus_min, loc);
+    return fmtMinutes(d.logged_min, loc);
   }
 </script>
 
@@ -27,10 +27,10 @@
     {#each days as d (d.date)}
       <li
         class={cellClass(d)}
-        title={`${d.date}: ${fmtMinutes(d.logged_min)} / ${fmtMinutes(d.plan_min)}`}
+        title={`${d.date}: ${fmtMinutes(d.logged_min, $locale)} / ${fmtMinutes(d.plan_min, $locale)}`}
       >
         <span class="tl-date">{d.date.slice(5)}</span>
-        <span class="tl-delta">{cellDelta(d)}</span>
+        <span class="tl-delta">{cellDelta(d, $locale)}</span>
       </li>
     {/each}
   </ul>

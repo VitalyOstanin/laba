@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t } from "../i18n";
+  import { t, locale } from "../i18n";
   import { fmtMinutes, fmtSigned } from "../format";
   import { timelog } from "../store";
   import { onGlobalEscape } from "../keys";
@@ -28,12 +28,19 @@
       <span class="tl-dot"></span>
       <span class="tl-label">{$t("timelog.title")}</span>
       <span class="tl-nums">
-        {fmtMinutes(tl.status.logged_min)} / {fmtMinutes(tl.status.planned_min)}
+        {fmtMinutes(tl.status.logged_min, $locale)} / {fmtMinutes(
+          tl.status.planned_min,
+          $locale,
+        )}
         {#if tl.status.deficit_min > 0}
-          <span class="tl-deficit">{fmtSigned(-tl.status.deficit_min)}</span>
+          <span class="tl-deficit"
+            >{fmtSigned(-tl.status.deficit_min, $locale)}</span
+          >
         {/if}
         {#if tl.status.surplus_min > 0}
-          <span class="tl-surplus">{fmtSigned(tl.status.surplus_min)}</span>
+          <span class="tl-surplus"
+            >{fmtSigned(tl.status.surplus_min, $locale)}</span
+          >
         {/if}
       </span>
     </button>

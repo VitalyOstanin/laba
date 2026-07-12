@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { t } from "../i18n";
+  import { t, locale } from "../i18n";
   import { fmtMinutes } from "../format";
   import { pickCandidates, listActivities, createTimeEntry } from "../api";
   import { refreshServer, refreshTimelog } from "../poller";
@@ -86,7 +86,7 @@
       {#each candidates as c (keyOf(c))}
         <li>
           <span class="cd-logged" title={$t("timelog.logged")}
-            >{fmtMinutes(c.logged_min)}</span
+            >{fmtMinutes(c.logged_min, $locale)}</span
           >
           <span class="cd-subject">#{c.wp_id} {c.subject}</span>
           <span class="bk op">{c.server}</span>
