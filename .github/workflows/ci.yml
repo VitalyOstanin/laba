@@ -41,6 +41,24 @@ jobs:
       - run: cargo nextest run --workspace --exclude laba-gui
       - run: cargo test --workspace --exclude laba-gui --doc
 
+  coverage:
+    # Line coverage for the Rust core + cli via cargo-llvm-cov. The floor is
+    # intentionally conservative (well below the well-tested core's real
+    # coverage) so it catches a gross regression without false-failing; raise it
+    # once the observed baseline in CI is known.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      - uses: taiki-e/install-action@43aecc8d72668fbcfe75c31400bc4f890f1c5853 # v2.83.2
+        with:
+          tool: cargo-llvm-cov,cargo-nextest
+      - run: cargo llvm-cov nextest --workspace --exclude laba-gui --summary-only --fail-under-lines 40
+
   scripts:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -70,7 +88,7 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run check
-      - run: npm test
+      - run: npm run test:coverage
 
   e2e:
     # WebdriverIO + tauri-driver smoke of the built app. Runs in the same image

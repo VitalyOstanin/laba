@@ -10,7 +10,14 @@ import svelteConfig from "./svelte.config.js";
 // eslint-config-prettier last so formatting is left to Prettier.
 export default ts.config(
   {
-    ignores: ["build/", "dist/", ".svelte-kit/", "node_modules/", "src-tauri/"],
+    ignores: [
+      "build/",
+      "dist/",
+      ".svelte-kit/",
+      "node_modules/",
+      "src-tauri/",
+      "coverage/",
+    ],
   },
   js.configs.recommended,
   ...ts.configs.recommended,

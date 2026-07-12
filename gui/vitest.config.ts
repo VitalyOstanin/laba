@@ -26,5 +26,34 @@ export default defineConfig({
     // Cap worker parallelism so the suite never saturates the host CPU
     // (shared machine, may run alongside other builds).
     maxWorkers: 4,
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      // Gate the pure-logic layer, which is what the unit tests cover. Svelte
+      // components are exercised by @testing-library/svelte + the wdio e2e, not
+      // line-covered here, so including them would force a meaningless floor.
+      include: ["src/lib/**/*.ts"],
+      exclude: [
+        "src/lib/**/*.test.ts",
+        "src/lib/types.ts",
+        // Thin wrappers over Tauri `invoke`/plugin APIs that need the native
+        // host — exercised by the wdio e2e, not unit-testable under jsdom.
+        "src/lib/api.ts",
+        "src/lib/invoke.ts",
+        "src/lib/external.ts",
+        "src/lib/scale.ts",
+        // Dev-only fixture data, not shipped application logic.
+        "src/lib/dev-mock.ts",
+      ],
+      // Floors set a few points below the current measured coverage (lines 63,
+      // stmts 61, funcs 67, branch 56) so they catch a real regression without
+      // a thin margin that a small change would trip.
+      thresholds: {
+        lines: 58,
+        functions: 62,
+        statements: 58,
+        branches: 52,
+      },
+    },
   },
 });

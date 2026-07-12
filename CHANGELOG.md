@@ -22,6 +22,9 @@ The format follows Keep a Changelog and Semantic Versioning.
 - Pin third-party GitHub Actions (`dtolnay/rust-toolchain`, `Swatinem/rust-cache`, `taiki-e/install-action`, `rustsec/audit-check`, `tauri-apps/tauri-action`) to full commit SHAs with a version comment, so a rewritten upstream tag cannot alter the CI/release pipeline.
 - Enforce a dependency license allow-list (`deny.toml`, `cargo deny check licenses` in the Audit workflow), so an update that pulls in a copyleft crate fails CI instead of shipping in a binary release.
 
+### Added
+- Test coverage in CI: the GUI unit suite enforces a coverage threshold on the logic layer (`@vitest/coverage-v8`), and a `cargo llvm-cov` job reports Rust core/cli line coverage with a conservative floor.
+
 ### Fixed
 - CLI: exit with the conventional `128 + signum` code on interruption (SIGTERM → 143, SIGHUP → 129) instead of always 130.
 - CLI `--human` output: measure the key-column width in characters, not bytes, so a non-ASCII key no longer over-pads and skews the value column.

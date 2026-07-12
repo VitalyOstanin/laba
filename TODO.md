@@ -153,6 +153,17 @@ Backlog of ideas to evaluate. Not commitments.
       bundle resources). Deferred: it touches the signed release pipeline and needs a
       real release run to validate, like the other release-infra items.
 
+- [~] Coverage thresholds. Done: GUI unit coverage via `@vitest/coverage-v8` gates
+      the logic layer (`src/lib/**/*.ts`, excluding the Tauri-IPC wrappers and the
+      dev-only mock, which the e2e covers) at floors a few points under the measured
+      baseline (lines 58 / stmts 58 / funcs 62 / branch 52); a `coverage` CI job runs
+      `cargo llvm-cov nextest` for the Rust core/cli with `--fail-under-lines 40`.
+      Remaining: (1) raise the Rust floor once the observed CI baseline is known (40%
+      is a deliberate under-estimate to avoid false failures); (2) optionally extend
+      GUI coverage to Svelte components once they gain unit tests (today they are only
+      exercised by @testing-library/svelte + the wdio e2e, so they are excluded from
+      the line-coverage gate).
+
 ## UI testing
 
 - [x] End-to-end UI tests via the official Tauri WebDriver path: `tauri-driver`
