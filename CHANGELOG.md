@@ -8,6 +8,9 @@ The format follows Keep a Changelog and Semantic Versioning.
 ### Changed
 - Localize time units (`ч`/`мин` in Russian) and the notification-count noun (Russian plural forms) instead of hardcoded `h`/`m` and a single suffix.
 
+### Fixed
+- CLI: exit with the conventional `128 + signum` code on interruption (SIGTERM → 143, SIGHUP → 129) instead of always 130.
+
 ## [0.1.2] - 2026-07-11
 
 ### Fixed

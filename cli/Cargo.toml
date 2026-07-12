@@ -20,8 +20,15 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 log = "0.4"
 env_logger = "0.11"
-# SIGINT/SIGTERM handler to clean up in-flight download temp files (the
-# "termination" feature also covers SIGTERM/SIGHUP).
+
+# Signal handling cleans up in-flight download temp files on interruption. On
+# Unix, signal-hook exposes the delivered signal number so the process can exit
+# with the conventional 128+signum code (130/143/129 for INT/TERM/HUP). On other
+# platforms (Windows), ctrlc covers Ctrl-C / Ctrl-Break with a single handler.
+[target.'cfg(unix)'.dependencies]
+signal-hook = "0.3"
+
+[target.'cfg(not(unix))'.dependencies]
 ctrlc = { version = "3", features = ["termination"] }
 
 [dev-dependencies]

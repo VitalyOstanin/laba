@@ -34,10 +34,35 @@ fn init_logging(verbose: u8) {
     builder.init();
 }
 
-/// Remove in-flight download temp files if the process is interrupted
-/// (SIGINT/SIGTERM/SIGHUP). `ctrlc` runs the handler on its own thread, so the
-/// filesystem/lock work in `cleanup_temp_downloads` is safe here. Best-effort:
-/// a failure to install the handler leaves the prior (no-cleanup) behavior.
+/// Remove in-flight download temp files if the process is interrupted, then
+/// exit. The cleanup and exit run on a dedicated thread (not in async-signal
+/// context), so the filesystem/lock work in `cleanup_temp_downloads` is safe.
+/// Best-effort: a failure to install the handler leaves the prior (no-cleanup)
+/// behavior.
+///
+/// On Unix the process exits with the conventional `128 + signum` code so
+/// callers can tell interruptions apart: SIGINT -> 130, SIGTERM -> 143,
+/// SIGHUP -> 129.
+#[cfg(unix)]
+fn install_signal_cleanup() {
+    use signal_hook::consts::{SIGHUP, SIGINT, SIGTERM};
+    use signal_hook::iterator::Signals;
+
+    let mut signals = match Signals::new([SIGINT, SIGTERM, SIGHUP]) {
+        Ok(s) => s,
+        Err(_) => return,
+    };
+    std::thread::spawn(move || {
+        if let Some(signum) = signals.forever().next() {
+            laba_core::client::cleanup_temp_downloads();
+            std::process::exit(128 + signum);
+        }
+    });
+}
+
+/// Windows has no SIGTERM/SIGHUP; `ctrlc` maps Ctrl-C / Ctrl-Break to one
+/// handler. Exit 130 (the SIGINT-equivalent code) after cleanup.
+#[cfg(not(unix))]
 fn install_signal_cleanup() {
     let _ = ctrlc::set_handler(|| {
         laba_core::client::cleanup_temp_downloads();
