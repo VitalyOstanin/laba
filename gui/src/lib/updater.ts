@@ -10,6 +10,9 @@
  */
 import type { Update } from "@tauri-apps/plugin-updater";
 
+/** Fake install delay in the browser dev stub, so a spinner is briefly visible. */
+const DEV_INSTALL_DELAY_MS = 300;
+
 /** An available update the banner can present. */
 export interface AvailableUpdate {
   version: string;
@@ -86,7 +89,7 @@ export async function installUpdate(
   if (!hasTauri) {
     // Nothing to install in the browser; resolve after a tick so any spinner
     // is visible during UI development.
-    await new Promise((r) => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, DEV_INSTALL_DELAY_MS));
     return;
   }
   if (!pending) throw new Error("no pending update — check first");

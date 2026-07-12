@@ -35,6 +35,8 @@
     ServerInfo,
   } from "$lib/types";
 
+  // How long the "Saved" indicator stays up after a successful save.
+  const SAVED_FLASH_MS = 1500;
   let saved = $state(false);
   let flash: ReturnType<typeof setTimeout> | undefined;
 
@@ -45,7 +47,7 @@
     await saveSettings(s);
     saved = true;
     clearTimeout(flash);
-    flash = setTimeout(() => (saved = false), 1500);
+    flash = setTimeout(() => (saved = false), SAVED_FLASH_MS);
   }
 
   // Reload the server list after a profile edit (server-level settings live in
