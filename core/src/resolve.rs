@@ -4,6 +4,7 @@
 //! predecessor Python tool for output parity.
 
 use serde_json::json;
+use unicode_normalization::UnicodeNormalization;
 
 use crate::client::Client;
 use crate::error::Error;
@@ -11,6 +12,14 @@ use crate::error::Error;
 /// True when `s` is non-empty and every character is an ASCII digit.
 fn is_ascii_digits(s: &str) -> bool {
     !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit())
+}
+
+/// Fold a name for matching: NFC-normalize, then lowercase. Applying the same
+/// fold to both operands makes canonically-equivalent spellings compare equal
+/// (e.g. NFC "é" U+00E9 vs NFD "e"+U+0301, or Cyrillic "й" vs "и"+U+0306),
+/// which a plain `to_lowercase` comparison would miss.
+fn fold(s: &str) -> String {
+    s.nfc().collect::<String>().to_lowercase()
 }
 
 /// Render an element's `id` (number or string) as a plain string.
@@ -60,13 +69,13 @@ async fn resolve_by_name(
         return Ok(id);
     }
     let elements = client.collect(path, &[]).await?;
-    let target = ref_.to_lowercase();
+    let target = fold(ref_);
     let matches: Vec<&serde_json::Value> = elements
         .iter()
         .filter(|e| {
             e.get("name")
                 .and_then(|n| n.as_str())
-                .map(|n| n.to_lowercase() == target)
+                .map(|n| fold(n) == target)
                 .unwrap_or(false)
         })
         .collect();
@@ -129,7 +138,7 @@ pub async fn resolve_principal_id(client: &Client, ref_: &str) -> Result<String,
     if is_ascii_digits(ref_) {
         return Ok(ref_.to_string());
     }
-    let lower = ref_.to_lowercase();
+    let lower = fold(ref_);
     let tokens: Vec<&str> = lower.split_whitespace().collect();
     if tokens.is_empty() {
         return Err(Error::Api(
@@ -149,7 +158,7 @@ pub async fn resolve_principal_id(client: &Client, ref_: &str) -> Result<String,
         .filter(|e| {
             e.get("name")
                 .and_then(|n| n.as_str())
-                .map(|n| n.to_lowercase() == lower)
+                .map(|n| fold(n) == lower)
                 .unwrap_or(false)
         })
         .collect();
@@ -162,7 +171,7 @@ pub async fn resolve_principal_id(client: &Client, ref_: &str) -> Result<String,
                 e.get("name")
                     .and_then(|n| n.as_str())
                     .map(|n| {
-                        let nl = n.to_lowercase();
+                        let nl = fold(n);
                         tokens.iter().all(|t| nl.contains(t))
                     })
                     .unwrap_or(false)
@@ -324,6 +333,25 @@ mod tests {
             .await;
         let c = client_for(&server, "st-name");
         assert_eq!(status_id(&c, "closed").await.unwrap(), "2");
+    }
+
+    #[tokio::test]
+    async fn status_name_matches_across_unicode_normalization() {
+        let server = MockServer::start().await;
+        // Server stores the name decomposed (NFD): "Résumé" as R e´ s u m e´.
+        Mock::given(method("GET"))
+            .and(path("/api/v3/statuses"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "total": 1,
+                "_embedded": {"elements": [
+                    {"id": 7, "name": "Re\u{0301}sume\u{0301}"}
+                ]}
+            })))
+            .mount(&server)
+            .await;
+        let c = client_for(&server, "st-nfc");
+        // Query composed (NFC) and differently cased: "résumé".
+        assert_eq!(status_id(&c, "r\u{00e9}sum\u{00e9}").await.unwrap(), "7");
     }
 
     #[tokio::test]

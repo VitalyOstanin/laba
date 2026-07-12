@@ -72,9 +72,14 @@ Backlog of ideas to evaluate. Not commitments.
 
 ## Deferred review follow-ups
 
-- [ ] NFC-normalize names before matching in `core/src/resolve.rs` (canonical
-      Unicode equivalence). Needs a `unicode-normalization` dependency — evaluate
-      whether the edge case justifies it.
+- [x] NFC-normalize names before matching in `core/src/resolve.rs` (canonical
+      Unicode equivalence). Done: a `fold(s)` helper NFC-normalizes then lowercases,
+      applied to both operands at every name comparison (`resolve_by_name` exact
+      match; principal exact match and token `contains`), so composed/decomposed
+      spellings of the same name compare equal (e.g. Cyrillic "й" NFC vs
+      "и"+U+0306). Added the pure-Rust `unicode-normalization` dependency (no C
+      deps); test `status_name_matches_across_unicode_normalization` matches an NFD
+      server name against an NFC, differently-cased query.
 - [~] Design-token consistency in `gui/src/app.css`. Done: there were no literal
       `rgba(...)` left (colors already go through tokens + `color-mix`); the radius
       and font-size scales are now named token sets (`--radius`/`--radius-sm`/`-xs`/
