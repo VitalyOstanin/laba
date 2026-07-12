@@ -134,6 +134,15 @@ Backlog of ideas to evaluate. Not commitments.
       justifies. Revisit if a profiling pass shows first-render latency dominated by
       these serial lookups (e.g. many distinct authors in a busy thread).
 
+- [ ] Bump `tauri-apps/tauri-action` from the v0 line to v1 (deferred). It is now
+      SHA-pinned to `v0.6.2`, so the tag-rewrite risk is already gone; the remaining
+      step is the v0 → v1 major move. v1 may carry breaking input/output changes to
+      the release/signing/AppImage flow, which cannot be validated here without
+      cutting a real signed release (needs the CI signing secrets and an actual tag
+      push). Revisit alongside the updates Phase B / release-infra work, and verify
+      the v1 changelog against `release.yml` on a throwaway pre-release before
+      switching.
+
 ## UI testing
 
 - [x] End-to-end UI tests via the official Tauri WebDriver path: `tauri-driver`
