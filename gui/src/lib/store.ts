@@ -83,7 +83,7 @@ export function filterTasks(tasks: Task[], text: string): Task[] {
  * unread ones. So the rule is: unread unless explicitly `read === true`.
  */
 export function unreadOf(n: Notification): boolean {
-  return (n as Record<string, unknown>)["read"] !== true;
+  return n["read"] !== true;
 }
 
 /** Number of unread notifications in a loaded server state. */
@@ -106,15 +106,11 @@ export function freshUnread(
   notifications: Notification[],
 ): { fresh: Notification[]; seen: Set<string> } {
   const unread = notifications.filter(unreadOf);
-  const seen = new Set(
-    unread.map((n) => String((n as Record<string, unknown>).id)),
-  );
+  const seen = new Set(unread.map((n) => String(n.id)));
   const fresh =
     prevSeen === undefined
       ? []
-      : unread.filter(
-          (n) => !prevSeen.has(String((n as Record<string, unknown>).id)),
-        );
+      : unread.filter((n) => !prevSeen.has(String(n.id)));
   return { fresh, seen };
 }
 

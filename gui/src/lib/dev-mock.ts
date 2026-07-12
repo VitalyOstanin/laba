@@ -374,15 +374,13 @@ export async function mockInvoke(
       return CANDIDATES;
     case "mark_all_read": {
       const list = NOTIFICATIONS[a.server as string] ?? [];
-      list.forEach((n) => ((n as Record<string, unknown>).read = true));
+      list.forEach((n) => (n.read = true));
       return list.length;
     }
     case "set_notification_read": {
       const list = NOTIFICATIONS[a.server as string] ?? [];
-      const n = list.find(
-        (x) => Number((x as Record<string, unknown>).id) === Number(a.id),
-      );
-      if (n) (n as Record<string, unknown>).read = a.read;
+      const n = list.find((x) => Number(x.id) === Number(a.id));
+      if (n) n.read = a.read;
       return null;
     }
     // Per-server profile edits: mutate the in-memory server so the settings
