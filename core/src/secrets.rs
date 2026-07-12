@@ -100,8 +100,9 @@ impl Secrets {
         }
         let text = serde_json::to_string_pretty(map)
             .map_err(|e| Error::Internal(format!("serialize secrets: {e}")))?;
-        std::fs::write(&self.fallback_path, text)
-            .map_err(|e| Error::Io(format!("write secrets: {e}")))?;
+        write_private(&self.fallback_path, text.as_bytes())?;
+        // Re-assert 0600 to also tighten a file left group/world-readable by an
+        // earlier version that wrote before chmod.
         set_file_mode_0600(&self.fallback_path)
     }
 
@@ -120,6 +121,29 @@ impl Secrets {
         m.remove(profile);
         self.file_write(&m)
     }
+}
+
+/// Write `bytes` to `path`, creating the file with 0600 permissions up front so
+/// the tokens are never briefly readable by group/other between creation and a
+/// later chmod (unix). On other platforms this is a plain write.
+#[cfg(unix)]
+fn write_private(path: &Path, bytes: &[u8]) -> Result<(), Error> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+    let mut f = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(path)
+        .map_err(|e| Error::Io(format!("open secrets: {e}")))?;
+    f.write_all(bytes)
+        .map_err(|e| Error::Io(format!("write secrets: {e}")))
+}
+
+#[cfg(not(unix))]
+fn write_private(path: &Path, bytes: &[u8]) -> Result<(), Error> {
+    std::fs::write(path, bytes).map_err(|e| Error::Io(format!("write secrets: {e}")))
 }
 
 #[cfg(unix)]
@@ -147,6 +171,36 @@ mod tests {
         assert_eq!(s.file_get("primary").unwrap().as_deref(), Some("tok123"));
         s.file_delete("primary").unwrap();
         assert_eq!(s.file_get("primary").unwrap(), None);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn fallback_file_is_created_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("secrets.json");
+        let s = Secrets::new(path.clone());
+        s.file_set("primary", "tok123").unwrap();
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "secrets file must be owner-only");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn fallback_file_tightens_preexisting_loose_perms() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("secrets.json");
+        // Simulate a file left world-readable by an earlier version.
+        std::fs::write(&path, "{}").unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+        let s = Secrets::new(path.clone());
+        s.file_set("primary", "tok123").unwrap();
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(
+            mode, 0o600,
+            "an existing loose secrets file must be tightened"
+        );
     }
 
     #[test]
