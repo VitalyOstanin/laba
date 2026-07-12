@@ -88,6 +88,8 @@ export interface Settings {
   ui_scale: number;
   // release version dismissed in the update banner (omitted when nothing dismissed)
   dismissed_update_version?: string | null;
+  // the user dismissed the "add a server / available backends" hint banner
+  backends_hint_dismissed: boolean;
 }
 
 // One release in the update changelog, newest first (see core `update`).

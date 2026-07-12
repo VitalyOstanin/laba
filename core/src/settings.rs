@@ -129,6 +129,10 @@ pub struct Settings {
     /// newer available version than this still shows.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dismissed_update_version: Option<String>,
+    /// The user dismissed the "add a server / available backends" hint banner, so
+    /// it does not reappear on every launch. `false` (the default) shows it.
+    #[serde(default)]
+    pub backends_hint_dismissed: bool,
 }
 
 fn default_true() -> bool {
@@ -187,6 +191,7 @@ impl Default for Settings {
             timezone: default_timezone(),
             ui_scale: DEFAULT_UI_SCALE,
             dismissed_update_version: None,
+            backends_hint_dismissed: false,
         }
     }
 }
@@ -271,6 +276,7 @@ mod tests {
             timezone: "Europe/Moscow".into(),
             ui_scale: 1.25,
             dismissed_update_version: Some("9.9.9".into()),
+            backends_hint_dismissed: true,
         };
         s.save(&path).unwrap();
         assert_eq!(Settings::load(&path).unwrap(), s);
@@ -346,6 +352,16 @@ mod tests {
         // A set value roundtrips.
         let s: Settings = serde_json::from_str(r#"{"dismissed_update_version": "1.2.3"}"#).unwrap();
         assert_eq!(s.dismissed_update_version.as_deref(), Some("1.2.3"));
+    }
+
+    #[test]
+    fn backends_hint_dismissed_defaults_false() {
+        // Absent in older settings -> false (the hint shows).
+        let s: Settings = serde_json::from_str("{}").unwrap();
+        assert!(!s.backends_hint_dismissed);
+        assert!(!Settings::default().backends_hint_dismissed);
+        let s: Settings = serde_json::from_str(r#"{"backends_hint_dismissed": true}"#).unwrap();
+        assert!(s.backends_hint_dismissed);
     }
 
     #[test]

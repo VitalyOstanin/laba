@@ -15,6 +15,7 @@ export const defaultSettings: Settings = {
   week_start: "system",
   timezone: "system",
   ui_scale: 1,
+  backends_hint_dismissed: false,
 };
 
 export const settings = writable<Settings>(defaultSettings);

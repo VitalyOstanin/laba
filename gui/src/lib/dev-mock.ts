@@ -82,6 +82,7 @@ let settings: Settings = {
   week_start: "system",
   timezone: "system",
   ui_scale: 1,
+  backends_hint_dismissed: false,
 };
 
 let globalProxy: string | null = null;

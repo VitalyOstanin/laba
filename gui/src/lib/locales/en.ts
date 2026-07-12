@@ -146,6 +146,12 @@ export const en = {
   "gh.install": "Install guide",
   "gh.recheck": "Recheck",
   "gh.later": "Later",
+  "backends.title": "Add a server",
+  "backends.ready": "Ready",
+  "backends.more": "need Jira, YouTrack, GitLab?",
+  "backends.add": "Add server →",
+  "backends.request": "Request a backend",
+  "backends.dismiss": "Dismiss",
 } as const;
 
 export type Key = keyof typeof en;

@@ -27,6 +27,7 @@
   import { language } from "$lib/i18n";
   import UpdateBanner from "$lib/components/UpdateBanner.svelte";
   import GhDependencyBanner from "$lib/components/GhDependencyBanner.svelte";
+  import BackendsBanner from "$lib/components/BackendsBanner.svelte";
 
   let { children } = $props();
 
@@ -124,4 +125,5 @@
 
 <UpdateBanner />
 <GhDependencyBanner />
+<BackendsBanner />
 {@render children()}

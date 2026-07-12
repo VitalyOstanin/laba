@@ -355,6 +355,73 @@ body {
   text-decoration: underline;
 }
 
+/* Backends hint: an unobtrusive onboarding notice listing the ready backends,
+   with quick paths to add a server or request another tracker. A neutral
+   surface tone keeps it quieter than the colored update/gh banners; dismissing
+   it persists (`Settings.backends_hint_dismissed`) so it does not reappear. */
+.backends-banner {
+  margin: 10px 14px 0;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.backends-text {
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.backends-text span {
+  color: var(--text-dim);
+  font-size: var(--fs-md);
+}
+
+.backends-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.backends-add {
+  font: inherit;
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: var(--accent-text);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.backends-request {
+  font: inherit;
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.backends-dismiss {
+  font: inherit;
+  line-height: 1;
+  font-size: var(--fs-lg);
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
 /* Timelog indicator */
 .timelog {
   margin: 10px 14px 0;

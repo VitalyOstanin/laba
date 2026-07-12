@@ -149,4 +149,10 @@ export const ru: Dict = {
   "gh.install": "Как установить",
   "gh.recheck": "Проверить снова",
   "gh.later": "Позже",
+  "backends.title": "Добавить сервер",
+  "backends.ready": "Готовы",
+  "backends.more": "нужен Jira, YouTrack, GitLab?",
+  "backends.add": "Добавить сервер →",
+  "backends.request": "Попросить бэкенд",
+  "backends.dismiss": "Скрыть",
 };
