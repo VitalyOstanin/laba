@@ -168,6 +168,46 @@ Backlog of ideas to evaluate. Not commitments.
       exercised by @testing-library/svelte + the wdio e2e, so they are excluded from
       the line-coverage gate).
 
+## Comfort & build review follow-ups (2026-07-12)
+
+- [x] **C1 (major): let the GUI set an OpenProject token.** Done: shared login
+      logic extracted to `core::auth::login_and_store` (validate against
+      `users/me`, reject a duplicate account, store) and reused by the CLI
+      (`auth login` now delegates) and a new `login_server` Tauri command. The
+      settings screen gets a token field in the add-server form (signs in right
+      after creating the profile) and a per-server "Sign in / update token"
+      control with a `has_token` state pill. GitHub needs no token (goes through
+      `gh`) and is rejected by the backend.
+- [x] **C2 (minor): show a "Saved" confirmation on server-level edits.** Done:
+      extracted the "Saved" flash into `flashSaved()` and call it from
+      `refreshServers()`, so every per-server profile edit confirms the save the same
+      way the global settings store already did.
+- [x] **C3 (minor): empty-dashboard call to action.** Done: the dashboard shows an
+      explicit empty state (title + hint + "Add server →" link to /settings) when no
+      server profiles are configured (`$servers.length === 0`), independent of the
+      dismissible onboarding banner. New `empty.title`/`empty.hint` locale keys
+      (en/ru), `.empty-state`/`.empty-add` styles.
+- [ ] **C4 (minor): map raw backend errors to user-facing text.** `addError =
+      String(e)` and `StatusBanner` render the backend string verbatim, which may be
+      a technical Rust error. Audit which messages actually reach these sinks and map
+      them to friendly wording. (Needs a runtime pass; found by code reading.)
+- [x] **C5 (info): reduce settings density.** Done: the advanced per-server blocks
+      (proxy, status colors, task filters, display fields) moved into a collapsed
+      `<details>` "Advanced" section, so the common fields (enable, names, poll,
+      timelog, sign-in) stay uncluttered. New `settings.server.advanced` locale key
+      (en/ru), `.srv-advanced` styles.
+- [ ] **B1 (minor): FIXED — build the Linux CLI on the old glibc.** The `package`
+      job built `x86_64-unknown-linux-gnu` on `ubuntu-24.04` (glibc 2.39), so the
+      downloaded CLI would not run on Ubuntu 22.04 / Debian 12, while the GUI job
+      deliberately builds on `ubuntu-22.04`. Moved the linux-gnu CLI target to
+      `ubuntu-22.04` for glibc parity with the GUI bundle.
+- [ ] **B2 (info): Windows installer is unsigned.** The NSIS installer has no
+      publisher code-signing, so SmartScreen warns on first run. Fixing needs a paid
+      certificate (likely out of budget); document it in the README as expected.
+- [ ] **B3 (info): macOS is notification-only.** Documented in `release.yml`: without
+      a paid Apple key the app cannot self-update, so macOS ships as a
+      notification-only download. Accepted; no action.
+
 ## UI testing
 
 - [x] End-to-end UI tests via the official Tauri WebDriver path: `tauri-driver`

@@ -6,11 +6,16 @@ The format follows Keep a Changelog and Semantic Versioning.
 ## [Unreleased]
 
 ### Added
-- Task list: sort direction toggle (defaults to descending; click the active sort key to reverse).
+- Settings: sign in to an OpenProject server from the GUI — enter the API token in the add-server form or per server in the list, so a fresh install no longer needs the CLI to store a token. The token is validated against `users/me` and a duplicate account is rejected, mirroring `auth login`.
+- Dashboard: an explicit empty state (with an "add a server" action) when no server is configured, instead of blank columns.
+- Test coverage in CI: the GUI unit suite enforces a coverage threshold on the logic layer (`@vitest/coverage-v8`), and a `cargo llvm-cov` job reports Rust core/cli line coverage with a conservative floor.
 - "Add a server" hint: a "Send a PR" link to the contributing guide alongside "Request a backend".
 - `CONTRIBUTING.md` with a guide for adding a backend.
 
 ### Changed
+- Settings: collapse the advanced per-server options (proxy, status colors, filters, display fields) into an "Advanced" section so the common fields stay uncluttered.
+- Settings: confirm per-server profile edits with the same "Saved" indicator the global settings already showed.
+- Task list: sort direction toggle (defaults to descending; click the active sort key to reverse).
 - Localize time units (`ч`/`мин` in Russian) and the notification-count noun (Russian plural forms) instead of hardcoded `h`/`m` and a single suffix.
 - Route cache, state, and retry warnings in the core library through the `log` facade (honoring `RUST_LOG`) instead of always printing to stderr.
 - Document the `OPENPROJECT_SECRETS` environment variable and add a table of contents to the README.
@@ -23,10 +28,8 @@ The format follows Keep a Changelog and Semantic Versioning.
 - Enforce a dependency license allow-list (`deny.toml`, `cargo deny check licenses` in the Audit workflow), so an update that pulls in a copyleft crate fails CI instead of shipping in a binary release.
 - Drop `'unsafe-inline'` from the webview CSP `script-src` (Tauri hashes the bundled inline scripts, so no inline JS is silently trusted); verified the app still renders via the e2e smoke.
 
-### Added
-- Test coverage in CI: the GUI unit suite enforces a coverage threshold on the logic layer (`@vitest/coverage-v8`), and a `cargo llvm-cov` job reports Rust core/cli line coverage with a conservative floor.
-
 ### Fixed
+- Release: build the Linux CLI on the oldest supported Ubuntu (glibc parity with the GUI bundle) so the downloaded binary runs on older distributions instead of failing with a `GLIBC_2.3x not found` error.
 - CLI: exit with the conventional `128 + signum` code on interruption (SIGTERM → 143, SIGHUP → 129) instead of always 130.
 - CLI `--human` output: measure the key-column width in characters, not bytes, so a non-ASCII key no longer over-pads and skews the value column.
 
