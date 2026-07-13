@@ -31,6 +31,9 @@ export interface ServerInfo {
   display_fields: string[];
   // per-server proxy override (URL, "direct", or null = inherit global/env)
   proxy: string | null;
+  // whether an OpenProject token is stored (drives "sign in / update token");
+  // always false for GitHub (authenticates via gh)
+  has_token: boolean;
 }
 
 // One expanded custom field on a task: {key, name, value}. `name` is the human

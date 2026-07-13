@@ -104,6 +104,14 @@ export const addServer = (
   backend: "openproject" | "github",
   displayName: string | null,
 ): Promise<void> => invoke("add_server", { name, url, backend, displayName });
+// Validate and store an OpenProject token for a server (keyring/file store),
+// entered from the GUI instead of the CLI. Rejects a duplicate account unless
+// force. GitHub servers authenticate via gh and are rejected by the backend.
+export const loginServer = (
+  name: string,
+  token: string,
+  force: boolean,
+): Promise<void> => invoke("login_server", { name, token, force });
 
 export const getSettings = (): Promise<Settings> => invoke("get_settings");
 export const saveSettings = (settings: Settings): Promise<void> =>

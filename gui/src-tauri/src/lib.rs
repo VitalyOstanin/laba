@@ -174,6 +174,7 @@ pub fn run() {
             commands::quit_app,
             commands::close_window,
             commands::add_server,
+            commands::login_server,
             commands::set_server_display_name,
             commands::set_server_enabled,
             commands::set_server_poll_secs,

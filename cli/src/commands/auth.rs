@@ -2,8 +2,9 @@ use std::io::Read;
 use std::path::PathBuf;
 
 use clap::Subcommand;
+use laba_core::auth::login_and_store;
 use laba_core::client::Client;
-use laba_core::config::{Backend, Config, ServerProfile};
+use laba_core::config::Config;
 use laba_core::error::Error;
 use laba_core::secrets::Secrets;
 
@@ -39,15 +40,6 @@ fn active_server(cfg: &Config, flag: Option<&str>) -> Result<String, Error> {
     cfg.resolve_server_name(flag)
 }
 
-/// Stable account identity from a `users/me` payload: the login if present,
-/// otherwise the numeric id rendered as a string.
-fn identity(me: &serde_json::Value) -> Option<String> {
-    me.get("login")
-        .and_then(|v| v.as_str())
-        .map(str::to_owned)
-        .or_else(|| me.get("id").map(|v| v.to_string()))
-}
-
 /// Read the login token from `--token` or, with `--with-token`, from stdin.
 /// There is no interactive prompt, so one of the two must be supplied.
 fn read_login_token(token_flag: Option<&str>, with_token: bool) -> Result<String, Error> {
@@ -66,35 +58,8 @@ fn read_login_token(token_flag: Option<&str>, with_token: bool) -> Result<String
     }
 }
 
-/// The name of an existing server on the same base URL authenticated as the same
-/// account `id`, if any. Profiles whose identity cannot be confirmed (missing or
-/// expired token, unreachable host) cannot prove a duplicate and are skipped.
-async fn duplicate_server(
-    cfg: &Config,
-    secrets: &Secrets,
-    name: &str,
-    profile: &ServerProfile,
-    id: &str,
-) -> Result<Option<String>, Error> {
-    for (other, op) in &cfg.servers {
-        if other == name || op.base_url != profile.base_url {
-            continue;
-        }
-        let Some(other_token) = secrets.get(other)? else {
-            continue;
-        };
-        let oc = Client::new(other, op, other_token, None)?;
-        if let Ok(other_me) = oc.get_json_retrying("users/me", 1).await {
-            if identity(&other_me).as_deref() == Some(id) {
-                return Ok(Some(other.clone()));
-            }
-        }
-    }
-    Ok(None)
-}
-
-/// Validate a token against `users/me` and store it, rejecting a duplicate
-/// (another profile with the same base URL and account) unless `force`.
+/// Read the token (stdin/flag) and delegate to the shared core login, which
+/// validates against `users/me`, rejects a duplicate account, and stores it.
 async fn login(
     cfg: &Config,
     secrets: &Secrets,
@@ -103,31 +68,8 @@ async fn login(
     with_token: bool,
     force: bool,
 ) -> Result<(), Error> {
-    let profile = &cfg.servers[name];
-    if profile.backend == Backend::Github {
-        return Err(Error::Usage(
-            "the github backend authenticates via gh; run 'gh auth login' instead".into(),
-        ));
-    }
     let token = read_login_token(token_flag, with_token)?;
-    if token.is_empty() {
-        return Err(Error::Usage("empty token".into()));
-    }
-    // Validate the token and read the account identity, needed to detect a
-    // duplicate (same base URL + same user).
-    let client = Client::new(name, profile, token.clone(), None)?;
-    let me = client.get_json_retrying("users/me", 3).await?;
-    if !force {
-        if let Some(id) = identity(&me) {
-            if let Some(other) = duplicate_server(cfg, secrets, name, profile, &id).await? {
-                return Err(Error::Usage(format!(
-                    "user '{id}' at {} is already authenticated as server '{other}'; use --force to add anyway",
-                    profile.base_url
-                )));
-            }
-        }
-    }
-    secrets.set(name, &token)?;
+    login_and_store(cfg, secrets, name, &token, force).await?;
     eprintln!("token stored for '{name}'");
     Ok(())
 }
@@ -183,21 +125,5 @@ pub async fn run(
             );
             Ok(())
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::identity;
-    use serde_json::json;
-
-    #[test]
-    fn identity_prefers_login_then_falls_back_to_id() {
-        assert_eq!(
-            identity(&json!({"login": "alice", "id": 7})).as_deref(),
-            Some("alice"),
-        );
-        assert_eq!(identity(&json!({"id": 7})).as_deref(), Some("7"),);
-        assert_eq!(identity(&json!({})), None);
     }
 }

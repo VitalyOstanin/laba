@@ -1,5 +1,6 @@
 //! Thin Tauri commands wrapping `laba_core`. Business logic stays in core.
 
+use laba_core::auth::login_and_store;
 use laba_core::backend;
 use laba_core::client::Client;
 use laba_core::config::{
@@ -51,6 +52,11 @@ pub struct ServerInfo {
     pub display_fields: Vec<String>,
     /// Per-server proxy override (URL, `"direct"`, or absent = inherit global/env).
     pub proxy: Option<String>,
+    /// Whether an OpenProject token is stored for this server (drives the
+    /// "sign in / update token" control). Always `false` for GitHub (uses `gh`).
+    /// Filled by `list_servers`; the pure `server_infos` builder leaves it
+    /// `false` to avoid keyring I/O in tests.
+    pub has_token: bool,
 }
 
 fn backend_str(b: Backend) -> &'static str {
@@ -88,6 +94,9 @@ pub fn server_infos(cfg: &Config) -> Vec<ServerInfo> {
             supports_task_detail: p.backend.supports_task_detail(),
             display_fields: p.display_fields.clone(),
             proxy: p.proxy.clone(),
+            // Filled by list_servers (keyring lookup); kept out of the pure
+            // builder so tests do not touch the real token store.
+            has_token: false,
         })
         .collect()
 }
@@ -102,7 +111,15 @@ fn load_settings() -> Result<Settings, String> {
 
 #[tauri::command]
 pub fn list_servers() -> Result<Vec<ServerInfo>, String> {
-    Ok(server_infos(&load_cfg()?))
+    let mut infos = server_infos(&load_cfg()?);
+    // Fill has_token from the secret store (OpenProject only; GitHub uses gh).
+    let secrets = Secrets::resolve();
+    for info in &mut infos {
+        if info.backend == "openproject" {
+            info.has_token = secrets.get(&info.name).map(|t| t.is_some()).unwrap_or(false);
+        }
+    }
+    Ok(infos)
 }
 
 /// Quit the whole application (Ctrl+Q). Exits regardless of the minimize-to-tray
@@ -627,6 +644,19 @@ pub fn set_server_timelog_start(name: String, date: Option<String>) -> Result<()
             .map(|date| TimelogStart { date, auto: false });
         Ok(())
     })
+}
+
+/// Store (and validate) an OpenProject token for a server, entered from the GUI
+/// instead of the CLI. Delegates to the shared core login: the token is checked
+/// against `users/me` and a duplicate account (same base URL + user) is rejected
+/// unless `force`. GitHub servers authenticate via `gh` and are rejected here.
+#[tauri::command]
+pub async fn login_server(name: String, token: String, force: bool) -> Result<(), String> {
+    let cfg = load_cfg()?;
+    let secrets = Secrets::resolve();
+    login_and_store(&cfg, &secrets, &name, &token, force)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// Add a server profile from the GUI. `backend` is `openproject` or `github`;

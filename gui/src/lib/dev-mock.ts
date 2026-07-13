@@ -51,6 +51,7 @@ let servers: ServerInfo[] = [
     supports_task_detail: true,
     display_fields: ["НПП"],
     proxy: null,
+    has_token: true,
   },
   {
     name: "oss",
@@ -71,6 +72,7 @@ let servers: ServerInfo[] = [
     supports_task_detail: false,
     display_fields: [],
     proxy: null,
+    has_token: false,
   },
 ];
 
