@@ -27,6 +27,7 @@
   } from "$lib/scale";
   import { language, t } from "$lib/i18n";
   import { fieldKeys } from "$lib/keys";
+  import { friendlyError } from "$lib/friendly-error";
   import type {
     Theme,
     Lang,
@@ -290,7 +291,7 @@
       newBackend = "openproject";
       await refreshServers();
     } catch (e) {
-      addError = String(e);
+      addError = friendlyError(String(e), get(t)).text;
     }
   }
 
@@ -306,7 +307,7 @@
       signInDraft[name] = "";
       await refreshServers();
     } catch (e) {
-      signInError[name] = String(e);
+      signInError[name] = friendlyError(String(e), get(t)).text;
     }
   }
 

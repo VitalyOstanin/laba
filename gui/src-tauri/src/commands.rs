@@ -116,7 +116,10 @@ pub fn list_servers() -> Result<Vec<ServerInfo>, String> {
     let secrets = Secrets::resolve();
     for info in &mut infos {
         if info.backend == "openproject" {
-            info.has_token = secrets.get(&info.name).map(|t| t.is_some()).unwrap_or(false);
+            info.has_token = secrets
+                .get(&info.name)
+                .map(|t| t.is_some())
+                .unwrap_or(false);
         }
     }
     Ok(infos)
@@ -313,6 +316,11 @@ pub async fn list_tasks(
         .ok_or_else(|| format!("unknown server '{server}'"))?
         .clone();
     let token = token_for(&server, profile.backend)?;
+    if profile.backend == Backend::OpenProject && token.is_none() {
+        // Stable sentinel the GUI maps to a friendly "not signed in" message
+        // with a link to Settings, instead of surfacing a raw 401.
+        return Err("not-signed-in".into());
+    }
     backend::list_tasks_page(
         &profile,
         token.as_deref(),
@@ -336,6 +344,11 @@ pub async fn list_notifications(
         .ok_or_else(|| format!("unknown server '{server}'"))?
         .clone();
     let token = token_for(&server, profile.backend)?;
+    if profile.backend == Backend::OpenProject && token.is_none() {
+        // Stable sentinel the GUI maps to a friendly "not signed in" message
+        // with a link to Settings, instead of surfacing a raw 401.
+        return Err("not-signed-in".into());
+    }
     backend::list_notifications_page(
         &profile,
         token.as_deref(),

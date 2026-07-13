@@ -10,6 +10,7 @@ export const ru: Dict = {
   "empty.notifications": "Уведомлений нет",
   "list.loadMore": "Показать ещё",
   "error.prefix": "Ошибка",
+  "error.notSignedIn": "Вход не выполнен — добавьте токен API в настройках.",
   "tray.show": "Показать",
   "tray.quit": "Выход",
   "nav.dashboard": "Дашборд",

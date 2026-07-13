@@ -193,6 +193,11 @@ body {
   color: var(--danger);
   background: color-mix(in srgb, var(--danger) 8%, transparent);
 }
+.banner.error .banner-link {
+  margin-left: 8px;
+  color: inherit;
+  font-weight: 600;
+}
 
 /* Update banner: an unobtrusive, dismissible notice that a newer release is
    available, with an expandable cumulative changelog and an explicit install. */

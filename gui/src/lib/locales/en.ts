@@ -8,6 +8,7 @@ export const en = {
   "empty.notifications": "No notifications",
   "list.loadMore": "Load more",
   "error.prefix": "Error",
+  "error.notSignedIn": "Not signed in — add an API token in Settings.",
   "tray.show": "Show",
   "tray.quit": "Quit",
   "nav.dashboard": "Dashboard",
