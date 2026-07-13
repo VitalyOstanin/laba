@@ -8,6 +8,7 @@ The format follows Keep a Changelog and Semantic Versioning.
 ### Added
 - Settings: sign in to an OpenProject server from the GUI — enter the API token in the add-server form or per server in the list, so a fresh install no longer needs the CLI to store a token. The token is validated against `users/me` and a duplicate account is rejected, mirroring `auth login`.
 - Dashboard: an explicit empty state (with an "add a server" action) when no server is configured, instead of blank columns.
+- Errors: show a friendly message instead of a raw backend string — strip the technical `kind:` prefix and, when a server has no token, show a "not signed in" notice with a link to Settings.
 - Test coverage in CI: the GUI unit suite enforces a coverage threshold on the logic layer (`@vitest/coverage-v8`), and a `cargo llvm-cov` job reports Rust core/cli line coverage with a conservative floor.
 - "Add a server" hint: a "Send a PR" link to the contributing guide alongside "Request a backend".
 - `CONTRIBUTING.md` with a guide for adding a backend.

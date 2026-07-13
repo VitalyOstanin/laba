@@ -187,10 +187,14 @@ Backlog of ideas to evaluate. Not commitments.
       server profiles are configured (`$servers.length === 0`), independent of the
       dismissible onboarding banner. New `empty.title`/`empty.hint` locale keys
       (en/ru), `.empty-state`/`.empty-add` styles.
-- [ ] **C4 (minor): map raw backend errors to user-facing text.** `addError =
-      String(e)` and `StatusBanner` render the backend string verbatim, which may be
-      a technical Rust error. Audit which messages actually reach these sinks and map
-      them to friendly wording. (Needs a runtime pass; found by code reading.)
+- [x] **C4 (minor): map raw backend errors to user-facing text.** Done (light
+      approach): `friendlyError()` strips the technical `kind:` prefix
+      (`api:`/`auth:`/`io:`/`config:`/`internal:`) the core `Error` Display adds, and
+      maps the stable `not-signed-in` sentinel (emitted by `list_tasks`/
+      `list_notifications` for an OpenProject server with no token, short-circuiting
+      before any network) to a localized "not signed in" message with a link to
+      Settings. Used by `StatusBanner` and the settings add/sign-in error fields.
+      Unit-tested. A fuller typed-error boundary (`{kind, message}`) stays deferred.
 - [x] **C5 (info): reduce settings density.** Done: the advanced per-server blocks
       (proxy, status colors, task filters, display fields) moved into a collapsed
       `<details>` "Advanced" section, so the common fields (enable, names, poll,
