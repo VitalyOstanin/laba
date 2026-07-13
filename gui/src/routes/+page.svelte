@@ -23,6 +23,9 @@
   // resident (the poller evicts other servers on switch and fetches the new one).
   // Show a spinner rather than empty columns until the first page arrives.
   const loading = $derived(!!$activeServer && state === undefined);
+  // No server profiles configured at all: show an explicit call to action
+  // (independent of the dismissible onboarding banner) instead of empty columns.
+  const noServers = $derived($servers.length === 0);
 </script>
 
 <header class="topbar">
@@ -33,7 +36,13 @@
 </header>
 <StatusBanner error={state?.error ?? null} />
 <TimelogIndicator />
-{#if loading}
+{#if noServers}
+  <section class="empty-state" aria-label={$t("empty.title")}>
+    <strong>{$t("empty.title")}</strong>
+    <p>{$t("empty.hint")}</p>
+    <a class="empty-add" href="/settings">{$t("backends.add")}</a>
+  </section>
+{:else if loading}
   <p class="cols-loading" aria-live="polite">
     <span class="spinner" aria-hidden="true"></span>
     {$t("detail.loading")}

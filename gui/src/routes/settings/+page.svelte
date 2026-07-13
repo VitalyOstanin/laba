@@ -16,6 +16,7 @@
     setGlobalProxy,
     renameServer,
     addServer,
+    loginServer,
   } from "$lib/api";
   import { applyTheme } from "$lib/theme";
   import {
@@ -40,21 +41,28 @@
   let saved = $state(false);
   let flash: ReturnType<typeof setTimeout> | undefined;
 
-  async function persist(): Promise<void> {
-    const s = get(settings);
-    applyTheme(s.theme);
-    language.set(s.language);
-    await saveSettings(s);
+  // Flash the "Saved" indicator. Shared by the global settings store and the
+  // per-server profile edits so both give the same save confirmation.
+  function flashSaved(): void {
     saved = true;
     clearTimeout(flash);
     flash = setTimeout(() => (saved = false), SAVED_FLASH_MS);
   }
 
+  async function persist(): Promise<void> {
+    const s = get(settings);
+    applyTheme(s.theme);
+    language.set(s.language);
+    await saveSettings(s);
+    flashSaved();
+  }
+
   // Reload the server list after a profile edit (server-level settings live in
-  // config.json, not in the app settings store).
+  // config.json, not in the app settings store) and confirm the save.
   async function refreshServers(): Promise<void> {
     try {
       servers.set(await listServers());
+      flashSaved();
     } catch {
       // Keep the current list if the reload fails.
     }
@@ -255,6 +263,7 @@
   let newUrl = $state("");
   let newBackend = $state<"openproject" | "github">("openproject");
   let newDisplay = $state("");
+  let newToken = $state("");
   let addError = $state("");
 
   async function addNewServer(): Promise<void> {
@@ -268,13 +277,36 @@
         newBackend,
         newDisplay.trim() === "" ? null : newDisplay.trim(),
       );
+      // If an OpenProject token was supplied, validate and store it now so the
+      // profile works without a separate CLI step. A bad token surfaces as an
+      // error; the profile still exists and can be signed into later.
+      if (newBackend === "openproject" && newToken.trim() !== "") {
+        await loginServer(name, newToken.trim(), false);
+      }
       newName = "";
       newUrl = "";
       newDisplay = "";
+      newToken = "";
       newBackend = "openproject";
       await refreshServers();
     } catch (e) {
       addError = String(e);
+    }
+  }
+
+  // Per-server sign-in (enter/replace the OpenProject token from the list).
+  let signInDraft = $state<Record<string, string>>({});
+  let signInError = $state<Record<string, string>>({});
+  async function signIn(name: string): Promise<void> {
+    const token = (signInDraft[name] ?? "").trim();
+    if (token === "") return;
+    signInError[name] = "";
+    try {
+      await loginServer(name, token, false);
+      signInDraft[name] = "";
+      await refreshServers();
+    } catch (e) {
+      signInError[name] = String(e);
     }
   }
 
@@ -476,16 +508,6 @@
               use:fieldKeys={() => String(s.poll_override ?? "")}
             />
           </label>
-          <label class="srv-field">
-            <span>{$t("settings.proxy")}</span>
-            <input
-              type="text"
-              placeholder={$t("settings.proxy.placeholder")}
-              value={s.proxy ?? ""}
-              onchange={(e) => setProxy(s.name, e.currentTarget.value)}
-              use:fieldKeys={() => s.proxy ?? ""}
-            />
-          </label>
           {#if s.backend !== "github"}
             <label class="srv-field">
               <span>{$t("settings.timelog")}</span>
@@ -500,82 +522,67 @@
               {/if}
             </label>
           {/if}
-          <div class="srv-colors">
-            <span class="srv-colors-title">{$t("settings.statusColors")}</span>
-            {#each Object.entries(s.status_colors) as [status, color] (status)}
-              <div class="srv-color-row">
-                <span class="srv-color-status" title={status}>{status}</span>
-                <select
-                  value={color}
-                  onchange={(e) =>
-                    changeStatusColor(
-                      s.name,
-                      status,
-                      e.currentTarget.value as StatusColorToken,
-                    )}
-                >
-                  {#each COLOR_TOKENS as tok (tok)}
-                    <option value={tok}>{$t(`settings.color.${tok}`)}</option>
-                  {/each}
-                </select>
-                <span class="swatch tone-{color}" aria-hidden="true"></span>
-                <button
-                  type="button"
-                  class="linkbtn"
-                  onclick={() => removeStatusColor(s.name, status)}
-                  >{$t("settings.statusColors.remove")}</button
-                >
-              </div>
-            {/each}
-            <div class="srv-color-row">
+          {#if s.backend !== "github"}
+            <div class="srv-signin">
+              <span class="srv-token-state" class:ok={s.has_token}>
+                {s.has_token
+                  ? $t("settings.server.hasToken")
+                  : $t("settings.server.noToken")}
+              </span>
               <input
-                type="text"
-                class="srv-color-input"
-                placeholder={$t("settings.statusColors.status")}
-                bind:value={draftStatus[s.name]}
+                type="password"
+                class="srv-token-input"
+                placeholder={$t("settings.server.token")}
+                bind:value={signInDraft[s.name]}
                 onkeydown={(e) => {
-                  if (e.key === "Enter") addStatusColor(s.name);
+                  if (e.key === "Enter") signIn(s.name);
                 }}
               />
-              <select bind:value={draftColor[s.name]}>
-                {#each COLOR_TOKENS as tok (tok)}
-                  <option value={tok}>{$t(`settings.color.${tok}`)}</option>
-                {/each}
-              </select>
-              <button
-                type="button"
-                class="btn"
-                onclick={() => addStatusColor(s.name)}
-                >{$t("settings.statusColors.add")}</button
+              <button type="button" class="btn" onclick={() => signIn(s.name)}
+                >{$t("settings.server.signIn")}</button
               >
+              {#if signInError[s.name]}
+                <span class="add-error" role="alert">{signInError[s.name]}</span
+                >
+              {/if}
             </div>
-          </div>
-          {#if s.supports_status_filters}
+          {/if}
+          <details class="srv-advanced">
+            <summary>{$t("settings.server.advanced")}</summary>
+            <label class="srv-field adv">
+              <span>{$t("settings.proxy")}</span>
+              <input
+                type="text"
+                placeholder={$t("settings.proxy.placeholder")}
+                value={s.proxy ?? ""}
+                onchange={(e) => setProxy(s.name, e.currentTarget.value)}
+                use:fieldKeys={() => s.proxy ?? ""}
+              />
+            </label>
             <div class="srv-colors">
-              <span class="srv-colors-title">{$t("settings.filters")}</span>
-              <span class="hint">{$t("settings.filters.hint")}</span>
-              {#each s.status_filters as f, i (i)}
+              <span class="srv-colors-title">{$t("settings.statusColors")}</span
+              >
+              {#each Object.entries(s.status_colors) as [status, color] (status)}
                 <div class="srv-color-row">
-                  <input
-                    type="text"
-                    class="srv-color-input"
-                    placeholder={$t("settings.filters.label")}
-                    value={f.label}
+                  <span class="srv-color-status" title={status}>{status}</span>
+                  <select
+                    value={color}
                     onchange={(e) =>
-                      editFilterLabel(s, i, e.currentTarget.value)}
-                  />
-                  <input
-                    type="text"
-                    class="srv-filter-statuses"
-                    placeholder={$t("settings.filters.statuses")}
-                    value={f.statuses.join(", ")}
-                    onchange={(e) =>
-                      editFilterStatuses(s, i, e.currentTarget.value)}
-                  />
+                      changeStatusColor(
+                        s.name,
+                        status,
+                        e.currentTarget.value as StatusColorToken,
+                      )}
+                  >
+                    {#each COLOR_TOKENS as tok (tok)}
+                      <option value={tok}>{$t(`settings.color.${tok}`)}</option>
+                    {/each}
+                  </select>
+                  <span class="swatch tone-{color}" aria-hidden="true"></span>
                   <button
                     type="button"
                     class="linkbtn"
-                    onclick={() => removeFilter(s, i)}
+                    onclick={() => removeStatusColor(s.name, status)}
                     >{$t("settings.statusColors.remove")}</button
                   >
                 </div>
@@ -584,60 +591,114 @@
                 <input
                   type="text"
                   class="srv-color-input"
-                  placeholder={$t("settings.filters.label")}
-                  bind:value={filterDraftLabel[s.name]}
-                />
-                <input
-                  type="text"
-                  class="srv-filter-statuses"
-                  placeholder={$t("settings.filters.statuses")}
-                  bind:value={filterDraftStatuses[s.name]}
+                  placeholder={$t("settings.statusColors.status")}
+                  bind:value={draftStatus[s.name]}
                   onkeydown={(e) => {
-                    if (e.key === "Enter") addFilter(s);
+                    if (e.key === "Enter") addStatusColor(s.name);
                   }}
                 />
-                <button type="button" class="btn" onclick={() => addFilter(s)}
+                <select bind:value={draftColor[s.name]}>
+                  {#each COLOR_TOKENS as tok (tok)}
+                    <option value={tok}>{$t(`settings.color.${tok}`)}</option>
+                  {/each}
+                </select>
+                <button
+                  type="button"
+                  class="btn"
+                  onclick={() => addStatusColor(s.name)}
                   >{$t("settings.statusColors.add")}</button
                 >
               </div>
             </div>
-          {/if}
-          {#if s.supports_custom_fields}
-            <div class="srv-colors">
-              <span class="srv-colors-title"
-                >{$t("settings.displayFields")}</span
-              >
-              <span class="hint">{$t("settings.displayFields.hint")}</span>
-              {#each s.display_fields as f (f)}
+            {#if s.supports_status_filters}
+              <div class="srv-colors">
+                <span class="srv-colors-title">{$t("settings.filters")}</span>
+                <span class="hint">{$t("settings.filters.hint")}</span>
+                {#each s.status_filters as f, i (i)}
+                  <div class="srv-color-row">
+                    <input
+                      type="text"
+                      class="srv-color-input"
+                      placeholder={$t("settings.filters.label")}
+                      value={f.label}
+                      onchange={(e) =>
+                        editFilterLabel(s, i, e.currentTarget.value)}
+                    />
+                    <input
+                      type="text"
+                      class="srv-filter-statuses"
+                      placeholder={$t("settings.filters.statuses")}
+                      value={f.statuses.join(", ")}
+                      onchange={(e) =>
+                        editFilterStatuses(s, i, e.currentTarget.value)}
+                    />
+                    <button
+                      type="button"
+                      class="linkbtn"
+                      onclick={() => removeFilter(s, i)}
+                      >{$t("settings.statusColors.remove")}</button
+                    >
+                  </div>
+                {/each}
                 <div class="srv-color-row">
-                  <span class="srv-field-name">{f}</span>
-                  <button
-                    type="button"
-                    class="linkbtn"
-                    onclick={() => removeDisplayField(s, f)}
-                    >{$t("settings.displayFields.remove")}</button
+                  <input
+                    type="text"
+                    class="srv-color-input"
+                    placeholder={$t("settings.filters.label")}
+                    bind:value={filterDraftLabel[s.name]}
+                  />
+                  <input
+                    type="text"
+                    class="srv-filter-statuses"
+                    placeholder={$t("settings.filters.statuses")}
+                    bind:value={filterDraftStatuses[s.name]}
+                    onkeydown={(e) => {
+                      if (e.key === "Enter") addFilter(s);
+                    }}
+                  />
+                  <button type="button" class="btn" onclick={() => addFilter(s)}
+                    >{$t("settings.statusColors.add")}</button
                   >
                 </div>
-              {/each}
-              <div class="srv-color-row">
-                <input
-                  type="text"
-                  class="srv-color-input"
-                  placeholder={$t("settings.displayFields.field")}
-                  bind:value={displayFieldDraft[s.name]}
-                  onkeydown={(e) => {
-                    if (e.key === "Enter") addDisplayField(s);
-                  }}
-                />
-                <button
-                  type="button"
-                  class="btn"
-                  onclick={() => addDisplayField(s)}
-                  >{$t("settings.displayFields.add")}</button
-                >
               </div>
-            </div>
-          {/if}
+            {/if}
+            {#if s.supports_custom_fields}
+              <div class="srv-colors">
+                <span class="srv-colors-title"
+                  >{$t("settings.displayFields")}</span
+                >
+                <span class="hint">{$t("settings.displayFields.hint")}</span>
+                {#each s.display_fields as f (f)}
+                  <div class="srv-color-row">
+                    <span class="srv-field-name">{f}</span>
+                    <button
+                      type="button"
+                      class="linkbtn"
+                      onclick={() => removeDisplayField(s, f)}
+                      >{$t("settings.displayFields.remove")}</button
+                    >
+                  </div>
+                {/each}
+                <div class="srv-color-row">
+                  <input
+                    type="text"
+                    class="srv-color-input"
+                    placeholder={$t("settings.displayFields.field")}
+                    bind:value={displayFieldDraft[s.name]}
+                    onkeydown={(e) => {
+                      if (e.key === "Enter") addDisplayField(s);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    class="btn"
+                    onclick={() => addDisplayField(s)}
+                    >{$t("settings.displayFields.add")}</button
+                  >
+                </div>
+              </div>
+            {/if}
+          </details>
         </li>
       {/each}
     </ul>
@@ -667,6 +728,14 @@
           placeholder={$t("settings.server.fullName")}
           bind:value={newDisplay}
         />
+        {#if newBackend === "openproject"}
+          <input
+            type="password"
+            class="as-token"
+            placeholder={$t("settings.addServer.token")}
+            bind:value={newToken}
+          />
+        {/if}
         <button type="button" class="btn" onclick={addNewServer}
           >{$t("settings.addServer.add")}</button
         >

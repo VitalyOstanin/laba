@@ -57,7 +57,13 @@ export const ru: Dict = {
   "settings.addServer.githubHint":
     "Работает через gh CLI — токен не нужен. URL — хост GitHub, например github.com.",
   "settings.addServer.openprojectHint":
-    "Токен API задайте отдельно (keyring / CLI) после добавления.",
+    "Вставьте токен API, чтобы войти сразу, либо оставьте пустым и войдите позже у сервера.",
+  "settings.addServer.token": "Токен API (OpenProject)",
+  "settings.server.signIn": "Войти",
+  "settings.server.token": "Вставьте токен API и нажмите «Войти»",
+  "settings.server.hasToken": "токен сохранён",
+  "settings.server.noToken": "нет токена",
+  "settings.server.advanced": "Дополнительно (proxy, цвета, фильтры, поля)",
   "settings.filters": "Табы фильтров по статусу",
   "settings.filters.hint":
     "Каждый таб группирует один или несколько статусов. Пусто — автосписок по одному табу на статус.",
@@ -163,4 +169,6 @@ export const ru: Dict = {
   "backends.contributeHint":
     "Как добавить бэкенд (откроется руководство для контрибьюторов)",
   "backends.dismiss": "Скрыть",
+  "empty.title": "Серверов пока нет",
+  "empty.hint": "Добавьте сервер, чтобы видеть задачи и уведомления.",
 };

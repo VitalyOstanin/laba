@@ -655,6 +655,32 @@ body {
   color: var(--text-dim);
 }
 
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 14px;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+.empty-state strong {
+  color: var(--text);
+}
+
+.empty-add {
+  margin-top: 4px;
+  font: inherit;
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: var(--accent-text);
+  text-decoration: none;
+  cursor: pointer;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1220,9 +1246,62 @@ button.readdot.busy {
 .settings .add-server-row .as-display {
   width: 140px;
 }
+.settings .add-server-row .as-token {
+  width: 180px;
+}
 .settings .add-error {
   color: var(--danger);
   font-size: var(--fs-sm);
+}
+
+/* Per-server sign-in: token state pill + token input + button, full row width
+   below the inline fields (mirrors the srv-colors block layout). */
+.settings .srv-signin {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-left: 34px;
+  font-size: var(--fs-sm);
+}
+.settings .srv-token-state {
+  font-size: var(--fs-xs);
+  color: var(--danger);
+}
+.settings .srv-token-state.ok {
+  color: var(--ok);
+}
+.settings .srv-signin .srv-token-input {
+  width: 220px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+/* Per-server advanced settings: collapsed by default so the common fields
+   (enable, names, poll, timelog, sign-in) stay uncluttered. */
+.settings .srv-advanced {
+  flex-basis: 100%;
+  padding-left: 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.settings .srv-advanced > summary {
+  cursor: pointer;
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  padding: 4px 0;
+}
+/* Nested blocks already sit inside the advanced padding; drop their own indent. */
+.settings .srv-advanced .srv-colors {
+  padding-left: 0;
 }
 
 /* Per-server status-color editor: takes the full row width below the inline

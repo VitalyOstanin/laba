@@ -54,7 +54,13 @@ export const en = {
   "settings.addServer.githubHint":
     "Uses the gh CLI — no token needed. URL is the GitHub host, e.g. github.com.",
   "settings.addServer.openprojectHint":
-    "Set the API token separately (keyring / CLI) after adding.",
+    "Paste the API token to sign in now, or leave it blank and sign in later per server.",
+  "settings.addServer.token": "API token (OpenProject)",
+  "settings.server.signIn": "Sign in",
+  "settings.server.token": "Paste API token, then Sign in",
+  "settings.server.hasToken": "token stored",
+  "settings.server.noToken": "no token",
+  "settings.server.advanced": "Advanced (proxy, colors, filters, fields)",
   "settings.filters": "Status filter tabs",
   "settings.filters.hint":
     "Each tab groups one or more statuses. Leave empty to auto-list one tab per status.",
@@ -160,6 +166,8 @@ export const en = {
   "backends.contributeHint":
     "How to add a backend (opens the contributing guide)",
   "backends.dismiss": "Dismiss",
+  "empty.title": "No servers yet",
+  "empty.hint": "Add a server to see your tasks and notifications.",
 } as const;
 
 export type Key = keyof typeof en;
