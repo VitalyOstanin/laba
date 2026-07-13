@@ -70,7 +70,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-24.04
+          # Build on the oldest supported Ubuntu so the CLI links against an older
+          # glibc and runs on a wider range of distros (matches the GUI bundle job).
+          - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
           - os: macos-latest
             target: aarch64-apple-darwin
