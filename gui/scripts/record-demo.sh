@@ -22,8 +22,12 @@ RAW="$WORK/demo-raw.mp4"
 FINAL="$WORK/demo.mp4"
 PALETTE="$WORK/palette.png"
 GIF="$MEDIA/demo.gif"
+SHOTS="$MEDIA/screenshots"
+# GIF frame rate and width — kept modest to keep the file small for a public repo.
+GIF_FPS="${GIF_FPS:-10}"
+GIF_WIDTH="${GIF_WIDTH:-800}"
 
-mkdir -p "$MEDIA"
+mkdir -p "$MEDIA" "$SHOTS"
 
 pids=()
 cleanup() {
@@ -70,7 +74,8 @@ sleep 0.8
 # 5. Drive the walkthrough.
 echo "[rec] running walkthrough"
 DISPLAY="$DISPLAY_NUM" DEMO_URL="http://localhost:1420" DEMO_MARKER="$MARKER" \
-  NODE_PATH="$SCRIPT_DIR/node_modules" node "$SCRIPT_DIR/demo-driver.mjs"
+  DEMO_SHOTS="$SHOTS" NODE_PATH="$SCRIPT_DIR/node_modules" \
+  node "$SCRIPT_DIR/demo-driver.mjs"
 
 # 6. Stop ffmpeg cleanly (SIGINT finalises the moov atom).
 kill -INT "$FF_PID" 2>/dev/null || true
@@ -85,12 +90,12 @@ echo "[rec] trim head: ${TRIM}s"
 ffmpeg -loglevel warning -ss "$TRIM" -i "$RAW" -y -c:v libx264 -preset veryfast \
   -pix_fmt yuv420p -movflags +faststart "$FINAL"
 
-# 8. GIF via palettegen/paletteuse (width 900, 12 fps). `-update 1` marks the
-#    palette as a single still image so ffmpeg does not warn about a missing
-#    image-sequence pattern in the output name.
-ffmpeg -loglevel warning -i "$FINAL" -vf "fps=12,scale=900:-1:flags=lanczos,palettegen" -update 1 -y "$PALETTE"
+# 8. GIF via palettegen/paletteuse. `-update 1` marks the palette as a single
+#    still image so ffmpeg does not warn about a missing image-sequence pattern.
+VF="fps=${GIF_FPS},scale=${GIF_WIDTH}:-1:flags=lanczos"
+ffmpeg -loglevel warning -i "$FINAL" -vf "${VF},palettegen" -update 1 -y "$PALETTE"
 ffmpeg -loglevel warning -i "$FINAL" -i "$PALETTE" \
-  -lavfi "fps=12,scale=900:-1:flags=lanczos[x];[x][1:v]paletteuse" -y "$GIF"
+  -lavfi "${VF}[x];[x][1:v]paletteuse" -y "$GIF"
 
 echo "[rec] done:"
-ls -lh "$GIF"
+ls -lh "$GIF" "$SHOTS"/*.png 2>/dev/null

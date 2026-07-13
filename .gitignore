@@ -18,3 +18,7 @@ docs/reviews/
 # OS / editor
 .DS_Store
 *.swp
+
+# demo recorder auto-installs Playwright here
+/gui/scripts/package.json
+/gui/scripts/package-lock.json

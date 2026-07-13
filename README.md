@@ -22,10 +22,16 @@ built on [Tauri](https://tauri.app/) with a shared Rust core.
 
 ![laba demo](gui/media/demo.gif)
 
-The recording runs against built-in mock data (anonymized), so no real server or
-account is needed to preview the interface. It is reproducible with
+The recording walks the first-run setup wizard and then the dashboard it fills
+in. It runs against built-in mock data (anonymized), so no real server or account
+is needed to preview the interface, and is reproducible with
 `gui/scripts/record-demo.sh` (drives `vite dev` in headless Chrome under Xvfb and
 captures it with ffmpeg).
+
+|                                                          |                                                        |
+| -------------------------------------------------------- | ------------------------------------------------------ |
+| ![Setup wizard](gui/media/screenshots/wizard-backend.png) | ![Dashboard](gui/media/screenshots/dashboard.png)      |
+| ![Task detail](gui/media/screenshots/task-detail.png)    | ![Settings](gui/media/screenshots/settings.png)        |
 
 ## Goals
 
@@ -128,3 +134,7 @@ File locations follow the XDG base directories and can be overridden:
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+Third-party crate licenses are listed in
+[THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md) (regenerate with
+`scripts/gen-third-party-licenses.sh`).

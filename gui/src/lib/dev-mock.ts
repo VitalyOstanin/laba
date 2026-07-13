@@ -21,7 +21,9 @@ import type {
 
 // --- mutable in-memory state (a session's edits are reflected until reload) ---
 
-let servers: ServerInfo[] = [
+// Seed profiles the dashboard starts with. Kept as a constant so the setup
+// wizard (see `wizardDemo` below) can re-add one by name and get its fixtures.
+const SEED_SERVERS: ServerInfo[] = [
   {
     name: "demo",
     display_name: "Demo Tracker",
@@ -75,6 +77,16 @@ let servers: ServerInfo[] = [
     has_token: false,
   },
 ];
+
+// `?demo=wizard` starts with no servers so the first-run setup wizard opens (for
+// the recorded demo). Any other load starts from the seed profiles.
+const wizardDemo =
+  typeof globalThis.location !== "undefined" &&
+  /(?:^|[?&])demo=wizard(?:&|$)/.test(globalThis.location.search);
+
+let servers: ServerInfo[] = wizardDemo
+  ? []
+  : SEED_SERVERS.map((s) => ({ ...s }));
 
 let settings: Settings = {
   theme: "system",
@@ -432,10 +444,46 @@ export async function mockInvoke(
           : null;
       });
       return null;
+    // Setup wizard: actually add the profile so the dashboard fills in after the
+    // wizard closes. A seed name (e.g. "demo") brings its fixtures along.
+    case "add_server": {
+      const nm = String(a.name ?? "");
+      if (nm && !server(nm)) {
+        const seed = SEED_SERVERS.find((s) => s.name === nm);
+        const added: ServerInfo = seed
+          ? { ...seed, is_default: servers.length === 0 }
+          : {
+              name: nm,
+              display_name: (a.displayName as string) || nm,
+              base_url: (a.url as string) || "",
+              backend: (a.backend as ServerInfo["backend"]) || "openproject",
+              is_default: servers.length === 0,
+              poll_secs: 120,
+              poll_override: null,
+              enabled: true,
+              timelog_start: null,
+              status_colors: {},
+              has_notifications: false,
+              can_toggle_read: false,
+              supports_status_filters: false,
+              status_filters: [],
+              supports_custom_fields: false,
+              supports_task_detail: false,
+              display_fields: [],
+              proxy: null,
+              has_token: false,
+            };
+        servers = [...servers, added];
+      }
+      return null;
+    }
+    // Setup wizard: mark the OpenProject profile as signed in.
+    case "login_server":
+      patchServer(a.name, (s) => (s.has_token = true));
+      return null;
     // Actions with no UI-visible fixture state: acknowledge and move on.
     case "set_server_status_color":
     case "rename_server":
-    case "add_server":
     case "add_comment":
     case "create_time_entry":
     case "set_tray_status":
