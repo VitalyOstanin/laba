@@ -5,6 +5,9 @@ The format follows Keep a Changelog and Semantic Versioning.
 
 ## [Unreleased]
 
+### Added
+- GitHub: surface everything that needs attention — issues/PRs I'm involved in (author, assignee, mention, comment), pull requests whose review is requested from me, and everything open in my own repositories — de-duplicated, instead of only items assigned to me.
+
 ## [0.1.3] - 2026-07-13
 
 ### Added

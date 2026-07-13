@@ -254,6 +254,24 @@ fn parse_tasks(raw: &[u8], kind: TaskKind) -> Result<Vec<Value>, Error> {
     Ok(arr.iter().map(|v| normalize_task(v, kind)).collect())
 }
 
+/// Drop duplicate tasks that surfaced from more than one search, keeping the
+/// first occurrence. Keyed by the normalized `id` (`owner/repo#N`), falling back
+/// to `url` when an id is absent, so order (issues before PRs) is preserved.
+fn dedup_by_id(tasks: Vec<Value>) -> Vec<Value> {
+    let mut seen = std::collections::HashSet::new();
+    tasks
+        .into_iter()
+        .filter(|t| {
+            let key = t
+                .get("id")
+                .or_else(|| t.get("url"))
+                .map(|v| v.to_string())
+                .unwrap_or_default();
+            seen.insert(key)
+        })
+        .collect()
+}
+
 /// Read-only GitHub backend over a [`GhRunner`].
 pub struct GithubBackend<R: GhRunner> {
     runner: R,
@@ -264,31 +282,82 @@ impl<R: GhRunner> GithubBackend<R> {
         Self { runner }
     }
 
-    /// My open issues and pull requests (aggregated), normalized.
+    /// The authenticated user's login, for owner-scoped searches (`gh search`
+    /// takes a concrete login for `--owner`, not `@me`).
+    fn my_login(&self) -> Result<String, Error> {
+        let raw = self.runner.run(&["api", "user", "--jq", ".login"])?;
+        Ok(String::from_utf8_lossy(&raw).trim().to_string())
+    }
+
+    /// Everything on GitHub that needs my attention, aggregated and de-duplicated:
+    /// issues/PRs I'm involved in (author, assignee, mention, comment), PRs whose
+    /// review is requested from me, and everything open in my own repositories.
+    /// The same item surfacing in several searches is collapsed by `id`.
     pub fn list_my_tasks(&self) -> Result<Vec<Value>, Error> {
-        let issues = self.runner.run(&[
-            "search",
-            "issues",
-            "--assignee",
-            "@me",
-            "--state",
-            "open",
-            "--json",
-            "number,title,state,repository,assignees,createdAt,updatedAt,url",
-        ])?;
-        let prs = self.runner.run(&[
-            "search",
-            "prs",
-            "--assignee",
-            "@me",
-            "--state",
-            "open",
-            "--json",
-            "number,title,state,repository,assignees,createdAt,updatedAt,url,isDraft",
-        ])?;
-        let mut out = parse_tasks(&issues, TaskKind::Issue)?;
-        out.extend(parse_tasks(&prs, TaskKind::PullRequest)?);
-        Ok(out)
+        const ISSUE_FIELDS: &str =
+            "number,title,state,repository,assignees,createdAt,updatedAt,url";
+        const PR_FIELDS: &str =
+            "number,title,state,repository,assignees,createdAt,updatedAt,url,isDraft";
+        let login = self.my_login()?;
+
+        let mut out = Vec::new();
+        // Issues: anything I'm involved in, plus everything open in my repos.
+        for args in [
+            vec![
+                "search",
+                "issues",
+                "--involves",
+                "@me",
+                "--state",
+                "open",
+                "--json",
+                ISSUE_FIELDS,
+            ],
+            vec![
+                "search",
+                "issues",
+                "--owner",
+                &login,
+                "--state",
+                "open",
+                "--json",
+                ISSUE_FIELDS,
+            ],
+        ] {
+            out.extend(parse_tasks(&self.runner.run(&args)?, TaskKind::Issue)?);
+        }
+        // PRs: involving me, review requested from me, plus everything in my repos.
+        for args in [
+            vec![
+                "search",
+                "prs",
+                "--involves",
+                "@me",
+                "--state",
+                "open",
+                "--json",
+                PR_FIELDS,
+            ],
+            vec![
+                "search",
+                "prs",
+                "--review-requested",
+                "@me",
+                "--state",
+                "open",
+                "--json",
+                PR_FIELDS,
+            ],
+            vec![
+                "search", "prs", "--owner", &login, "--state", "open", "--json", PR_FIELDS,
+            ],
+        ] {
+            out.extend(parse_tasks(
+                &self.runner.run(&args)?,
+                TaskKind::PullRequest,
+            )?);
+        }
+        Ok(dedup_by_id(out))
     }
 
     /// My GitHub notifications, normalized.
@@ -327,7 +396,9 @@ pub mod tests_support {
             match (args.first().copied(), args.get(1).copied()) {
                 (Some("search"), Some("issues")) => Ok(self.issues.clone()),
                 (Some("search"), Some("prs")) => Ok(self.prs.clone()),
-                (Some("api"), _) => Ok(self.notifications.clone()),
+                // `gh api user` (login lookup) vs `gh api notifications`.
+                (Some("api"), Some("user")) => Ok(b"testuser".to_vec()),
+                (Some("api"), Some("notifications")) => Ok(self.notifications.clone()),
                 _ => Err(Error::Api(format!("unexpected gh args: {args:?}"))),
             }
         }
@@ -486,11 +557,25 @@ mod tests {
             .into_bytes(),
             b"[]".to_vec(),
         );
+        // The same issue/PR fixture is returned by several searches (involves,
+        // owner, review-requested); dedup_by_id collapses each to one entry.
         let out = GithubBackend::new(fake).list_my_tasks().unwrap();
         assert_eq!(out.len(), 2);
         assert_eq!(out[0]["type"], json!("Issue"));
         assert_eq!(out[0]["id"], json!("acme/app#1"));
         assert_eq!(out[1]["type"], json!("Pull request"));
+        assert_eq!(out[1]["id"], json!("acme/app#2"));
+    }
+
+    #[test]
+    fn dedup_by_id_keeps_first_occurrence_and_order() {
+        let a1 = json!({"id": "acme/app#1", "subject": "first"});
+        let a1_dup = json!({"id": "acme/app#1", "subject": "again"});
+        let b2 = json!({"id": "acme/app#2", "subject": "second"});
+        let out = dedup_by_id(vec![a1.clone(), b2.clone(), a1_dup]);
+        assert_eq!(out.len(), 2);
+        assert_eq!(out[0]["id"], json!("acme/app#1"));
+        assert_eq!(out[0]["subject"], json!("first"));
         assert_eq!(out[1]["id"], json!("acme/app#2"));
     }
 
