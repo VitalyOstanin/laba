@@ -484,6 +484,17 @@ pub async fn gh_dependency() -> Result<GhDependency, String> {
     Ok(GhDependency { used: true, status })
 }
 
+/// Probe `gh` availability for a host (empty = default), regardless of whether a
+/// GitHub server is configured yet. Used by the setup wizard's GitHub step to
+/// offer installing/authenticating `gh` before the profile exists.
+#[tauri::command]
+pub async fn gh_probe(host: String) -> Result<laba_core::github::GhStatus, String> {
+    use laba_core::github::gh_status_for_host;
+    tauri::async_runtime::spawn_blocking(move || gh_status_for_host(&host))
+        .await
+        .map_err(|e| format!("gh probe failed: {e}"))
+}
+
 /// List a server's time-entry activity types for the log-time form.
 #[tauri::command]
 pub async fn list_activities(server: String) -> Result<Value, String> {

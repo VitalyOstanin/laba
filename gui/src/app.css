@@ -686,6 +686,144 @@ body {
   cursor: pointer;
 }
 
+/* First-run setup wizard: a modal over the dashboard. */
+.wizard-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+}
+.wizard {
+  width: min(520px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+.wizard-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.wizard-head h2 {
+  font-size: var(--fs-lg);
+}
+.wizard-step {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+.wizard-body {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.wizard-q {
+  font-weight: 600;
+}
+.wizard-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wizard-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+.wizard-card.sel {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.wizard-card span {
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+.wizard-gh {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+}
+.wizard-gh-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.wizard-ok {
+  color: var(--ok);
+}
+.wizard-hint {
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+.wizard-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wizard-field span {
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+.wizard-field input {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+}
+.wizard-summary {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wizard-error {
+  color: var(--danger);
+  font-size: var(--fs-sm);
+}
+.wizard-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}
+.wizard-nav {
+  display: flex;
+  gap: 8px;
+}
+.btn.primary {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: transparent;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);

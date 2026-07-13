@@ -175,6 +175,7 @@ pub fn run() {
             commands::close_window,
             commands::add_server,
             commands::login_server,
+            commands::gh_probe,
             commands::set_server_display_name,
             commands::set_server_enabled,
             commands::set_server_poll_secs,

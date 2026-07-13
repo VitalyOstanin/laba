@@ -169,6 +169,38 @@ export const en = {
   "backends.dismiss": "Dismiss",
   "empty.title": "No servers yet",
   "empty.hint": "Add a server to see your tasks and notifications.",
+  "empty.setup": "Set up a server",
+  "wizard.title": "Set up a server",
+  "wizard.step": "Step",
+  "wizard.backend.title": "Which tracker do you use?",
+  "wizard.backend.op": "OpenProject",
+  "wizard.backend.opDesc":
+    "A self-hosted or cloud OpenProject instance. Needs an API token.",
+  "wizard.backend.gh": "GitHub",
+  "wizard.backend.ghDesc":
+    "Issues and pull requests via the GitHub CLI (gh). No token stored here.",
+  "wizard.gh.needed": "GitHub uses the gh CLI for authentication.",
+  "wizard.gh.scopes":
+    "A read-only login may miss notifications and private repositories. For full coverage, grant the scopes with: gh auth refresh -s repo,read:org,notifications",
+  "wizard.gh.ready": "gh is installed and signed in.",
+  "wizard.connection.title": "Connection",
+  "wizard.name": "Short name",
+  "wizard.url.op": "Instance URL, e.g. https://openproject.example.com",
+  "wizard.url.gh": "GitHub host, e.g. github.com",
+  "wizard.display": "Full name (optional)",
+  "wizard.token.title": "API token",
+  "wizard.token.where": "Where do I get a token?",
+  "wizard.token.hint":
+    "Paste an OpenProject API token; it is validated and stored securely.",
+  "wizard.verify.title": "Review and finish",
+  "wizard.verify.op":
+    "The token will be verified against the server, then the profile is created.",
+  "wizard.verify.gh": "The profile will be created; gh handles authentication.",
+  "wizard.creating": "Creating…",
+  "wizard.back": "Back",
+  "wizard.next": "Next",
+  "wizard.finish": "Finish",
+  "wizard.cancel": "Cancel",
 } as const;
 
 export type Key = keyof typeof en;

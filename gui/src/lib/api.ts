@@ -12,6 +12,7 @@ import type {
   StatusFilter,
   ReleaseNote,
   GhDependency,
+  GhStatus,
 } from "./types";
 
 export const listServers = (): Promise<ServerInfo[]> => invoke("list_servers");
@@ -112,6 +113,10 @@ export const loginServer = (
   token: string,
   force: boolean,
 ): Promise<void> => invoke("login_server", { name, token, force });
+// Probe gh availability (host empty = default) regardless of config — for the
+// setup wizard's GitHub step.
+export const ghProbe = (host: string): Promise<GhStatus> =>
+  invoke("gh_probe", { host });
 
 export const getSettings = (): Promise<Settings> => invoke("get_settings");
 export const saveSettings = (settings: Settings): Promise<void> =>

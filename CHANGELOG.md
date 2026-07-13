@@ -7,6 +7,7 @@ The format follows Keep a Changelog and Semantic Versioning.
 
 ### Added
 - GitHub: surface everything that needs attention — issues/PRs I'm involved in (author, assignee, mention, comment), pull requests whose review is requested from me, and everything open in my own repositories — de-duplicated, instead of only items assigned to me.
+- First-run setup wizard: a step-by-step modal (backend → connection → token → verify) that opens automatically when no server is configured. The GitHub step checks the `gh` CLI up front — offering an install link when it's missing, a sign-in prompt when it's unauthenticated, and a scope hint (`gh auth refresh -s repo,read:org,notifications`) for read-only logins.
 
 ## [0.1.3] - 2026-07-13
 
