@@ -8,6 +8,7 @@ built on [Tauri](https://tauri.app/) with a shared Rust core.
 
 ## Contents
 
+- [Demo](#demo)
 - [Goals](#goals)
 - [Planned capabilities](#planned-capabilities)
 - [Repository layout](#repository-layout)
@@ -16,6 +17,15 @@ built on [Tauri](https://tauri.app/) with a shared Rust core.
 - [Running](#running)
 - [Environment variables](#environment-variables)
 - [License](#license)
+
+## Demo
+
+![laba demo](gui/media/demo.gif)
+
+The recording runs against built-in mock data (anonymized), so no real server or
+account is needed to preview the interface. It is reproducible with
+`gui/scripts/record-demo.sh` (drives `vite dev` in headless Chrome under Xvfb and
+captures it with ffmpeg).
 
 ## Goals
 
