@@ -1,5 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import path from "node:path";
+import fs from "node:fs";
+import os from "node:os";
 
 // WebdriverIO + tauri-driver smoke config. Linux uses WebKitWebDriver, which
 // tauri-driver locates on PATH. Run headless under xvfb (see e2e/README.md).
@@ -34,6 +36,26 @@ export const config = {
       stdio: "inherit",
     });
     if (r.status !== 0) throw new Error("tauri build failed");
+    // Seed an isolated config dir with one server so the dashboard renders its
+    // columns (the empty state only shows when no server is configured). The
+    // server has no token, so the poller fails fast with the "not signed in"
+    // sentinel — no network — and the columns still render. Point secrets at a
+    // temp file so the run never touches the CI keyring. The app inherits these
+    // env vars via tauri-driver.
+    const cfgHome = fs.mkdtempSync(path.join(os.tmpdir(), "laba-e2e-"));
+    const cfgDir = path.join(cfgHome, "laba");
+    fs.mkdirSync(cfgDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(cfgDir, "config.json"),
+      JSON.stringify({
+        servers: {
+          demo: { base_url: "https://demo.invalid/op", backend: "openproject" },
+        },
+        default_server: "demo",
+      }),
+    );
+    process.env.XDG_CONFIG_HOME = cfgHome;
+    process.env.OPENPROJECT_SECRETS = path.join(cfgHome, "secrets.json");
   },
   beforeSession: () => {
     tauriDriver = spawn("tauri-driver", [], {
