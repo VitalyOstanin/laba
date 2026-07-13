@@ -1,6 +1,6 @@
 {
   "name": "laba-gui",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "laba desktop dashboard frontend",
   "type": "module",
   "scripts": {

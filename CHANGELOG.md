@@ -5,6 +5,8 @@ The format follows Keep a Changelog and Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-07-13
+
 ### Added
 - Settings: sign in to an OpenProject server from the GUI — enter the API token in the add-server form or per server in the list, so a fresh install no longer needs the CLI to store a token. The token is validated against `users/me` and a duplicate account is rejected, mirroring `auth login`.
 - Dashboard: an explicit empty state (with an "add a server" action) when no server is configured, instead of blank columns.
