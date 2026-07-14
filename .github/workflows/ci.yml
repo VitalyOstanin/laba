@@ -42,10 +42,9 @@ jobs:
       - run: cargo test --workspace --exclude laba-gui --doc
 
   coverage:
-    # Line coverage for the Rust core + cli via cargo-llvm-cov. The floor is
-    # intentionally conservative (well below the well-tested core's real
-    # coverage) so it catches a gross regression without false-failing; raise it
-    # once the observed baseline in CI is known.
+    # Line coverage for the Rust core + cli via cargo-llvm-cov. The observed
+    # baseline is ~87% lines; the floor sits a few points under it so it catches
+    # a gross regression without false-failing on normal fluctuation.
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -57,7 +56,7 @@ jobs:
       - uses: taiki-e/install-action@43aecc8d72668fbcfe75c31400bc4f890f1c5853 # v2.83.2
         with:
           tool: cargo-llvm-cov,cargo-nextest
-      - run: cargo llvm-cov nextest --workspace --exclude laba-gui --summary-only --fail-under-lines 40
+      - run: cargo llvm-cov nextest --workspace --exclude laba-gui --summary-only --fail-under-lines 80
 
   scripts:
     runs-on: ubuntu-24.04
