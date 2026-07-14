@@ -11,6 +11,8 @@ description = "OpenProject API v3 client library (config, auth, transport)."
 [dependencies]
 # Async HTTP transport with SOCKS5 + streaming; rustls to avoid a system OpenSSL build dep.
 reqwest = { workspace = true }
+# Installs the ring crypto provider for reqwest's rustls backend (see client.rs).
+rustls = { workspace = true }
 tokio = { workspace = true }
 # Config and API payload (de)serialization.
 serde = { workspace = true }

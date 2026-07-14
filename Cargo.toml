@@ -16,8 +16,13 @@ authors = ["Vitaly Ostanin <vitaly.ostanin@gmail.com>"]
 
 [workspace.dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs"] }
-# `multipart` adds multipart upload of attachment files.
-reqwest = { version = "0.12", default-features = false, features = ["json", "socks", "stream", "rustls-tls", "multipart"] }
+# `multipart` adds multipart upload of attachment files; `query` and `form` became
+# opt-in in 0.13. `rustls-no-provider` keeps rustls but lets us install the ring
+# crypto provider ourselves (see core::client) — the same backend 0.12 used by
+# default — instead of 0.13's new aws-lc-rs default, which needs a C toolchain / NASM.
+reqwest = { version = "0.13", default-features = false, features = ["json", "socks", "stream", "rustls-no-provider", "multipart", "query"] }
+# Pulled in only to install the ring crypto provider for reqwest's rustls backend.
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
 serde = { version = "1", features = ["derive"] }
 # preserve object key order for stable --human column output.
 serde_json = { version = "1", features = ["preserve_order"] }

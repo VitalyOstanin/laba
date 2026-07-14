@@ -22,6 +22,21 @@ fn join_err(e: tokio::task::JoinError) -> Error {
     Error::Io(format!("cache task failed: {e}"))
 }
 
+/// Install the ring crypto provider as the process-wide rustls default, once.
+///
+/// reqwest is built with `rustls-no-provider`, so no provider is auto-installed;
+/// without this, the rustls backend panics on first use ("no process-level
+/// CryptoProvider available"). ring is the same backend reqwest 0.12 used by
+/// default, chosen over 0.13's aws-lc-rs to avoid a C toolchain / NASM build
+/// dependency. Idempotent: a second `install_default` returns `Err`, ignored.
+pub(crate) fn ensure_crypto_provider() {
+    use std::sync::Once;
+    static INIT: Once = Once::new();
+    INIT.call_once(|| {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+    });
+}
+
 /// The resolved proxy decision for one server, after folding the override /
 /// per-server / global levels.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,6 +105,7 @@ impl Client {
         proxy_override: Option<&str>,
         global_proxy: Option<&str>,
     ) -> Result<Client, Error> {
+        ensure_crypto_provider();
         let mut builder = reqwest::Client::builder()
             // A redirect could forward the Basic token to another host — never follow.
             .redirect(reqwest::redirect::Policy::none())
