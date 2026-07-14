@@ -88,6 +88,7 @@ pub async fn changelog_since(current: &str) -> Result<Vec<ReleaseNote>, Error> {
 /// local mock server.
 async fn changelog_from(api_base: &str, current: &str) -> Result<Vec<ReleaseNote>, Error> {
     let url = format!("{api_base}/repos/{UPDATE_OWNER}/{UPDATE_REPO}/releases?per_page=100");
+    crate::client::ensure_crypto_provider();
     let client = reqwest::Client::builder()
         // GitHub rejects requests without a User-Agent.
         .user_agent(concat!("laba/", env!("CARGO_PKG_VERSION")))

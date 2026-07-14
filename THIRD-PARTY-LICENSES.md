@@ -1,7 +1,7 @@
 # Third-party licenses
 
 This project bundles Rust crates from the ecosystem. The table below lists
-every third-party crate in the resolved dependency graph (640 crates) with
+every third-party crate in the resolved dependency graph (627 crates) with
 its version and SPDX license expression.
 
 Regenerate with `scripts/gen-third-party-licenses.sh`. The dependency
@@ -12,7 +12,7 @@ license allow-list is enforced separately in CI via `deny.toml`
 
 | SPDX expression | Crates |
 | --- | ---: |
-| MIT OR Apache-2.0 | 312 |
+| MIT OR Apache-2.0 | 301 |
 | MIT | 150 |
 | Apache-2.0 OR MIT | 58 |
 | MIT/Apache-2.0 | 25 |
@@ -26,11 +26,10 @@ license allow-list is enforced separately in CI via `deny.toml`
 | Apache-2.0 OR ISC OR MIT | 3 |
 | BSD-3-Clause | 3 |
 | ISC | 3 |
-| MIT OR Apache-2.0 OR Zlib | 3 |
 | BSD-2-Clause OR Apache-2.0 OR MIT | 2 |
 | BSD-3-Clause OR MIT OR Apache-2.0 | 2 |
-| CDLA-Permissive-2.0 | 2 |
 | MIT OR Apache-2.0 OR LGPL-2.1-or-later | 2 |
+| MIT OR Apache-2.0 OR Zlib | 2 |
 | Unlicense/MIT | 2 |
 | (MIT OR Apache-2.0) AND Unicode-3.0 | 1 |
 | 0BSD OR MIT OR Apache-2.0 | 1 |
@@ -42,6 +41,7 @@ license allow-list is enforced separately in CI via `deny.toml`
 | BSD-3-Clause AND MIT | 1 |
 | BSD-3-Clause/MIT | 1 |
 | CC0-1.0 OR MIT-0 OR Apache-2.0 | 1 |
+| CDLA-Permissive-2.0 | 1 |
 | MIT OR Zlib OR Apache-2.0 | 1 |
 | Unlicense | 1 |
 | Zlib | 1 |
@@ -121,7 +121,6 @@ license allow-list is enforced separately in CI via `deny.toml`
 | cfg-expr | 0.15.8 | MIT OR Apache-2.0 |
 | cfg-if | 1.0.4 | MIT OR Apache-2.0 |
 | cfg_aliases | 0.2.1 | MIT |
-| chacha20 | 0.10.1 | MIT OR Apache-2.0 |
 | chrono | 0.4.45 | MIT OR Apache-2.0 |
 | chrono-tz | 0.10.4 | MIT OR Apache-2.0 |
 | cipher | 0.4.4 | MIT OR Apache-2.0 |
@@ -139,7 +138,6 @@ license allow-list is enforced separately in CI via `deny.toml`
 | core-graphics | 0.25.0 | MIT OR Apache-2.0 |
 | core-graphics-types | 0.2.0 | MIT OR Apache-2.0 |
 | cpufeatures | 0.2.17 | MIT OR Apache-2.0 |
-| cpufeatures | 0.3.0 | MIT OR Apache-2.0 |
 | crc32fast | 1.5.0 | MIT OR Apache-2.0 |
 | crossbeam-channel | 0.5.16 | MIT OR Apache-2.0 |
 | crossbeam-utils | 0.8.22 | MIT OR Apache-2.0 |
@@ -305,7 +303,6 @@ license allow-list is enforced separately in CI via `deny.toml`
 | litemap | 0.8.2 | Unicode-3.0 |
 | lock_api | 0.4.14 | MIT OR Apache-2.0 |
 | log | 0.4.33 | MIT OR Apache-2.0 |
-| lru-slab | 0.1.2 | MIT OR Apache-2.0 OR Zlib |
 | mac-notification-sys | 0.6.15 | MIT/Apache-2.0 |
 | markup5ever | 0.38.0 | MIT OR Apache-2.0 |
 | memchr | 2.8.3 | Unlicense OR MIT |
@@ -399,22 +396,16 @@ license allow-list is enforced separately in CI via `deny.toml`
 | ptr_meta | 0.1.4 | MIT |
 | ptr_meta_derive | 0.1.4 | MIT |
 | quick-xml | 0.41.0 | MIT |
-| quinn | 0.11.11 | MIT OR Apache-2.0 |
-| quinn-proto | 0.11.16 | MIT OR Apache-2.0 |
-| quinn-udp | 0.5.15 | MIT OR Apache-2.0 |
 | quote | 1.0.46 | MIT OR Apache-2.0 |
 | r-efi | 5.3.0 | MIT OR Apache-2.0 OR LGPL-2.1-or-later |
 | r-efi | 6.0.0 | MIT OR Apache-2.0 OR LGPL-2.1-or-later |
 | radium | 0.7.0 | MIT |
-| rand | 0.10.2 | MIT OR Apache-2.0 |
 | rand | 0.8.6 | MIT OR Apache-2.0 |
 | rand | 0.9.5 | MIT OR Apache-2.0 |
 | rand_chacha | 0.3.1 | MIT OR Apache-2.0 |
 | rand_chacha | 0.9.0 | MIT OR Apache-2.0 |
-| rand_core | 0.10.1 | MIT OR Apache-2.0 |
 | rand_core | 0.6.4 | MIT OR Apache-2.0 |
 | rand_core | 0.9.5 | MIT OR Apache-2.0 |
-| rand_pcg | 0.10.2 | MIT OR Apache-2.0 |
 | raw-window-handle | 0.6.2 | MIT OR Apache-2.0 OR Zlib |
 | redox_syscall | 0.5.18 | MIT |
 | redox_users | 0.5.2 | MIT |
@@ -424,7 +415,6 @@ license allow-list is enforced separately in CI via `deny.toml`
 | regex-automata | 0.4.14 | MIT OR Apache-2.0 |
 | regex-syntax | 0.8.11 | MIT OR Apache-2.0 |
 | rend | 0.4.2 | MIT |
-| reqwest | 0.12.28 | MIT OR Apache-2.0 |
 | reqwest | 0.13.4 | MIT OR Apache-2.0 |
 | ring | 0.17.14 | Apache-2.0 AND ISC |
 | rkyv | 0.7.46 | MIT |
@@ -588,15 +578,12 @@ license allow-list is enforced separately in CI via `deny.toml`
 | wasm-bindgen-macro | 0.2.126 | MIT OR Apache-2.0 |
 | wasm-bindgen-macro-support | 0.2.126 | MIT OR Apache-2.0 |
 | wasm-bindgen-shared | 0.2.126 | MIT OR Apache-2.0 |
-| wasm-streams | 0.4.2 | MIT OR Apache-2.0 |
 | wasm-streams | 0.5.0 | MIT OR Apache-2.0 |
 | web-sys | 0.3.103 | MIT OR Apache-2.0 |
-| web-time | 1.1.0 | MIT OR Apache-2.0 |
 | web_atoms | 0.2.5 | MIT OR Apache-2.0 |
 | webkit2gtk | 2.0.2 | MIT |
 | webkit2gtk-sys | 2.0.2 | MIT |
 | webpki-root-certs | 1.0.8 | CDLA-Permissive-2.0 |
-| webpki-roots | 1.0.8 | CDLA-Permissive-2.0 |
 | webview2-com | 0.38.2 | MIT |
 | webview2-com-macros | 0.8.1 | MIT |
 | webview2-com-sys | 0.38.2 | MIT |
