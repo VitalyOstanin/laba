@@ -2505,7 +2505,7 @@ dependencies = [
 
 [[package]]
 name = "laba-cli"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -2524,7 +2524,7 @@ dependencies = [
 
 [[package]]
 name = "laba-core"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "chrono",
  "chrono-tz",
@@ -2546,7 +2546,7 @@ dependencies = [
 
 [[package]]
 name = "laba-gui"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "ksni",
  "laba-core",
