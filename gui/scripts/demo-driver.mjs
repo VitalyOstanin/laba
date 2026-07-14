@@ -47,6 +47,11 @@ await page.goto(URL, { waitUntil: "networkidle" });
 await step("wait-wizard", () =>
   page.waitForSelector(".wizard-overlay", { timeout: 15000 }),
 );
+// Drop the ?demo=wizard flag from the address bar before recording starts, so
+// the demo does not show the dev-only query (the mock has already read it).
+await step("strip-demo-flag", () =>
+  page.evaluate(() => history.replaceState({}, "", location.pathname)),
+);
 await sleep(800);
 
 // Mark the real start so the recorder trims the idle head.

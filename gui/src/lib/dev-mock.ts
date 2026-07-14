@@ -84,6 +84,12 @@ const wizardDemo =
   typeof globalThis.location !== "undefined" &&
   /(?:^|[?&])demo=wizard(?:&|$)/.test(globalThis.location.search);
 
+// Strip the flag from the address bar so a recorded demo does not show the
+// ?demo=wizard query (it has already been read into `wizardDemo`).
+if (wizardDemo && typeof globalThis.history !== "undefined") {
+  globalThis.history.replaceState({}, "", globalThis.location.pathname);
+}
+
 let servers: ServerInfo[] = wizardDemo
   ? []
   : SEED_SERVERS.map((s) => ({ ...s }));
