@@ -1,7 +1,7 @@
 # Third-party licenses
 
 This project bundles Rust crates from the ecosystem. The table below lists
-every third-party crate in the resolved dependency graph (627 crates) with
+every third-party crate in the resolved dependency graph (632 crates) with
 its version and SPDX license expression.
 
 Regenerate with `scripts/gen-third-party-licenses.sh`. The dependency
@@ -12,7 +12,7 @@ license allow-list is enforced separately in CI via `deny.toml`
 
 | SPDX expression | Crates |
 | --- | ---: |
-| MIT OR Apache-2.0 | 301 |
+| MIT OR Apache-2.0 | 306 |
 | MIT | 150 |
 | Apache-2.0 OR MIT | 58 |
 | MIT/Apache-2.0 | 25 |
@@ -65,6 +65,7 @@ license allow-list is enforced separately in CI via `deny.toml`
 | anstyle-query | 1.1.5 | MIT OR Apache-2.0 |
 | anstyle-wincon | 3.0.11 | MIT OR Apache-2.0 |
 | anyhow | 1.0.103 | MIT OR Apache-2.0 |
+| apple-native-keyring-store | 1.0.1 | MIT OR Apache-2.0 |
 | arbitrary | 1.4.2 | MIT OR Apache-2.0 |
 | arrayvec | 0.7.8 | MIT OR Apache-2.0 |
 | assert-json-diff | 2.0.2 | MIT |
@@ -291,6 +292,7 @@ license allow-list is enforced separately in CI via `deny.toml`
 | jsonptr | 0.6.3 | MIT OR Apache-2.0 |
 | keyboard-types | 0.7.0 | MIT OR Apache-2.0 |
 | keyring | 3.6.3 | MIT OR Apache-2.0 |
+| keyring-core | 1.0.0 | MIT OR Apache-2.0 |
 | ksni | 0.3.5 | Unlicense |
 | lazy_static | 1.5.0 | MIT OR Apache-2.0 |
 | libappindicator | 0.9.0 | Apache-2.0 OR MIT |
@@ -440,6 +442,7 @@ license allow-list is enforced separately in CI via `deny.toml`
 | scopeguard | 1.2.0 | MIT OR Apache-2.0 |
 | seahash | 4.1.0 | MIT |
 | secret-service | 4.0.0 | MIT OR Apache-2.0 |
+| secret-service | 5.1.0 | MIT OR Apache-2.0 |
 | security-framework | 2.11.1 | MIT OR Apache-2.0 |
 | security-framework | 3.7.0 | MIT OR Apache-2.0 |
 | security-framework-sys | 2.17.0 | MIT OR Apache-2.0 |
@@ -601,6 +604,7 @@ license allow-list is enforced separately in CI via `deny.toml`
 | windows-interface | 0.59.3 | MIT OR Apache-2.0 |
 | windows-link | 0.1.3 | MIT OR Apache-2.0 |
 | windows-link | 0.2.1 | MIT OR Apache-2.0 |
+| windows-native-keyring-store | 1.1.0 | MIT OR Apache-2.0 |
 | windows-numerics | 0.2.0 | MIT OR Apache-2.0 |
 | windows-result | 0.3.4 | MIT OR Apache-2.0 |
 | windows-result | 0.4.1 | MIT OR Apache-2.0 |
@@ -656,6 +660,7 @@ license allow-list is enforced separately in CI via `deny.toml`
 | yoke-derive | 0.8.2 | Unicode-3.0 |
 | zbus | 4.4.0 | MIT |
 | zbus | 5.17.0 | MIT |
+| zbus-secret-service-keyring-store | 1.0.0 | MIT OR Apache-2.0 |
 | zbus_macros | 4.4.0 | MIT |
 | zbus_macros | 5.17.0 | MIT |
 | zbus_names | 3.0.0 | MIT |

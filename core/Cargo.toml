@@ -17,8 +17,10 @@ tokio = { workspace = true }
 # Config and API payload (de)serialization.
 serde = { workspace = true }
 serde_json = { workspace = true }
-# System keyring for token storage (Secret Service / macOS Keychain / Windows Credential Manager).
-keyring = { workspace = true }
+# Token storage via keyring-core with an OS-native credential store (see the
+# per-target deps below). The legacy `keyring` 3 crate is kept only as a reader
+# for one-shot lazy migration (core/src/secrets.rs).
+keyring-core = { workspace = true }
 # Typed error variants with Display.
 thiserror = { workspace = true }
 # SHA-256 checksum of downloaded attachment content.
@@ -38,6 +40,19 @@ log = "0.4"
 unicode-normalization = "0.1"
 # IANA timezone database for the configurable day-boundary/display zone.
 chrono-tz = { version = "0.10", default-features = false }
+
+# OS-native keyring-core credential store + legacy keyring 3 reader (migration).
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus-secret-service-keyring-store = { workspace = true }
+keyring = { workspace = true, features = ["async-secret-service", "async-io", "crypto-rust"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store = { workspace = true }
+keyring = { workspace = true, features = ["apple-native"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-native-keyring-store = { workspace = true }
+keyring = { workspace = true, features = ["windows-native"] }
 
 [build-dependencies]
 # Compile holidays_ru.json into static arrays (build.rs).

@@ -26,10 +26,30 @@ rustls = { version = "0.23", default-features = false, features = ["ring"] }
 serde = { version = "1", features = ["derive"] }
 # preserve object key order for stable --human column output.
 serde_json = { version = "1", features = ["preserve_order"] }
-keyring = { version = "3", features = ["async-secret-service", "async-io", "crypto-rust", "apple-native", "windows-native"] }
+keyring-core = "1"
 thiserror = "2"
 clap = { version = "4", features = ["derive", "env"] }
 anyhow = "1"
+
+# Per-OS keyring-core credential stores; the concrete backend is selected by
+# target in core/Cargo.toml. Features fixed here: zbus uses the async-io runtime
+# (not tokio) so its blocking calls don't panic with "runtime within a runtime"
+# when invoked from laba's tokio main, plus pure-Rust crypto; apple uses the
+# (login/system) keychain, not protected data.
+[workspace.dependencies.zbus-secret-service-keyring-store]
+version = "1"
+features = ["rt-async-io-crypto-rust"]
+
+[workspace.dependencies.apple-native-keyring-store]
+version = "1"
+features = ["keychain"]
+
+[workspace.dependencies.windows-native-keyring-store]
+version = "1"
+
+# Legacy reader for one-shot lazy token migration; removed in a later release.
+[workspace.dependencies.keyring]
+version = "3"
 
 [profile.release]
 lto = "thin"
