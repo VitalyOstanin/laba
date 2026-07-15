@@ -20,8 +20,10 @@ fn ensure_keyring_store() {
         #[cfg(target_os = "windows")]
         let store = windows_native_keyring_store::Store::new();
         #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
-        let store: Result<std::sync::Arc<keyring_core::CredentialStore>, keyring_core::Error> =
-            Err(keyring_core::Error::NoDefaultStore);
+        let store: Result<
+            std::sync::Arc<keyring_core::CredentialStore>,
+            keyring_core::Error,
+        > = Err(keyring_core::Error::NoDefaultStore);
         if let Ok(s) = store {
             keyring_core::set_default_store(s);
         }
