@@ -5,6 +5,12 @@ The format follows Keep a Changelog and Semantic Versioning.
 
 ## [Unreleased]
 
+### Changed
+- Store OpenProject tokens through `keyring-core` with per-OS credential stores
+  (Secret Service on Linux, Keychain on macOS, Credential Manager on Windows)
+  instead of the `keyring` 3.x crate, following its 4.0 re-architecture. Existing
+  tokens are migrated lazily on first read, so no re-login is needed.
+
 ## [0.1.5] - 2026-07-14
 
 ### Changed

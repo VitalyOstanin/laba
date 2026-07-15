@@ -1,8 +1,59 @@
 use std::path::{Path, PathBuf};
+use std::sync::Once;
 
 use crate::error::Error;
 
 const KEYRING_SERVICE: &str = "laba";
+
+/// Register the OS-native keyring-core store as the process-wide default, once.
+/// Mirrors `client::ensure_crypto_provider`. A failure (e.g. no Secret Service
+/// available) is ignored: later `keyring_core::Entry` calls then error and the
+/// caller falls back to the 0600 file, reproducing the previous "no keyring
+/// backend -> file" behaviour.
+fn ensure_keyring_store() {
+    static INIT: Once = Once::new();
+    INIT.call_once(|| {
+        #[cfg(target_os = "linux")]
+        let store = zbus_secret_service_keyring_store::Store::new();
+        #[cfg(target_os = "macos")]
+        let store = apple_native_keyring_store::keychain::Store::new();
+        #[cfg(target_os = "windows")]
+        let store = windows_native_keyring_store::Store::new();
+        #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+        let store: Result<
+            std::sync::Arc<keyring_core::CredentialStore>,
+            keyring_core::Error,
+        > = Err(keyring_core::Error::NoDefaultStore);
+        if let Ok(s) = store {
+            keyring_core::set_default_store(s);
+        }
+    });
+}
+
+/// Read a token from the legacy keyring 3 store for one-shot migration. Removed
+/// together with the `keyring` 3 dependency in a later release.
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+fn legacy_get(profile: &str) -> Option<String> {
+    let entry = keyring::Entry::new(KEYRING_SERVICE, profile).ok()?;
+    entry.get_password().ok()
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+fn legacy_get(_profile: &str) -> Option<String> {
+    None
+}
+
+/// Best-effort delete of the legacy keyring 3 entry so a migrated duplicate does
+/// not linger after `Secrets::delete`.
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+fn legacy_delete(profile: &str) {
+    if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, profile) {
+        let _ = entry.delete_credential();
+    }
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+fn legacy_delete(_profile: &str) {}
 
 /// Token store: system keyring by profile name, with a 0600 file fallback
 /// when no keyring backend is available.
@@ -53,7 +104,8 @@ impl Secrets {
 
     pub fn set(&self, profile: &str, token: &str) -> Result<(), Error> {
         if !self.file_only {
-            if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, profile) {
+            ensure_keyring_store();
+            if let Ok(entry) = keyring_core::Entry::new(KEYRING_SERVICE, profile) {
                 if entry.set_password(token).is_ok() {
                     return Ok(());
                 }
@@ -64,10 +116,19 @@ impl Secrets {
 
     pub fn get(&self, profile: &str) -> Result<Option<String>, Error> {
         if !self.file_only {
-            if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, profile) {
+            ensure_keyring_store();
+            if let Ok(entry) = keyring_core::Entry::new(KEYRING_SERVICE, profile) {
                 match entry.get_password() {
                     Ok(pw) => return Ok(Some(pw)),
-                    Err(keyring::Error::NoEntry) => {}
+                    // Lazy migration: on a miss, read the legacy keyring 3 store;
+                    // if it has the token, rewrite it into the new store so the
+                    // next read takes the fast path, then return it.
+                    Err(keyring_core::Error::NoEntry) => {
+                        if let Some(pw) = legacy_get(profile) {
+                            let _ = entry.set_password(&pw);
+                            return Ok(Some(pw));
+                        }
+                    }
                     Err(_) => {}
                 }
             }
@@ -77,9 +138,11 @@ impl Secrets {
 
     pub fn delete(&self, profile: &str) -> Result<(), Error> {
         if !self.file_only {
-            if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, profile) {
+            ensure_keyring_store();
+            if let Ok(entry) = keyring_core::Entry::new(KEYRING_SERVICE, profile) {
                 let _ = entry.delete_credential();
             }
+            legacy_delete(profile);
         }
         self.file_delete(profile)
     }
