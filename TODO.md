@@ -2,6 +2,37 @@
 
 Backlog of ideas to evaluate. Not commitments.
 
+## Dashboard: notifications & layout (2026-07-17)
+
+- [x] Notifications: show each item's date/time. Done (2026-07-17): the
+      normalized shape already carries `updatedAt`; the frontend renders it via a
+      new `fmtDateTime` (Intl with the configured `timeZone`) in
+      `NotificationColumn`, right-aligned / tabular-nums / muted.
+- [x] Notifications: sortable and filterable, mirroring the task column. Done
+      (2026-07-17): a sortbar (time / reason with a direction toggle) plus a
+      per-column text filter (`filterNotifications` in the store, with tests).
+- [x] Dashboard layout settings (show/hide panels). Done (2026-07-17): Variant B
+      (no live clock). Settings → Layout checkboxes for the Notifications column,
+      the Tasks column, and the timelog bar; persisted in `Settings`
+      (`show_notifications` / `show_tasks` / `show_timelog`, serde-default so old
+      configs load).
+- [x] CI notifications: semantic tone by outcome. Done (2026-07-17): the backend
+      derives a CheckSuite `outcome` (`failure` / `success` / `neutral`) from the
+      subject title (`check_suite_outcome`, unit-tested); the frontend tints the
+      row (failed → amber stripe + reason, succeeded → green). Follow-up if the
+      title heuristic proves too coarse: fetch the real check-suite conclusion.
+- [x] Timestamps display. Done (2026-07-17): absolute zoned datetime by default;
+      a `relative_times` Settings toggle (off by default) swaps to the relative
+      label, with the alternate form on hover. `fmtRelative`/`fmtDateTime` are
+      pure and unit-tested.
+- [ ] Server switcher affordance (mockup feedback 2026-07-17). RESOLVED in
+      discussion — no dead affordance exists in the app: the mockup's "gh ▾"
+      arrow was a mockup-only fabrication; the real `ServerSwitcher.svelte` is a
+      per-server button row where each button has a working click and a `title`
+      tooltip (`name · base_url`), now also an unread badge. Decision: keep the
+      button-row switcher; do NOT add a dropdown arrow. Kept unchecked only as a
+      note; no code change required.
+
 ## Desktop integration
 
 - [x] Integrate with the OS notification system (native desktop notifications):

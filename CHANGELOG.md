@@ -11,6 +11,25 @@ The format follows Keep a Changelog and Semantic Versioning.
   without removing it. When signing out is not applicable the row explains why:
   GitHub servers authenticate through the `gh` CLI (no token is stored here), and
   an OpenProject server with no token is simply not signed in.
+- GitHub CI notifications (check-suite results) now link to the repository's
+  Actions page, so a "CI run failed" notification is clickable like issue and
+  pull-request notifications instead of staying plain text.
+- Notifications now show each item's date and time, rendered in the configured
+  timezone. A new setting switches the display to a relative label ("5 minutes
+  ago") instead; either way the other form is available on hover.
+- CI notifications are tinted by the run outcome: a failed run reads as a warning
+  (amber), a successful run as good (green).
+- Notifications can be sorted (by time or reason, with a direction toggle) and
+  filtered by text, mirroring the task column.
+- Server switcher: each server shows its unread count as a badge, so the one
+  dashboard header doubles as a cross-server summary.
+- Settings → Dashboard layout: show/hide the notifications column, the tasks
+  column, and the time-logged bar.
+
+### Fixed
+- Dashboard: hide the time-logged indicator entirely when no enabled server
+  supports time tracking (e.g. only GitHub servers are configured), instead of
+  showing an empty "not configured" bar.
 
 ### Changed
 - Store OpenProject tokens through `keyring-core` with per-OS credential stores
