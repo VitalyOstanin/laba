@@ -132,7 +132,10 @@ export const ghProbe = (host: string): Promise<GhStatus> =>
 export const getSettings = (): Promise<Settings> => invoke("get_settings");
 export const saveSettings = (settings: Settings): Promise<void> =>
   invoke("save_settings", { settings });
-export const getTimelog = (): Promise<TimelogResult> => invoke("get_timelog");
+// Null when no enabled server supports time tracking (only then the dashboard
+// hides the timelog indicator); otherwise the aggregated work-log status.
+export const getTimelog = (): Promise<TimelogResult | null> =>
+  invoke("get_timelog");
 export const setNotificationRead = (
   server: string,
   id: number,

@@ -8,7 +8,9 @@
 
   let open = $state(false);
 
-  const tl = $derived($timelog);
+  // Current aggregated work-log status (null hides the indicator: either no data
+  // yet, or no enabled server supports time tracking).
+  const timelogState = $derived($timelog);
 
   // While expanded, ESC (outside a text field) collapses the panel.
   $effect(() => {
@@ -17,47 +19,50 @@
   });
 </script>
 
-{#if tl}
+{#if timelogState}
   <section class="timelog" aria-label={$t("timelog.title")}>
     <button
       type="button"
-      class="timelog-bar status-{tl.status.status}"
+      class="timelog-bar status-{timelogState.status.status}"
       aria-expanded={open}
       onclick={() => (open = !open)}
     >
       <span class="tl-dot"></span>
       <span class="tl-label">{$t("timelog.title")}</span>
       <span class="tl-nums">
-        {fmtMinutes(tl.status.logged_min, $locale)} / {fmtMinutes(
-          tl.status.planned_min,
+        {fmtMinutes(timelogState.status.logged_min, $locale)} / {fmtMinutes(
+          timelogState.status.planned_min,
           $locale,
         )}
-        {#if tl.status.deficit_min > 0}
+        {#if timelogState.status.deficit_min > 0}
           <span class="tl-deficit"
-            >{fmtSigned(-tl.status.deficit_min, $locale)}</span
+            >{fmtSigned(-timelogState.status.deficit_min, $locale)}</span
           >
         {/if}
-        {#if tl.status.surplus_min > 0}
+        {#if timelogState.status.surplus_min > 0}
           <span class="tl-surplus"
-            >{fmtSigned(tl.status.surplus_min, $locale)}</span
+            >{fmtSigned(timelogState.status.surplus_min, $locale)}</span
           >
         {/if}
       </span>
     </button>
 
-    {#if !tl.configured}
+    {#if !timelogState.configured}
       <p class="tl-hint">{$t("timelog.notConfigured")}</p>
-    {:else if tl.start_is_default}
+    {:else if timelogState.start_is_default}
       <p class="tl-hint">{$t("timelog.defaultHint")}</p>
     {/if}
 
-    {#if tl.excluded.length > 0}
-      <p class="tl-hint">{$t("timelog.excluded")} {tl.excluded.join(", ")}</p>
+    {#if timelogState.excluded.length > 0}
+      <p class="tl-hint">
+        {$t("timelog.excluded")}
+        {timelogState.excluded.join(", ")}
+      </p>
     {/if}
 
-    {#if open && tl.configured}
-      <TimelogPanel timeline={tl.timeline} />
-      <TimelogCandidates suggestMin={tl.status.today_deficit_min} />
+    {#if open && timelogState.configured}
+      <TimelogPanel timeline={timelogState.timeline} />
+      <TimelogCandidates suggestMin={timelogState.status.today_deficit_min} />
     {/if}
   </section>
 {/if}

@@ -169,6 +169,16 @@ pub struct TimelogResult {
     pub excluded: Vec<String>,
 }
 
+/// Whether any enabled server can track time. When false, the timelog indicator
+/// does not apply and [`get_timelog`] returns `None` so the dashboard hides it
+/// entirely. A GitHub-only (or all-disabled) config yields false. Pure and
+/// unit-testable, split out from the async command's config/keyring I/O.
+fn any_timelog_capable(cfg: &Config) -> bool {
+    cfg.servers
+        .values()
+        .any(|p| p.enabled && p.backend.supports_timelog())
+}
+
 /// Fetch one server's time entries in `[since, today]` as `(day, minutes)`
 /// pairs. Timelog is best-effort across servers: an unauthenticated server, a
 /// client that fails to build, or a failed request yields an empty vec (logged),
@@ -227,9 +237,11 @@ async fn server_time_minutes(
 /// (requirement 22). A server first seen here is seeded with today's date as an
 /// auto start so timelog has a sensible window until the user sets a real one.
 /// Per-server fetch failures are skipped so one bad server does not blank the
-/// whole indicator.
+/// whole indicator. Returns `None` when no enabled server supports time tracking
+/// at all (e.g. only GitHub servers), so the dashboard hides the indicator
+/// entirely instead of showing an empty "not configured" state.
 #[tauri::command]
-pub async fn get_timelog() -> Result<TimelogResult, String> {
+pub async fn get_timelog() -> Result<Option<TimelogResult>, String> {
     let mut cfg = load_cfg()?;
     let settings = load_settings()?;
     let zone = laba_core::datetime::Zone::resolve(Some(&settings.timezone));
@@ -241,6 +253,9 @@ pub async fn get_timelog() -> Result<TimelogResult, String> {
     let mut starts: Vec<String> = Vec::new();
     let mut any_auto = false;
     let mut dirty = false;
+    // Whether any enabled server can track time; if none, the indicator does not
+    // apply and we return None below.
+    let timelog_capable = any_timelog_capable(&cfg);
     // Snapshot the global proxy before borrowing `cfg.servers` mutably below.
     let global_proxy = cfg.proxy.clone();
 
@@ -278,28 +293,34 @@ pub async fn get_timelog() -> Result<TimelogResult, String> {
         let _ = cfg.save(&default_config_path());
     }
 
+    // No enabled server tracks time: the indicator does not apply, so hide it
+    // rather than show an empty "not configured" bar.
+    if !timelog_capable {
+        return Ok(None);
+    }
+
     // ISO dates sort lexicographically, so the min string is the earliest start.
     let earliest = starts.iter().min().cloned();
     let first_day = settings.week_start.first_weekday();
     match earliest
         .and_then(|s| timelog::compute(&entries, &s, today_date, first_day).map(|r| (s, r)))
     {
-        Some((start, (status, timeline))) => Ok(TimelogResult {
+        Some((start, (status, timeline))) => Ok(Some(TimelogResult {
             configured: true,
             status,
             timeline,
             start,
             start_is_default: any_auto,
             excluded,
-        }),
-        None => Ok(TimelogResult {
+        })),
+        None => Ok(Some(TimelogResult {
             configured: false,
             status: timelog::empty_status(),
             timeline: Vec::new(),
             start: String::new(),
             start_is_default: any_auto,
             excluded,
-        }),
+        })),
     }
 }
 
@@ -1035,6 +1056,35 @@ mod tests {
         // Config is otherwise unchanged.
         assert_eq!(c.servers.len(), 2);
         assert_eq!(c.default_server.as_deref(), Some("work"));
+    }
+
+    #[test]
+    fn any_timelog_capable_true_when_enabled_openproject_present() {
+        // Default fixture: "work" is an enabled OpenProject server.
+        assert!(any_timelog_capable(&cfg()));
+    }
+
+    #[test]
+    fn any_timelog_capable_false_for_github_only() {
+        // Drop the OpenProject server, leaving only GitHub (no time tracking).
+        let mut c = cfg();
+        c.servers.remove("work");
+        assert!(!any_timelog_capable(&c));
+    }
+
+    #[test]
+    fn any_timelog_capable_false_when_only_capable_server_disabled() {
+        // The only timelog-capable server is disabled, so the indicator hides.
+        let mut c = cfg();
+        c.servers.get_mut("work").unwrap().enabled = false;
+        assert!(!any_timelog_capable(&c));
+    }
+
+    #[test]
+    fn any_timelog_capable_false_for_empty_config() {
+        let mut c = cfg();
+        c.servers.clear();
+        assert!(!any_timelog_capable(&c));
     }
 
     #[test]
