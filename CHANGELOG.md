@@ -25,6 +25,36 @@ The format follows Keep a Changelog and Semantic Versioning.
   dashboard header doubles as a cross-server summary.
 - Settings → Dashboard layout: show/hide the notifications column, the tasks
   column, and the time-logged bar.
+- The dashboard now shows the last-known tasks and notifications from an on-disk
+  cache immediately on launch, instead of empty columns, while the first refresh
+  runs in the background.
+- A sync indicator under the header shows whether a refresh is in progress, when
+  the last successful sync happened, or that the server is unavailable and cached
+  data is shown.
+- Filters (tasks and notifications) support exclusion: a `-word` (or `!word`)
+  term hides matching items, alongside plain include terms.
+- A task or notification title is now clickable for every backend: it opens the
+  in-app detail screen where available, otherwise the item's web page.
+- Per-server setting "Open tasks & notifications in" (laba or Browser). The
+  default follows the backend — OpenProject opens in laba, GitHub in the browser;
+  servers opening in-app also offer a secondary "open in browser" control.
+- GitHub notifications can now be marked read from the app: the read dot and
+  "mark all read" work for GitHub too (via the GitHub REST API through `gh`).
+- GitHub notifications now include already-read items (fetched with `all=true`),
+  each carrying a read flag, so marking one read keeps it visible under the "All"
+  view instead of removing it from the list.
+- Notifications column opens on an Unread view and offers an Unread / All toggle,
+  to triage handled items from those still pending; the toggle stays visible even
+  when the current view is empty.
+- The header settings entry is now a gear icon (with an accessible label) instead
+  of the word "Settings".
+- Settings search: a filter box at the top of Settings hides sections that do
+  not match the query (matching legends, labels, and hints), like Chrome's
+  settings search.
+
+### Changed
+- The task list no longer transfers each task's description body; it is fetched
+  on demand when the task's detail screen is opened (lazy loading).
 
 ### Fixed
 - Dashboard: hide the time-logged indicator entirely when no enabled server
