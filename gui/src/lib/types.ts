@@ -93,6 +93,15 @@ export interface Settings {
   dismissed_update_version?: string | null;
   // the user dismissed the "add a server / available backends" hint banner
   backends_hint_dismissed: boolean;
+  // show timestamps as a relative label ("5 minutes ago") instead of the
+  // absolute zoned datetime; the alternate form is offered on hover either way
+  relative_times: boolean;
+  // dashboard layout: show the notifications column
+  show_notifications: boolean;
+  // dashboard layout: show the tasks column
+  show_tasks: boolean;
+  // dashboard layout: show the time-logged indicator bar
+  show_timelog: boolean;
 }
 
 // One release in the update changelog, newest first (see core `update`).

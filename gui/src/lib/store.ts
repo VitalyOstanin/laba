@@ -16,6 +16,10 @@ export const defaultSettings: Settings = {
   timezone: "system",
   ui_scale: 1,
   backends_hint_dismissed: false,
+  relative_times: false,
+  show_notifications: true,
+  show_tasks: true,
+  show_timelog: true,
 };
 
 export const settings = writable<Settings>(defaultSettings);
@@ -63,16 +67,33 @@ export const summaries = writable<Record<string, ServerSummary>>({});
 export const filterText = writable<string>("");
 
 /** Substring match over the concatenation of all field values. */
-export function filterTasks(tasks: Task[], text: string): Task[] {
+function filterRows<T extends Record<string, unknown>>(
+  rows: T[],
+  text: string,
+): T[] {
   const q = text.trim().toLowerCase();
-  if (!q) return tasks;
-  return tasks.filter((t) =>
-    Object.values(t)
+  if (!q) return rows;
+  return rows.filter((r) =>
+    Object.values(r)
       .map((v) => String(v ?? ""))
       .join(" ")
       .toLowerCase()
       .includes(q),
   );
+}
+
+/** Filter tasks by a substring over all field values. */
+export function filterTasks(tasks: Task[], text: string): Task[] {
+  return filterRows(tasks, text);
+}
+
+/** Filter notifications by a substring over all field values (subject, reason,
+ * project, …), mirroring the task-list filter. */
+export function filterNotifications(
+  notifications: Notification[],
+  text: string,
+): Notification[] {
+  return filterRows(notifications, text);
 }
 
 /**

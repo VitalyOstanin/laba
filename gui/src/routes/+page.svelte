@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { activeServer, byServer, servers } from "$lib/store";
+  import { activeServer, byServer, servers, settings } from "$lib/store";
   import {
     startPolling,
     stopPolling,
@@ -51,7 +51,9 @@
   >
 </header>
 <StatusBanner error={srvState?.error ?? null} />
-<TimelogIndicator />
+{#if $settings.show_timelog}
+  <TimelogIndicator />
+{/if}
 {#if noServers}
   <section class="empty-state" aria-label={$t("empty.title")}>
     <strong>{$t("empty.title")}</strong>
@@ -69,7 +71,7 @@
   </p>
 {:else}
   <main class="cols">
-    {#if activeInfo?.has_notifications ?? true}
+    {#if $settings.show_notifications && (activeInfo?.has_notifications ?? true)}
       <NotificationColumn
         notifications={srvState?.notifications ?? []}
         server={activeInfo}
@@ -77,12 +79,14 @@
         onLoadMore={() => $activeServer && loadMoreNotifications($activeServer)}
       />
     {/if}
-    <TaskColumn
-      tasks={srvState?.tasks ?? []}
-      server={activeInfo}
-      hasMore={srvState?.taskCursor != null}
-      onLoadMore={() => $activeServer && loadMoreTasks($activeServer)}
-    />
+    {#if $settings.show_tasks}
+      <TaskColumn
+        tasks={srvState?.tasks ?? []}
+        server={activeInfo}
+        hasMore={srvState?.taskCursor != null}
+        onLoadMore={() => $activeServer && loadMoreTasks($activeServer)}
+      />
+    {/if}
   </main>
 {/if}
 

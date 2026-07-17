@@ -92,6 +92,28 @@
     settings.update((s) => ({ ...s, desktop_notifications: v }));
     void persist();
   }
+  function setRelativeTimes(v: boolean): void {
+    settings.update((s) => ({ ...s, relative_times: v }));
+    void persist();
+  }
+  function setShowNotifications(v: boolean): void {
+    settings.update((s) => ({ ...s, show_notifications: v }));
+    void persist();
+  }
+  function setShowTasks(v: boolean): void {
+    settings.update((s) => ({ ...s, show_tasks: v }));
+    void persist();
+  }
+  function setShowTimelog(v: boolean): void {
+    settings.update((s) => ({ ...s, show_timelog: v }));
+    void persist();
+  }
+  // The backends hint banner is dismissable from its own "×"; this toggle brings
+  // it back (checked = shown), since there is no other way to un-dismiss it.
+  function setShowBackendsHint(v: boolean): void {
+    settings.update((s) => ({ ...s, backends_hint_dismissed: !v }));
+    void persist();
+  }
   function setUiScale(scale: number): void {
     const v = clampUiScale(scale);
     settings.update((s) => ({ ...s, ui_scale: v }));
@@ -431,6 +453,56 @@
       />
     </label>
     <p class="hint">{$t("settings.timezone.hint")}</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>{$t("settings.timestamps")}</legend>
+    <label class="toggle">
+      <input
+        type="checkbox"
+        checked={$settings.relative_times}
+        onchange={(e) => setRelativeTimes(e.currentTarget.checked)}
+      />
+      {$t("settings.timestamps.relative")}
+    </label>
+    <p class="hint">{$t("settings.timestamps.hint")}</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>{$t("settings.layout")}</legend>
+    <label class="toggle">
+      <input
+        type="checkbox"
+        checked={$settings.show_notifications}
+        onchange={(e) => setShowNotifications(e.currentTarget.checked)}
+      />
+      {$t("settings.layout.notifications")}
+    </label>
+    <label class="toggle">
+      <input
+        type="checkbox"
+        checked={$settings.show_tasks}
+        onchange={(e) => setShowTasks(e.currentTarget.checked)}
+      />
+      {$t("settings.layout.tasks")}
+    </label>
+    <label class="toggle">
+      <input
+        type="checkbox"
+        checked={$settings.show_timelog}
+        onchange={(e) => setShowTimelog(e.currentTarget.checked)}
+      />
+      {$t("settings.layout.timelog")}
+    </label>
+    <label class="toggle">
+      <input
+        type="checkbox"
+        checked={!$settings.backends_hint_dismissed}
+        onchange={(e) => setShowBackendsHint(e.currentTarget.checked)}
+      />
+      {$t("settings.layout.backendsHint")}
+    </label>
+    <p class="hint">{$t("settings.layout.hint")}</p>
   </fieldset>
 
   <fieldset>

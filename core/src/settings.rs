@@ -133,6 +133,22 @@ pub struct Settings {
     /// it does not reappear on every launch. `false` (the default) shows it.
     #[serde(default)]
     pub backends_hint_dismissed: bool,
+    /// Show timestamps as a relative label ("5 minutes ago", "yesterday")
+    /// instead of the absolute zoned datetime. `false` (the default) shows the
+    /// absolute datetime; the alternate form is offered on hover either way.
+    #[serde(default)]
+    pub relative_times: bool,
+    /// Dashboard layout: show the notifications column. `true` (the default)
+    /// shows it (subject to the server having a notification inbox).
+    #[serde(default = "default_true")]
+    pub show_notifications: bool,
+    /// Dashboard layout: show the tasks column. `true` (the default) shows it.
+    #[serde(default = "default_true")]
+    pub show_tasks: bool,
+    /// Dashboard layout: show the time-logged indicator bar. `true` (the
+    /// default) shows it (subject to a timelog-capable server being configured).
+    #[serde(default = "default_true")]
+    pub show_timelog: bool,
 }
 
 fn default_true() -> bool {
@@ -192,6 +208,10 @@ impl Default for Settings {
             ui_scale: DEFAULT_UI_SCALE,
             dismissed_update_version: None,
             backends_hint_dismissed: false,
+            relative_times: false,
+            show_notifications: true,
+            show_tasks: true,
+            show_timelog: true,
         }
     }
 }
@@ -277,6 +297,10 @@ mod tests {
             ui_scale: 1.25,
             dismissed_update_version: Some("9.9.9".into()),
             backends_hint_dismissed: true,
+            relative_times: true,
+            show_notifications: false,
+            show_tasks: false,
+            show_timelog: false,
         };
         s.save(&path).unwrap();
         assert_eq!(Settings::load(&path).unwrap(), s);
@@ -362,6 +386,29 @@ mod tests {
         assert!(!Settings::default().backends_hint_dismissed);
         let s: Settings = serde_json::from_str(r#"{"backends_hint_dismissed": true}"#).unwrap();
         assert!(s.backends_hint_dismissed);
+    }
+
+    #[test]
+    fn relative_times_defaults_false() {
+        // Absent in older settings -> false (absolute datetime shown by default).
+        let s: Settings = serde_json::from_str("{}").unwrap();
+        assert!(!s.relative_times);
+        assert!(!Settings::default().relative_times);
+        let s: Settings = serde_json::from_str(r#"{"relative_times": true}"#).unwrap();
+        assert!(s.relative_times);
+    }
+
+    #[test]
+    fn layout_panels_default_visible() {
+        // Absent in older settings -> all panels shown.
+        let s: Settings = serde_json::from_str("{}").unwrap();
+        assert!(s.show_notifications && s.show_tasks && s.show_timelog);
+        let d = Settings::default();
+        assert!(d.show_notifications && d.show_tasks && d.show_timelog);
+        // Explicit false is honored.
+        let s: Settings = serde_json::from_str(r#"{"show_tasks": false}"#).unwrap();
+        assert!(!s.show_tasks);
+        assert!(s.show_notifications && s.show_timelog);
     }
 
     #[test]

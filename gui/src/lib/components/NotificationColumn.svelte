@@ -1,11 +1,13 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { t } from "../i18n";
-  import { unreadOf } from "../store";
+  import { t, locale } from "../i18n";
+  import { unreadOf, settings, filterNotifications } from "../store";
   import { setNotificationRead, markAllRead } from "../api";
   import { refreshServer } from "../poller";
   import { onVisible } from "../scroll";
+  import { fieldKeys } from "../keys";
   import { openExternal } from "../external";
+  import { fmtDateTime, fmtRelative } from "../format";
   import type { Notification, ServerInfo } from "../types";
 
   let {
@@ -20,15 +22,49 @@
     onLoadMore?: () => void;
   } = $props();
 
+  // Sorting the resident list: by time (default) or reason, mirroring the task
+  // column. Direction defaults to descending (newest / A→Z reversed) and toggles
+  // when the active key is clicked again.
+  type SortKey = "time" | "reason";
+  let sortKey = $state<SortKey>("time");
+  let sortDir = $state<"asc" | "desc">("desc");
+  const sortOptions: { key: SortKey; label: string }[] = $derived([
+    { key: "time", label: $t("sort.updated") },
+    { key: "reason", label: $t("sort.reason") },
+  ]);
+  function setSort(key: SortKey): void {
+    if (key === sortKey) sortDir = sortDir === "desc" ? "asc" : "desc";
+    else {
+      sortKey = key;
+      sortDir = "desc";
+    }
+    limit = PAGE;
+  }
+  function cmpAsc(a: Notification, b: Notification): number {
+    const key = sortKey === "time" ? "updatedAt" : "reason";
+    return String(a[key] ?? "").localeCompare(String(b[key] ?? ""));
+  }
+  function sortNotifs(list: Notification[]): Notification[] {
+    const mul = sortDir === "asc" ? 1 : -1;
+    return [...list].sort((a, b) => mul * cmpAsc(a, b));
+  }
+
+  // Text filter, local to this column (the task column has its own), matched
+  // across all fields (subject, reason, project, …).
+  let filter = $state("");
+  const shown = $derived(
+    sortNotifs(filterNotifications(notifications, filter)),
+  );
+
   // Windowed rendering: reveal a page at a time, then fetch the next backend
   // page once the resident list is exhausted.
   const PAGE = 50;
   let limit = $state(PAGE);
-  const visible = $derived(notifications.slice(0, limit));
-  const canReveal = $derived(limit < notifications.length);
+  const visible = $derived(shown.slice(0, limit));
+  const canReveal = $derived(limit < shown.length);
 
   function loadMore(): void {
-    if (canReveal) limit = Math.min(limit + PAGE, notifications.length);
+    if (canReveal) limit = Math.min(limit + PAGE, shown.length);
     else if (hasMore) onLoadMore();
   }
 
@@ -86,6 +122,37 @@
     const u = n.htmlUrl;
     return typeof u === "string" && u ? u : null;
   }
+
+  // Semantic tint for a CI (CheckSuite) notification, by the run outcome the
+  // backend derived: a failed run reads as a warning, a successful run as good.
+  // Empty for non-CI notifications (no `outcome`).
+  function ciTone(n: Notification): string {
+    if (n.outcome === "failure") return "ci-fail";
+    if (n.outcome === "success") return "ci-ok";
+    return "";
+  }
+
+  // The notification's timestamp as an ISO string, or "" when absent.
+  function tsOf(n: Notification): string {
+    const u = n.updatedAt;
+    return typeof u === "string" ? u : "";
+  }
+  function tsAbsolute(n: Notification): string {
+    const iso = tsOf(n);
+    return iso ? fmtDateTime(iso, $locale, $settings.timezone) : "";
+  }
+  function tsRelative(n: Notification): string {
+    const iso = tsOf(n);
+    return iso ? fmtRelative(iso, $locale) : "";
+  }
+  // The primary label follows the `relative_times` setting (absolute by
+  // default); the alternate form is offered on hover via the title.
+  function tsPrimary(n: Notification): string {
+    return $settings.relative_times ? tsRelative(n) : tsAbsolute(n);
+  }
+  function tsAlternate(n: Notification): string {
+    return $settings.relative_times ? tsAbsolute(n) : tsRelative(n);
+  }
 </script>
 
 <section class="card" aria-label={$t("col.notifications")}>
@@ -108,9 +175,41 @@
   {#if notifications.length === 0}
     <p class="empty">{$t("empty.notifications")}</p>
   {:else}
+    <div class="sortbar">
+      <span class="sort-label">{$t("sort.by")}</span>
+      <span class="seg">
+        {#each sortOptions as opt (opt.key)}
+          <button
+            type="button"
+            aria-pressed={sortKey === opt.key}
+            title={sortKey === opt.key
+              ? $t(sortDir === "desc" ? "sort.dir.desc" : "sort.dir.asc")
+              : opt.label}
+            onclick={() => setSort(opt.key)}
+            >{opt.label}{#if sortKey === opt.key}<span
+                class="sort-arrow"
+                aria-hidden="true">{sortDir === "desc" ? " ↓" : " ↑"}</span
+              >{/if}</button
+          >
+        {/each}
+      </span>
+    </div>
+    <div class="filterbar">
+      <input
+        type="search"
+        aria-label={$t("filter.notifications")}
+        placeholder={$t("filter.notifications")}
+        bind:value={filter}
+        use:fieldKeys={() => ""}
+      />
+      <span class="filtercount">{shown.length}</span>
+    </div>
+    {#if shown.length === 0}
+      <p class="empty">{$t("empty.notifications")}</p>
+    {/if}
     <ul class="list">
       {#each visible as n (n.id)}
-        <li class="notif" class:unread={unreadOf(n)}>
+        <li class="notif {ciTone(n)}" class:unread={unreadOf(n)}>
           {#if canToggle}
             <button
               type="button"
@@ -152,6 +251,11 @@
             >
           {:else}
             <span class="subject">{n.wpTitle ?? n.subject}</span>
+          {/if}
+          {#if tsOf(n)}
+            <time class="notif-time" datetime={tsOf(n)} title={tsAlternate(n)}
+              >{tsPrimary(n)}</time
+            >
           {/if}
         </li>
       {/each}

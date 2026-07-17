@@ -103,6 +103,10 @@ let settings: Settings = {
   timezone: "system",
   ui_scale: 1,
   backends_hint_dismissed: false,
+  relative_times: false,
+  show_notifications: true,
+  show_tasks: true,
+  show_timelog: true,
 };
 
 let globalProxy: string | null = null;
@@ -205,6 +209,7 @@ const NOTIFICATIONS: Record<string, Notification[]> = {
       wpTitle: "Fix login redirect loop on session expiry",
       read: false,
       createdAt: "2026-07-10T09:25:00Z",
+      updatedAt: "2026-07-10T09:25:00Z",
       user: "Lee Park",
       comment: "Can you take a look today? Blocking the release.",
     },
@@ -216,6 +221,7 @@ const NOTIFICATIONS: Record<string, Notification[]> = {
       wpTitle: "Timeout on large export",
       read: false,
       createdAt: "2026-07-09T10:10:00Z",
+      updatedAt: "2026-07-09T10:10:00Z",
       user: "Sam Rivera",
       comment: "Reassigned to you.",
     },
@@ -227,6 +233,7 @@ const NOTIFICATIONS: Record<string, Notification[]> = {
       wpTitle: "Document the release checklist",
       read: true,
       createdAt: "2026-07-05T17:00:00Z",
+      updatedAt: "2026-07-05T17:00:00Z",
       user: "Lee Park",
       comment: "Looks good, merged.",
     },
@@ -240,7 +247,28 @@ const NOTIFICATIONS: Record<string, Notification[]> = {
       htmlUrl: "https://github.com/acme/app/issues/5521",
       read: false,
       createdAt: "2026-07-10T08:05:00Z",
+      updatedAt: "2026-07-10T08:05:00Z",
       user: "octocat",
+    },
+    {
+      id: 7002,
+      reason: "ci_activity",
+      subject: "CI workflow run failed for deps/keyring-core branch",
+      type: "CheckSuite",
+      outcome: "failure",
+      htmlUrl: "https://github.com/acme/app/actions",
+      read: false,
+      updatedAt: "2026-07-10T07:40:00Z",
+    },
+    {
+      id: 7003,
+      reason: "ci_activity",
+      subject: "CI workflow run succeeded for main branch",
+      type: "CheckSuite",
+      outcome: "success",
+      htmlUrl: "https://github.com/acme/app/actions",
+      read: true,
+      updatedAt: "2026-07-10T06:15:00Z",
     },
   ],
 };
@@ -378,7 +406,11 @@ export async function mockInvoke(
       settings = args.settings as Settings;
       return null;
     case "get_timelog":
-      return TIMELOG;
+      // Mirror the backend: no enabled time-tracking (OpenProject) server means
+      // the indicator does not apply, so return null to hide it.
+      return servers.some((s) => s.enabled && s.backend === "openproject")
+        ? TIMELOG
+        : null;
     case "get_changelog":
       return CHANGELOG;
     case "gh_dependency":

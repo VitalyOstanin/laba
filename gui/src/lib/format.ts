@@ -56,3 +56,65 @@ export function fmtDayMonth(iso: string, loc: Locale = "en"): string {
     day: "2-digit",
   }).format(d);
 }
+
+/**
+ * Format a full ISO timestamp as an absolute locale date + time (e.g.
+ * `Jul 10, 2026, 12:20 PM` / `10 июл. 2026 г., 12:20`), rendered in the given
+ * IANA `timezone`. The `"system"` sentinel (or an unknown zone) falls back to the
+ * machine's local zone. Unparseable input passes through unchanged. This is the
+ * default timestamp shown in the lists; the relative form is opt-in.
+ */
+export function fmtDateTime(
+  iso: string,
+  loc: Locale = "en",
+  timezone = "system",
+): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const opts: Intl.DateTimeFormatOptions = {
+    dateStyle: "medium",
+    timeStyle: "short",
+  };
+  if (timezone && timezone !== "system") opts.timeZone = timezone;
+  try {
+    return new Intl.DateTimeFormat(loc, opts).format(d);
+  } catch {
+    // Unknown IANA zone: render in the local zone rather than throw.
+    delete opts.timeZone;
+    return new Intl.DateTimeFormat(loc, opts).format(d);
+  }
+}
+
+/** Coarsest-fitting relative unit, largest first; `second` is the floor. */
+const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ["year", 31536000],
+  ["month", 2592000],
+  ["week", 604800],
+  ["day", 86400],
+  ["hour", 3600],
+  ["minute", 60],
+  ["second", 1],
+];
+
+/**
+ * Format a full ISO timestamp relative to `nowMs` (e.g. `5 minutes ago`,
+ * `вчера`), picking the coarsest unit that fits. `nowMs` is a parameter so the
+ * function is pure and testable. Unparseable input passes through unchanged.
+ */
+export function fmtRelative(
+  iso: string,
+  loc: Locale = "en",
+  nowMs: number = Date.now(),
+): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const diffSec = Math.round((d.getTime() - nowMs) / 1000);
+  const rtf = new Intl.RelativeTimeFormat(loc, { numeric: "auto" });
+  const abs = Math.abs(diffSec);
+  for (const [unit, secs] of RELATIVE_UNITS) {
+    if (abs >= secs || unit === "second") {
+      return rtf.format(Math.round(diffSec / secs), unit);
+    }
+  }
+  return rtf.format(0, "second");
+}

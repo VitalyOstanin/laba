@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   filterTasks,
+  filterNotifications,
   totalUnread,
   summarize,
   unreadIn,
@@ -18,6 +19,21 @@ describe("filterTasks", () => {
     expect(filterTasks(tasks, "CLOSED").map((t) => t.id)).toEqual(["#2"]);
     expect(filterTasks(tasks, "pagination").map((t) => t.id)).toEqual(["#1"]);
     expect(filterTasks(tasks, "").length).toBe(2);
+  });
+});
+
+describe("filterNotifications", () => {
+  const notifs = [
+    { id: 1, reason: "mentioned", subject: "Fix login redirect" },
+    { id: 2, reason: "ci_activity", subject: "CI workflow run failed" },
+  ];
+  it("matches across all fields, case-insensitive", () => {
+    expect(filterNotifications(notifs, "CI").map((n) => n.id)).toEqual([2]);
+    expect(filterNotifications(notifs, "login").map((n) => n.id)).toEqual([1]);
+    expect(filterNotifications(notifs, "mentioned").map((n) => n.id)).toEqual([
+      1,
+    ]);
+    expect(filterNotifications(notifs, "").length).toBe(2);
   });
 });
 

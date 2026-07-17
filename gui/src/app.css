@@ -185,6 +185,23 @@ body {
   color: var(--text-dim);
 }
 
+/* Per-server unread count: a small accent pill so the switcher shows, at a
+   glance, which servers have unread items — a cross-server summary in the one
+   dashboard header. */
+.server-switch .unread-badge {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0 0.4em;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  line-height: 1.5;
+}
+
 .banner.error {
   margin: 10px 14px 0;
   padding: 8px 12px;
@@ -1069,6 +1086,38 @@ body {
 .list .reason {
   color: var(--text-dim);
   white-space: nowrap;
+}
+
+/* CI (CheckSuite) notification tint by run outcome: a failed run reads as a
+   warning (amber), a successful run as good (green). A left accent stripe plus a
+   tinted reason keeps it legible without shouting. */
+.list > li.notif.ci-fail {
+  border-left: 3px solid var(--warn);
+  padding-left: 8px;
+}
+.list > li.notif.ci-fail .reason {
+  color: var(--warn);
+  font-weight: 600;
+}
+.list > li.notif.ci-ok {
+  border-left: 3px solid var(--ok);
+  padding-left: 8px;
+}
+.list > li.notif.ci-ok .reason {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+/* Notification timestamp: muted, right-aligned, tabular figures so the times
+   line up in a column. The absolute datetime shows by default; the relative
+   form is available on hover (title). */
+.list .notif-time {
+  flex: none;
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: 0.85em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Notification read state as a single dot that is also the toggle. A filled
