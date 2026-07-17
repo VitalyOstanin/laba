@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::Subcommand;
-use laba_core::config::{Backend, Config, ServerProfile, StatusColor};
+use laba_core::config::{BackendKind, Config, ServerProfile, StatusColor};
 use laba_core::error::Error;
 use laba_core::secrets::Secrets;
 
@@ -138,8 +138,8 @@ pub async fn run(cmd: ServerCmd, config_flag: &Option<PathBuf>) -> Result<(), Er
                 )));
             }
             let backend = match backend.as_str() {
-                "openproject" => Backend::OpenProject,
-                "github" => Backend::Github,
+                "openproject" => BackendKind::OpenProject,
+                "github" => BackendKind::Github,
                 other => {
                     return Err(Error::Usage(format!(
                         "unknown backend '{other}'; expected openproject|github"

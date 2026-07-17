@@ -12,7 +12,7 @@ pub mod wp;
 use std::path::PathBuf;
 
 use laba_core::client::Client;
-use laba_core::config::{default_config_path, Backend, Config, ServerProfile};
+use laba_core::config::{default_config_path, BackendKind, Config, ServerProfile};
 use laba_core::error::Error;
 use laba_core::secrets::Secrets;
 
@@ -39,7 +39,7 @@ pub fn load_profile(g: &Globals) -> Result<(String, ServerProfile), Error> {
 /// The update checker does not use `gh`; only the GitHub task backend does.
 pub fn ensure_gh_ready(profile: &ServerProfile) -> Result<(), Error> {
     use laba_core::github::{gh_status_for_host, GhStatus};
-    if profile.backend != Backend::Github {
+    if profile.backend != BackendKind::Github {
         return Ok(());
     }
     match gh_status_for_host(&profile.base_url) {
@@ -61,8 +61,8 @@ pub fn ensure_gh_ready(profile: &ServerProfile) -> Result<(), Error> {
 /// for the error; the message also lists what the github backend does support.
 pub fn require_openproject(profile: &ServerProfile, what: &str) -> Result<(), Error> {
     match profile.backend {
-        Backend::OpenProject => Ok(()),
-        Backend::Github => Err(Error::Usage(format!(
+        BackendKind::OpenProject => Ok(()),
+        BackendKind::Github => Err(Error::Usage(format!(
             "{what} is not supported by the github backend \
              (read-only: 'wp list', 'notification list')"
         ))),
@@ -101,7 +101,7 @@ pub fn build_client(g: &Globals) -> Result<(String, Client), Error> {
 mod tests {
     use super::*;
 
-    fn profile(backend: Backend) -> ServerProfile {
+    fn profile(backend: BackendKind) -> ServerProfile {
         ServerProfile {
             base_url: "github.com".into(),
             backend,
@@ -121,12 +121,12 @@ mod tests {
 
     #[test]
     fn require_openproject_allows_openproject() {
-        assert!(require_openproject(&profile(Backend::OpenProject), "x").is_ok());
+        assert!(require_openproject(&profile(BackendKind::OpenProject), "x").is_ok());
     }
 
     #[test]
     fn require_openproject_rejects_github_as_usage_error() {
-        let err = require_openproject(&profile(Backend::Github), "'time log'").unwrap_err();
+        let err = require_openproject(&profile(BackendKind::Github), "'time log'").unwrap_err();
         assert_eq!(err.exit_code(), 2);
         assert!(err.to_string().contains("github backend"));
     }

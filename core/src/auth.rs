@@ -6,7 +6,7 @@
 use serde_json::Value;
 
 use crate::client::Client;
-use crate::config::{Backend, Config, ServerProfile};
+use crate::config::{BackendKind, Config, ServerProfile};
 use crate::error::Error;
 use crate::secrets::Secrets;
 
@@ -60,7 +60,7 @@ pub async fn login_and_store(
         .servers
         .get(name)
         .ok_or_else(|| Error::Usage(format!("unknown server '{name}'")))?;
-    if profile.backend == Backend::Github {
+    if profile.backend == BackendKind::Github {
         return Err(Error::Usage(
             "the github backend authenticates via gh; run 'gh auth login' instead".into(),
         ));

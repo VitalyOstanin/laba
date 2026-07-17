@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::client::Client;
-use crate::config::{Backend, ServerProfile};
+use crate::config::{BackendKind, ServerProfile};
 use crate::error::Error;
 use crate::github::{GhCli, GhRunner, GithubBackend};
 use crate::resources::{notification, work_packages};
@@ -49,7 +49,7 @@ pub async fn list_tasks_page(
     page_size: i64,
 ) -> Result<Page, Error> {
     match profile.backend {
-        Backend::OpenProject => {
+        BackendKind::OpenProject => {
             let client = openproject_client(profile, token)?;
             if profile.backend.needs_local_history() {
                 // The server forgets past assignees, so aggregate current +
@@ -81,7 +81,7 @@ pub async fn list_tasks_page(
                 })
             }
         }
-        Backend::Github => {
+        BackendKind::Github => {
             let host = profile.base_url.clone();
             let items = run_blocking(move || github_tasks(GhCli { host })).await?;
             Ok(Page {
@@ -100,7 +100,7 @@ pub async fn list_notifications_page(
     page_size: i64,
 ) -> Result<Page, Error> {
     match profile.backend {
-        Backend::OpenProject => {
+        BackendKind::OpenProject => {
             let client = openproject_client(profile, token)?;
             let (items, total) =
                 notification::list_page(&client, page.max(1), Some(page_size), false).await?;
@@ -109,7 +109,7 @@ pub async fn list_notifications_page(
                 next_offset: next_page(page, page_size, total),
             })
         }
-        Backend::Github => {
+        BackendKind::Github => {
             let host = profile.base_url.clone();
             let items = run_blocking(move || github_notifications(GhCli { host })).await?;
             Ok(Page {
@@ -124,7 +124,7 @@ pub async fn list_notifications_page(
 /// authenticates through `gh` and ignores it.
 pub async fn list_tasks(profile: &ServerProfile, token: Option<&str>) -> Result<Vec<Value>, Error> {
     match profile.backend {
-        Backend::OpenProject => {
+        BackendKind::OpenProject => {
             let client = openproject_client(profile, token)?;
             let params = work_packages::WpListParams {
                 assignee: Some("me".into()),
@@ -134,7 +134,7 @@ pub async fn list_tasks(profile: &ServerProfile, token: Option<&str>) -> Result<
             };
             Ok(as_array(work_packages::list(&client, params, false).await?))
         }
-        Backend::Github => {
+        BackendKind::Github => {
             let host = profile.base_url.clone();
             run_blocking(move || github_tasks(GhCli { host })).await
         }
@@ -147,11 +147,11 @@ pub async fn list_notifications(
     token: Option<&str>,
 ) -> Result<Vec<Value>, Error> {
     match profile.backend {
-        Backend::OpenProject => {
+        BackendKind::OpenProject => {
             let client = openproject_client(profile, token)?;
             Ok(as_array(notification::list(&client, 1, None, false).await?))
         }
-        Backend::Github => {
+        BackendKind::Github => {
             let host = profile.base_url.clone();
             run_blocking(move || github_notifications(GhCli { host })).await
         }
@@ -168,7 +168,7 @@ pub async fn set_notification_read(
     read: bool,
 ) -> Result<(), Error> {
     match profile.backend {
-        Backend::OpenProject => {
+        BackendKind::OpenProject => {
             let client = openproject_client(profile, token)?;
             if read {
                 notification::read(&client, id).await?;
@@ -177,7 +177,7 @@ pub async fn set_notification_read(
             }
             Ok(())
         }
-        Backend::Github => {
+        BackendKind::Github => {
             if !read {
                 return Ok(());
             }
@@ -190,12 +190,12 @@ pub async fn set_notification_read(
 /// Mark every notification on a server as read. Returns the count marked.
 pub async fn mark_all_read(profile: &ServerProfile, token: Option<&str>) -> Result<u64, Error> {
     match profile.backend {
-        Backend::OpenProject => {
+        BackendKind::OpenProject => {
             let client = openproject_client(profile, token)?;
             let v = notification::read_all(&client).await?;
             Ok(v.get("read").and_then(|x| x.as_u64()).unwrap_or(0))
         }
-        Backend::Github => {
+        BackendKind::Github => {
             let host = profile.base_url.clone();
             run_blocking_count(move || github_mark_all_read(GhCli { host })).await
         }
@@ -335,7 +335,7 @@ mod tests {
     async fn openproject_tasks_require_token() {
         let p = ServerProfile {
             base_url: "https://op.example".into(),
-            backend: Backend::OpenProject,
+            backend: BackendKind::OpenProject,
             timeout: 30,
             verify_ssl: true,
             proxy: None,

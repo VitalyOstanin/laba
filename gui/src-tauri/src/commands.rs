@@ -4,7 +4,7 @@ use laba_core::auth::login_and_store;
 use laba_core::backend;
 use laba_core::client::Client;
 use laba_core::config::{
-    default_config_path, Backend, Config, OpenTarget, ServerProfile, StatusColor, StatusFilter,
+    default_config_path, BackendKind, Config, OpenTarget, ServerProfile, StatusColor, StatusFilter,
     TimelogStart,
 };
 use laba_core::resources::{comment, time, work_packages};
@@ -63,10 +63,10 @@ pub struct ServerInfo {
     pub has_token: bool,
 }
 
-fn backend_str(b: Backend) -> &'static str {
+fn backend_str(b: BackendKind) -> &'static str {
     match b {
-        Backend::OpenProject => "openproject",
-        Backend::Github => "github",
+        BackendKind::OpenProject => "openproject",
+        BackendKind::Github => "github",
     }
 }
 
@@ -342,7 +342,7 @@ pub async fn list_tasks(
         .ok_or_else(|| format!("unknown server '{server}'"))?
         .clone();
     let token = token_for(&server, profile.backend)?;
-    if profile.backend == Backend::OpenProject && token.is_none() {
+    if profile.backend == BackendKind::OpenProject && token.is_none() {
         // Stable sentinel the GUI maps to a friendly "not signed in" message
         // with a link to Settings, instead of surfacing a raw 401.
         return Err("not-signed-in".into());
@@ -370,7 +370,7 @@ pub async fn list_notifications(
         .ok_or_else(|| format!("unknown server '{server}'"))?
         .clone();
     let token = token_for(&server, profile.backend)?;
-    if profile.backend == Backend::OpenProject && token.is_none() {
+    if profile.backend == BackendKind::OpenProject && token.is_none() {
         // Stable sentinel the GUI maps to a friendly "not signed in" message
         // with a link to Settings, instead of surfacing a raw 401.
         return Err("not-signed-in".into());
@@ -408,7 +408,7 @@ fn op_client(server: &str) -> Result<Client, String> {
         .get(server)
         .ok_or_else(|| format!("unknown server '{server}'"))?
         .clone();
-    if p.backend != Backend::OpenProject {
+    if p.backend != BackendKind::OpenProject {
         return Err(format!(
             "server '{server}' backend does not support this action"
         ));
@@ -507,7 +507,7 @@ pub async fn gh_dependency() -> Result<GhDependency, String> {
     let uses_github = cfg
         .servers
         .values()
-        .any(|p| matches!(p.backend, Backend::Github));
+        .any(|p| matches!(p.backend, BackendKind::Github));
     if !uses_github {
         return Ok(GhDependency {
             used: false,
@@ -735,8 +735,8 @@ pub fn add_server(
         return Err("server name is required".into());
     }
     let backend = match backend.as_str() {
-        "openproject" => Backend::OpenProject,
-        "github" => Backend::Github,
+        "openproject" => BackendKind::OpenProject,
+        "github" => BackendKind::Github,
         other => return Err(format!("unknown backend '{other}'")),
     };
     with_config(|cfg| {
@@ -956,10 +956,10 @@ pub fn logout_server(name: String) -> Result<(), String> {
 
 /// OpenProject servers need a token from the keyring/file secret store; GitHub
 /// uses `gh` and needs none.
-fn token_for(server: &str, backend: Backend) -> Result<Option<String>, String> {
+fn token_for(server: &str, backend: BackendKind) -> Result<Option<String>, String> {
     match backend {
-        Backend::Github => Ok(None),
-        Backend::OpenProject => {
+        BackendKind::Github => Ok(None),
+        BackendKind::OpenProject => {
             let secrets = Secrets::resolve();
             secrets.get(server).map_err(|e| e.to_string())
         }
@@ -977,7 +977,7 @@ mod tests {
             "work".into(),
             ServerProfile {
                 base_url: "https://op.example".into(),
-                backend: Backend::OpenProject,
+                backend: BackendKind::OpenProject,
                 timeout: 30,
                 verify_ssl: true,
                 proxy: None,
@@ -995,7 +995,7 @@ mod tests {
             "gh".into(),
             ServerProfile {
                 base_url: "github.com".into(),
-                backend: Backend::Github,
+                backend: BackendKind::Github,
                 timeout: 30,
                 verify_ssl: true,
                 proxy: None,

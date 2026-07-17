@@ -37,23 +37,23 @@ const CONFIG_MIGRATIONS: &[migrate::Step] = &[m1_normalize_base_urls];
 
 /// Which tracker a server profile talks to.
 ///
-/// Defaults to [`Backend::OpenProject`] so configs written before the field
+/// Defaults to [`BackendKind::OpenProject`] so configs written before the field
 /// existed keep working.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-pub enum Backend {
+pub enum BackendKind {
     #[default]
     OpenProject,
     Github,
 }
 
-impl Backend {
+impl BackendKind {
     /// The full capability set for this backend. Single source of truth: the
     /// `supports_*` / `default_*` accessors below read from it, so a new backend
     /// is described in one place instead of a dozen scattered `matches!` arms.
     pub fn capabilities(self) -> Capabilities {
         match self {
-            Backend::OpenProject => Capabilities {
+            BackendKind::OpenProject => Capabilities {
                 notifications: true,
                 notification_read: ReadToggle::TwoWay,
                 status_filters: true,
@@ -64,7 +64,7 @@ impl Backend {
                 default_open_target: OpenTarget::App,
                 default_poll_secs: 120,
             },
-            Backend::Github => Capabilities {
+            BackendKind::Github => Capabilities {
                 notifications: true,
                 notification_read: ReadToggle::OneWay,
                 status_filters: false,
@@ -156,7 +156,7 @@ impl Backend {
 /// The capabilities of a backend, as data rather than a bag of boolean accessors.
 /// Nuances are modeled with enums (a one-way vs two-way read toggle, timelog with
 /// or without activities) instead of a boolean plus a comment. Built per backend
-/// by [`Backend::capabilities`]; adding a backend fills one of these in.
+/// by [`BackendKind::capabilities`]; adding a backend fills one of these in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Capabilities {
     /// The backend exposes a notification inbox.
@@ -217,7 +217,7 @@ pub enum TimelogSupport {
 
 /// Where a task opens on click: inside laba's detail screen (`App`) or in the
 /// system browser (`Browser`). Chosen per server, defaulting by backend (see
-/// [`Backend::default_open_target`]).
+/// [`BackendKind::default_open_target`]).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum OpenTarget {
@@ -310,7 +310,7 @@ pub struct ServerProfile {
     pub display_name: Option<String>,
     pub base_url: String,
     #[serde(default)]
-    pub backend: Backend,
+    pub backend: BackendKind,
     #[serde(default = "default_timeout")]
     pub timeout: u64,
     #[serde(default = "default_true")]
@@ -327,7 +327,7 @@ pub struct ServerProfile {
     #[serde(default = "default_true")]
     pub enabled: bool,
     /// Poll interval in seconds. Absent (or 0) falls back to the backend default
-    /// (see [`Backend::default_poll_secs`]).
+    /// (see [`BackendKind::default_poll_secs`]).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub poll_secs: Option<u64>,
     /// Timelog window start for this server. Seeded with the first-launch date
@@ -350,12 +350,12 @@ pub struct ServerProfile {
     /// by), matched against each task's expanded `customFields[].name`. Ordered.
     /// The name is used both to look up the value and as the column label (e.g.
     /// `Rank`). Instance-specific, so this is user data. Only meaningful for
-    /// backends with custom fields (see [`Backend::supports_custom_fields`]).
+    /// backends with custom fields (see [`BackendKind::supports_custom_fields`]).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub display_fields: Vec<String>,
     /// Preferred place to open a task on click: `app` (laba's detail screen) or
     /// `browser`. Absent defers to the backend default (see
-    /// [`Backend::default_open_target`]): OpenProject → app, GitHub → browser.
+    /// [`BackendKind::default_open_target`]): OpenProject → app, GitHub → browser.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub open_content_in: Option<OpenTarget>,
 }
@@ -368,7 +368,7 @@ impl ServerProfile {
 
     /// Effective open target for tasks: the per-server `open_content_in` override,
     /// else the backend default. `App` is only honored when the backend can
-    /// actually render a detail screen ([`Backend::supports_task_detail`]);
+    /// actually render a detail screen ([`BackendKind::supports_task_detail`]);
     /// otherwise it falls back to `Browser` so the title is never left inert.
     pub fn effective_open_target(&self) -> OpenTarget {
         let want = self
@@ -448,7 +448,7 @@ fn warn_insecure_servers(cfg: &Config) {
                 "server '{name}': TLS certificate verification is disabled (verify_ssl=false); the API token can be intercepted by a man-in-the-middle"
             );
         }
-        if matches!(p.backend, Backend::OpenProject) {
+        if matches!(p.backend, BackendKind::OpenProject) {
             if let Ok(url) = reqwest::Url::parse(&p.base_url) {
                 let loopback = url
                     .host_str()
@@ -669,14 +669,14 @@ mod tests {
     #[test]
     fn backend_defaults_to_openproject_when_absent() {
         let p: ServerProfile = serde_json::from_str(r#"{"base_url":"u"}"#).unwrap();
-        assert_eq!(p.backend, Backend::OpenProject);
+        assert_eq!(p.backend, BackendKind::OpenProject);
     }
 
     #[test]
     fn backend_parses_github() {
         let p: ServerProfile =
             serde_json::from_str(r#"{"base_url":"github.com","backend":"github"}"#).unwrap();
-        assert_eq!(p.backend, Backend::Github);
+        assert_eq!(p.backend, BackendKind::Github);
     }
 
     #[test]
@@ -770,28 +770,28 @@ mod tests {
 
     #[test]
     fn backend_capabilities() {
-        assert!(Backend::OpenProject.supports_timelog());
-        assert!(!Backend::Github.supports_timelog());
-        assert!(Backend::OpenProject.supports_time_activities());
-        assert!(!Backend::Github.supports_time_activities());
-        assert!(Backend::OpenProject.needs_local_history());
-        assert!(!Backend::Github.needs_local_history());
-        assert!(Backend::OpenProject.supports_notifications());
-        assert!(Backend::Github.supports_notifications());
-        assert!(Backend::OpenProject.supports_notification_read_toggle());
-        assert!(Backend::Github.supports_notification_read_toggle());
-        assert!(Backend::OpenProject.supports_status_filters());
-        assert!(!Backend::Github.supports_status_filters());
-        assert_eq!(Backend::OpenProject.default_poll_secs(), 120);
-        assert_eq!(Backend::Github.default_poll_secs(), 900);
+        assert!(BackendKind::OpenProject.supports_timelog());
+        assert!(!BackendKind::Github.supports_timelog());
+        assert!(BackendKind::OpenProject.supports_time_activities());
+        assert!(!BackendKind::Github.supports_time_activities());
+        assert!(BackendKind::OpenProject.needs_local_history());
+        assert!(!BackendKind::Github.needs_local_history());
+        assert!(BackendKind::OpenProject.supports_notifications());
+        assert!(BackendKind::Github.supports_notifications());
+        assert!(BackendKind::OpenProject.supports_notification_read_toggle());
+        assert!(BackendKind::Github.supports_notification_read_toggle());
+        assert!(BackendKind::OpenProject.supports_status_filters());
+        assert!(!BackendKind::Github.supports_status_filters());
+        assert_eq!(BackendKind::OpenProject.default_poll_secs(), 120);
+        assert_eq!(BackendKind::Github.default_poll_secs(), 900);
     }
 
     #[test]
     fn default_open_target_reflects_web_ui_quality() {
         // OpenProject's heavy web UI opens in laba; GitHub's good web UI opens
         // in the browser.
-        assert_eq!(Backend::OpenProject.default_open_target(), OpenTarget::App);
-        assert_eq!(Backend::Github.default_open_target(), OpenTarget::Browser);
+        assert_eq!(BackendKind::OpenProject.default_open_target(), OpenTarget::App);
+        assert_eq!(BackendKind::Github.default_open_target(), OpenTarget::Browser);
         assert_eq!(OpenTarget::App.token(), "app");
         assert_eq!(OpenTarget::Browser.token(), "browser");
     }
@@ -800,21 +800,21 @@ mod tests {
     fn capabilities_are_the_single_source_for_accessors() {
         // OpenProject: full-featured — two-way read, in-app detail, timelog with
         // activities, local history, status filters, custom fields.
-        let op = Backend::OpenProject.capabilities();
+        let op = BackendKind::OpenProject.capabilities();
         assert_eq!(op.notification_read, ReadToggle::TwoWay);
         assert_eq!(op.task_detail, DetailSupport::InApp);
         assert_eq!(op.timelog, TimelogSupport::WithActivities);
         assert!(op.status_filters && op.custom_fields && op.needs_local_history);
 
         // GitHub: one-way read, no in-app detail, no timelog, no local history.
-        let gh = Backend::Github.capabilities();
+        let gh = BackendKind::Github.capabilities();
         assert_eq!(gh.notification_read, ReadToggle::OneWay);
         assert_eq!(gh.task_detail, DetailSupport::None);
         assert_eq!(gh.timelog, TimelogSupport::None);
         assert!(!gh.status_filters && !gh.custom_fields && !gh.needs_local_history);
 
         // The boolean accessors must agree with the capability set they read from.
-        for b in [Backend::OpenProject, Backend::Github] {
+        for b in [BackendKind::OpenProject, BackendKind::Github] {
             let c = b.capabilities();
             assert_eq!(b.supports_timelog(), c.timelog != TimelogSupport::None);
             assert_eq!(
@@ -837,12 +837,12 @@ mod tests {
     #[test]
     fn effective_open_target_falls_back_to_browser_without_detail() {
         let op = ServerProfile {
-            backend: Backend::OpenProject,
+            backend: BackendKind::OpenProject,
             ..profile("https://op.example")
         };
         assert_eq!(op.effective_open_target(), OpenTarget::App);
         let gh = ServerProfile {
-            backend: Backend::Github,
+            backend: BackendKind::Github,
             ..profile("https://github.com")
         };
         // GitHub cannot render a detail screen, so App would degrade to Browser;
@@ -853,7 +853,7 @@ mod tests {
     fn profile(base: &str) -> ServerProfile {
         ServerProfile {
             display_name: None,
-            backend: Backend::OpenProject,
+            backend: BackendKind::OpenProject,
             base_url: base.into(),
             timeout: 30,
             verify_ssl: true,

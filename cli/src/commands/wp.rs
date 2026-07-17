@@ -1,6 +1,6 @@
 use clap::Subcommand;
 use laba_core::client::Client;
-use laba_core::config::{Backend, ServerProfile};
+use laba_core::config::{BackendKind, ServerProfile};
 use laba_core::error::Error;
 use laba_core::resources::work_packages::{self, WpFields, WpListParams};
 use serde_json::Value;
@@ -208,7 +208,7 @@ async fn run_openproject(cmd: WpCmd, client: &Client, raw: bool) -> Result<Value
 
 pub async fn run(cmd: WpCmd, g: &Globals) -> Result<(), Error> {
     let (_name, profile) = super::load_profile(g)?;
-    if profile.backend == Backend::Github {
+    if profile.backend == BackendKind::Github {
         return run_github(cmd, &profile, g).await;
     }
     let (_name, client) = super::build_client(g)?;

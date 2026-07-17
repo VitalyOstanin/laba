@@ -1,5 +1,5 @@
 use clap::Subcommand;
-use laba_core::config::Backend;
+use laba_core::config::BackendKind;
 use laba_core::error::Error;
 use laba_core::resources::notification;
 
@@ -22,7 +22,7 @@ pub enum NotificationCmd {
 
 pub async fn run(cmd: NotificationCmd, g: &Globals) -> Result<(), Error> {
     let (_name, profile) = super::load_profile(g)?;
-    if profile.backend == Backend::Github {
+    if profile.backend == BackendKind::Github {
         return match cmd {
             NotificationCmd::List { .. } => {
                 super::ensure_gh_ready(&profile)?;
