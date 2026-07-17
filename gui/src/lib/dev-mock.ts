@@ -519,7 +519,7 @@ export async function mockInvoke(
               name: nm,
               display_name: (a.displayName as string) || nm,
               base_url: (a.url as string) || "",
-              backend: (a.backend as ServerInfo["backend"]) || "openproject",
+              backend: (a.backend as ServerInfo["backend"]) || "github",
               is_default: servers.length === 0,
               poll_secs: 120,
               poll_override: null,
@@ -527,8 +527,7 @@ export async function mockInvoke(
               timelog_start: null,
               status_colors: {},
               capabilities:
-                ((a.backend as ServerInfo["backend"]) || "openproject") ===
-                "github"
+                ((a.backend as ServerInfo["backend"]) || "github") === "github"
                   ? {
                       notifications: true,
                       notification_read: "oneway",

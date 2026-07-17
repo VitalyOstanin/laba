@@ -95,7 +95,7 @@ fn api_field_without_equals_is_usage_error() {
         &cfg,
         json!({
             "default_server": "primary",
-            "servers": {"primary": {"base_url": "https://h/openproject"}}
+            "servers": {"primary": {"backend": "openproject", "base_url": "https://h/openproject"}}
         })
         .to_string(),
     )
@@ -128,7 +128,7 @@ fn write_config(dir: &std::path::Path, base_url: &str) -> std::path::PathBuf {
         &cfg,
         json!({
             "default_server": "primary",
-            "servers": {"primary": {"base_url": base_url, "verify_ssl": false}}
+            "servers": {"primary": {"backend": "openproject", "base_url": base_url, "verify_ssl": false}}
         })
         .to_string(),
     )

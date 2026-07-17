@@ -15,9 +15,9 @@ pub enum ServerCmd {
         name: String,
         #[arg(long)]
         url: String,
-        /// Backend: `openproject` (default) or `github`. GitHub servers use the
+        /// Backend: `github` (default) or `openproject`. GitHub servers use the
         /// `gh` CLI and need no token; `url` is the GitHub host (e.g. github.com).
-        #[arg(long, default_value = "openproject")]
+        #[arg(long, default_value = "github")]
         backend: String,
         /// Full display name (shown in tooltips / settings). Defaults to `name`.
         #[arg(long)]

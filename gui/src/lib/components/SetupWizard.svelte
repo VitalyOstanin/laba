@@ -133,20 +133,20 @@
           <button
             type="button"
             class="wizard-card"
-            class:sel={backend === "openproject"}
-            onclick={() => pickBackend("openproject")}
-          >
-            <strong>{$t("wizard.backend.op")}</strong>
-            <span>{$t("wizard.backend.opDesc")}</span>
-          </button>
-          <button
-            type="button"
-            class="wizard-card"
             class:sel={backend === "github"}
             onclick={() => pickBackend("github")}
           >
             <strong>{$t("wizard.backend.gh")}</strong>
             <span>{$t("wizard.backend.ghDesc")}</span>
+          </button>
+          <button
+            type="button"
+            class="wizard-card"
+            class:sel={backend === "openproject"}
+            onclick={() => pickBackend("openproject")}
+          >
+            <strong>{$t("wizard.backend.op")}</strong>
+            <span>{$t("wizard.backend.opDesc")}</span>
           </button>
         </div>
 

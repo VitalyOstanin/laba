@@ -37,14 +37,14 @@ const CONFIG_MIGRATIONS: &[migrate::Step] = &[m1_normalize_base_urls];
 
 /// Which tracker a server profile talks to.
 ///
-/// Defaults to [`BackendKind::OpenProject`] so configs written before the field
-/// existed keep working.
+/// Defaults to [`BackendKind::Github`]: GitHub is the primary backend, so a
+/// profile with no explicit `backend` is a GitHub server.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum BackendKind {
     #[default]
-    OpenProject,
     Github,
+    OpenProject,
 }
 
 impl BackendKind {
@@ -667,9 +667,9 @@ mod tests {
     }
 
     #[test]
-    fn backend_defaults_to_openproject_when_absent() {
+    fn backend_defaults_to_github_when_absent() {
         let p: ServerProfile = serde_json::from_str(r#"{"base_url":"u"}"#).unwrap();
-        assert_eq!(p.backend, BackendKind::OpenProject);
+        assert_eq!(p.backend, BackendKind::Github);
     }
 
     #[test]
@@ -696,8 +696,8 @@ mod tests {
         assert_eq!(p.timelog_start, None);
         assert!(p.status_colors.is_empty());
         assert!(p.status_filters.is_empty());
-        // No explicit poll_secs -> backend default.
-        assert_eq!(p.effective_poll_secs(), 120);
+        // No explicit poll_secs -> backend default (GitHub, the default backend).
+        assert_eq!(p.effective_poll_secs(), 900);
     }
 
     #[test]
@@ -760,8 +760,10 @@ mod tests {
     fn effective_poll_prefers_explicit_then_backend_default() {
         let p: ServerProfile = serde_json::from_str(r#"{"base_url":"u","poll_secs":300}"#).unwrap();
         assert_eq!(p.effective_poll_secs(), 300);
-        // A stored 0 is treated as unset.
-        let p: ServerProfile = serde_json::from_str(r#"{"base_url":"u","poll_secs":0}"#).unwrap();
+        // A stored 0 is treated as unset (falls back to the backend default).
+        let p: ServerProfile =
+            serde_json::from_str(r#"{"base_url":"u","backend":"openproject","poll_secs":0}"#)
+                .unwrap();
         assert_eq!(p.effective_poll_secs(), 120);
         let p: ServerProfile =
             serde_json::from_str(r#"{"base_url":"u","backend":"github"}"#).unwrap();
@@ -790,8 +792,14 @@ mod tests {
     fn default_open_target_reflects_web_ui_quality() {
         // OpenProject's heavy web UI opens in laba; GitHub's good web UI opens
         // in the browser.
-        assert_eq!(BackendKind::OpenProject.default_open_target(), OpenTarget::App);
-        assert_eq!(BackendKind::Github.default_open_target(), OpenTarget::Browser);
+        assert_eq!(
+            BackendKind::OpenProject.default_open_target(),
+            OpenTarget::App
+        );
+        assert_eq!(
+            BackendKind::Github.default_open_target(),
+            OpenTarget::Browser
+        );
         assert_eq!(OpenTarget::App.token(), "app");
         assert_eq!(OpenTarget::Browser.token(), "browser");
     }

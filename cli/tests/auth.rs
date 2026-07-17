@@ -34,8 +34,26 @@ async fn auth_login_rejects_duplicate_user_unless_forced() {
     };
 
     // Two profiles on the same base URL.
-    run(&["server", "add", "primary", "--url", &uri]).success();
-    run(&["server", "add", "secondary", "--url", &uri]).success();
+    run(&[
+        "server",
+        "add",
+        "primary",
+        "--backend",
+        "openproject",
+        "--url",
+        &uri,
+    ])
+    .success();
+    run(&[
+        "server",
+        "add",
+        "secondary",
+        "--backend",
+        "openproject",
+        "--url",
+        &uri,
+    ])
+    .success();
 
     // First login stores the token for primary.
     run(&["--server", "primary", "auth", "login", "--token", "t"]).success();
