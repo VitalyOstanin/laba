@@ -214,27 +214,41 @@ pub fn normalize_notification(v: &Value) -> Value {
             .map(Value::String)
             .unwrap_or(Value::Null),
     );
+    // For CI (CheckSuite) notifications, classify the run outcome from the
+    // subject title so the UI can tint it: a failed run reads as a warning, a
+    // successful run as good. Absent for every other subject type.
+    if subject.and_then(|s| s.get("type")).and_then(Value::as_str) == Some("CheckSuite") {
+        let title = subject
+            .and_then(|s| s.get("title"))
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        m.insert("outcome".into(), Value::from(check_suite_outcome(title)));
+    }
     Value::Object(m)
+}
+
+/// Classify a CheckSuite notification's outcome from its subject title, which
+/// GitHub phrases as "… workflow run failed/succeeded/cancelled for … branch".
+/// Returns `"failure"`, `"success"`, or `"neutral"` so the UI can tint it
+/// (failed → warn, succeeded → success). The `gh api notifications` payload
+/// carries no structured conclusion, so the title text is the only signal.
+fn check_suite_outcome(title: &str) -> &'static str {
+    let t = title.to_ascii_lowercase();
+    if t.contains("fail") {
+        "failure"
+    } else if t.contains("succe") || t.contains("passed") {
+        "success"
+    } else {
+        "neutral"
+    }
 }
 
 /// Browser URL for a notification's subject, or `None` when it cannot be built
 /// (unsupported subject type, or missing repository/number). Built from the
-/// repository web address plus the subject number so it works on GitHub
-/// Enterprise hosts too, not only `github.com`.
+/// repository web address so it works on GitHub Enterprise hosts too, not only
+/// `github.com`.
 fn notification_html_url(v: &Value) -> Option<String> {
     let subject = v.get("subject")?;
-    let path = match subject.get("type").and_then(Value::as_str)? {
-        "Issue" => "issues",
-        "PullRequest" => "pull",
-        _ => return None,
-    };
-    // Number is the last path segment of the subject API URL.
-    let number = subject
-        .get("url")
-        .and_then(Value::as_str)?
-        .rsplit('/')
-        .next()
-        .filter(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))?;
     let repo = v.get("repository")?;
     let base = repo
         .get("html_url")
@@ -245,7 +259,25 @@ fn notification_html_url(v: &Value) -> Option<String> {
                 .and_then(Value::as_str)
                 .map(|fname| format!("https://github.com/{fname}"))
         })?;
-    Some(format!("{base}/{path}/{number}"))
+    match subject.get("type").and_then(Value::as_str)? {
+        // Issue/PullRequest map to their web page via the subject number.
+        ty @ ("Issue" | "PullRequest") => {
+            let path = if ty == "Issue" { "issues" } else { "pull" };
+            // Number is the last path segment of the subject API URL.
+            let number = subject
+                .get("url")
+                .and_then(Value::as_str)?
+                .rsplit('/')
+                .next()
+                .filter(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))?;
+            Some(format!("{base}/{path}/{number}"))
+        }
+        // CI (CheckSuite) notifications carry no subject number or browser URL,
+        // so link to the repository's Actions page where the failed run is listed.
+        "CheckSuite" => Some(format!("{base}/actions")),
+        // Other subject types (Discussion, Release, …) have no reliable link.
+        _ => None,
+    }
 }
 
 fn parse_tasks(raw: &[u8], kind: TaskKind) -> Result<Vec<Value>, Error> {
@@ -538,6 +570,66 @@ mod tests {
             "repository": {"full_name": "acme/app"}
         });
         assert_eq!(normalize_notification(&disc)["htmlUrl"], json!(null));
+    }
+
+    #[test]
+    fn normalize_notification_check_suite_links_to_actions() {
+        // CI (CheckSuite) notifications carry no subject number/url; they link to
+        // the repository's Actions page. Uses the repository html_url as the base.
+        let ci = json!({
+            "subject": {"title": "CI workflow run failed", "type": "CheckSuite", "url": null},
+            "repository": {"full_name": "acme/app", "html_url": "https://github.com/acme/app"}
+        });
+        assert_eq!(
+            normalize_notification(&ci)["htmlUrl"],
+            json!("https://github.com/acme/app/actions")
+        );
+        // Enterprise host / no repo html_url: fall back to github.com/<full_name>.
+        let ci_fallback = json!({
+            "subject": {"title": "CI", "type": "CheckSuite"},
+            "repository": {"full_name": "acme/app"}
+        });
+        assert_eq!(
+            normalize_notification(&ci_fallback)["htmlUrl"],
+            json!("https://github.com/acme/app/actions")
+        );
+    }
+
+    #[test]
+    fn check_suite_outcome_classifies_by_title() {
+        assert_eq!(
+            check_suite_outcome("CI workflow run failed for main branch"),
+            "failure"
+        );
+        assert_eq!(
+            check_suite_outcome("CI workflow run succeeded for main branch"),
+            "success"
+        );
+        assert_eq!(check_suite_outcome("All checks passed"), "success");
+        assert_eq!(check_suite_outcome("CI workflow run cancelled"), "neutral");
+        assert_eq!(check_suite_outcome(""), "neutral");
+    }
+
+    #[test]
+    fn normalize_notification_sets_ci_outcome_only_for_check_suite() {
+        // Failed CI run -> outcome "failure".
+        let fail = json!({
+            "subject": {"title": "CI workflow run failed for x", "type": "CheckSuite"},
+            "repository": {"full_name": "acme/app"}
+        });
+        assert_eq!(normalize_notification(&fail)["outcome"], json!("failure"));
+        // Successful CI run -> outcome "success".
+        let ok = json!({
+            "subject": {"title": "CI workflow run succeeded for x", "type": "CheckSuite"},
+            "repository": {"full_name": "acme/app"}
+        });
+        assert_eq!(normalize_notification(&ok)["outcome"], json!("success"));
+        // Non-CI notifications carry no outcome field.
+        let issue = json!({
+            "subject": {"title": "Ping", "type": "Issue", "url": "https://api.github.com/repos/acme/app/issues/1"},
+            "repository": {"full_name": "acme/app"}
+        });
+        assert_eq!(normalize_notification(&issue).get("outcome"), None);
     }
 
     #[test]
