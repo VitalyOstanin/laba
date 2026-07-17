@@ -64,6 +64,17 @@ export const ru: Dict = {
   "settings.server.token": "Вставьте токен API и нажмите «Войти»",
   "settings.server.hasToken": "токен сохранён",
   "settings.server.noToken": "нет токена",
+  "settings.server.default": "по умолчанию",
+  "settings.server.makeDefault": "Сделать основным",
+  "settings.server.logout": "Выйти",
+  "settings.server.logoutGithubHint":
+    "Аутентификация GitHub выполняется через gh CLI — токен здесь не хранится. Выход: gh auth logout.",
+  "settings.server.logoutNoTokenHint":
+    "Вход не выполнен — выходить не из чего. Вставьте токен и нажмите «Войти».",
+  "settings.server.remove": "Удалить сервер",
+  "settings.server.removeConfirm": "Удалить сервер и его токен?",
+  "settings.server.removeYes": "Удалить",
+  "settings.server.removeCancel": "Отмена",
   "settings.server.advanced": "Дополнительно (proxy, цвета, фильтры, поля)",
   "settings.filters": "Табы фильтров по статусу",
   "settings.filters.hint":

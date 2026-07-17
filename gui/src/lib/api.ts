@@ -97,6 +97,17 @@ export const setGlobalProxy = (proxy: string | null): Promise<void> =>
   invoke("set_global_proxy", { proxy });
 export const renameServer = (old: string, next: string): Promise<void> =>
   invoke("rename_server", { old, new: next });
+// Remove a server profile and its stored token. If it was the default, the
+// backend hands the default to the first remaining profile.
+export const removeServer = (name: string): Promise<void> =>
+  invoke("remove_server", { name });
+// Mark a server as the default.
+export const setDefaultServer = (name: string): Promise<void> =>
+  invoke("set_default_server", { name });
+// Sign out of an OpenProject server: delete its stored token, keeping the
+// profile. A no-op for GitHub servers (they authenticate via gh).
+export const logoutServer = (name: string): Promise<void> =>
+  invoke("logout_server", { name });
 // Add a server profile. backend "github" needs no token (uses gh); "openproject"
 // needs a token set separately (keyring/CLI).
 export const addServer = (

@@ -850,6 +850,56 @@ pub fn rename_server(old: String, new: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Drop a server profile from the config in memory. If it was the default, the
+/// default falls back to the first remaining profile (or `None` when the list is
+/// now empty). Pure config mutation, split out from [`remove_server`] so the
+/// default-fallback branch is unit-testable without touching the on-disk config
+/// or the secret store.
+fn remove_from_config(cfg: &mut Config, name: &str) -> Result<(), String> {
+    if cfg.servers.remove(name).is_none() {
+        return Err(format!("unknown server '{name}'"));
+    }
+    if cfg.default_server.as_deref() == Some(name) {
+        cfg.default_server = cfg.servers.keys().next().cloned();
+    }
+    Ok(())
+}
+
+/// Remove a server profile and its stored token. If it was the default, the
+/// default falls back to the first remaining profile (or none when the list is
+/// now empty). Mirrors the CLI `server remove`.
+#[tauri::command]
+pub fn remove_server(name: String) -> Result<(), String> {
+    with_config(|cfg| remove_from_config(cfg, &name))?;
+    // Best-effort token cleanup; a missing token just means nothing to delete.
+    Secrets::resolve().delete(&name).map_err(|e| e.to_string())
+}
+
+/// Set the default server in the config in memory, rejecting an unknown name.
+/// Split out from [`set_default_server`] so the validation branch is unit-testable
+/// without touching the on-disk config.
+fn set_default_in_config(cfg: &mut Config, name: &str) -> Result<(), String> {
+    if !cfg.servers.contains_key(name) {
+        return Err(format!("unknown server '{name}'"));
+    }
+    cfg.default_server = Some(name.to_owned());
+    Ok(())
+}
+
+/// Mark a server as the default. Mirrors the CLI `server set-default`.
+#[tauri::command]
+pub fn set_default_server(name: String) -> Result<(), String> {
+    with_config(|cfg| set_default_in_config(cfg, &name))
+}
+
+/// Sign out of an OpenProject server: delete its stored token, keeping the
+/// profile. GitHub servers hold no token here (they authenticate through `gh`),
+/// so deleting is a no-op for them.
+#[tauri::command]
+pub fn logout_server(name: String) -> Result<(), String> {
+    Secrets::resolve().delete(&name).map_err(|e| e.to_string())
+}
+
 /// OpenProject servers need a token from the keyring/file secret store; GitHub
 /// uses `gh` and needs none.
 fn token_for(server: &str, backend: Backend) -> Result<Option<String>, String> {
@@ -950,5 +1000,54 @@ mod tests {
         let infos = server_infos(&c);
         assert!(infos.iter().find(|i| i.name == "work").unwrap().enabled);
         assert!(!infos.iter().find(|i| i.name == "gh").unwrap().enabled);
+    }
+
+    #[test]
+    fn remove_default_reassigns_default_to_remaining() {
+        let mut c = cfg();
+        // "work" is the default; removing it hands the default to the next key.
+        remove_from_config(&mut c, "work").unwrap();
+        assert!(!c.servers.contains_key("work"));
+        assert_eq!(c.default_server.as_deref(), Some("gh"));
+    }
+
+    #[test]
+    fn remove_non_default_keeps_default() {
+        let mut c = cfg();
+        remove_from_config(&mut c, "gh").unwrap();
+        assert!(!c.servers.contains_key("gh"));
+        assert_eq!(c.default_server.as_deref(), Some("work"));
+    }
+
+    #[test]
+    fn remove_last_server_clears_default() {
+        let mut c = cfg();
+        remove_from_config(&mut c, "gh").unwrap();
+        remove_from_config(&mut c, "work").unwrap();
+        assert!(c.servers.is_empty());
+        assert_eq!(c.default_server, None);
+    }
+
+    #[test]
+    fn remove_unknown_server_errors() {
+        let mut c = cfg();
+        assert!(remove_from_config(&mut c, "nope").is_err());
+        // Config is otherwise unchanged.
+        assert_eq!(c.servers.len(), 2);
+        assert_eq!(c.default_server.as_deref(), Some("work"));
+    }
+
+    #[test]
+    fn set_default_switches_to_existing_server() {
+        let mut c = cfg();
+        set_default_in_config(&mut c, "gh").unwrap();
+        assert_eq!(c.default_server.as_deref(), Some("gh"));
+    }
+
+    #[test]
+    fn set_default_unknown_server_errors_and_keeps_current() {
+        let mut c = cfg();
+        assert!(set_default_in_config(&mut c, "nope").is_err());
+        assert_eq!(c.default_server.as_deref(), Some("work"));
     }
 }

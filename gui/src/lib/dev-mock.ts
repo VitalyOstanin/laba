@@ -487,6 +487,24 @@ export async function mockInvoke(
     case "login_server":
       patchServer(a.name, (s) => (s.has_token = true));
       return null;
+    case "remove_server": {
+      const nm = String(a.name ?? "");
+      const wasDefault = server(nm)?.is_default ?? false;
+      servers = servers.filter((s) => s.name !== nm);
+      // Hand the default to the first remaining profile, mirroring the backend.
+      if (wasDefault && servers.length > 0) {
+        servers = servers.map((s, i) => ({ ...s, is_default: i === 0 }));
+      }
+      return null;
+    }
+    case "set_default_server": {
+      const nm = String(a.name ?? "");
+      servers = servers.map((s) => ({ ...s, is_default: s.name === nm }));
+      return null;
+    }
+    case "logout_server":
+      patchServer(a.name, (s) => (s.has_token = false));
+      return null;
     // Actions with no UI-visible fixture state: acknowledge and move on.
     case "set_server_status_color":
     case "rename_server":

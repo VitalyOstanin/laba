@@ -5,6 +5,13 @@ The format follows Keep a Changelog and Semantic Versioning.
 
 ## [Unreleased]
 
+### Added
+- Settings: manage servers from the GUI — remove a server profile (and its
+  stored token), set the default server, and sign out of an OpenProject server
+  without removing it. When signing out is not applicable the row explains why:
+  GitHub servers authenticate through the `gh` CLI (no token is stored here), and
+  an OpenProject server with no token is simply not signed in.
+
 ### Changed
 - Store OpenProject tokens through `keyring-core` with per-OS credential stores
   (Secret Service on Linux, Keychain on macOS, Credential Manager on Windows)

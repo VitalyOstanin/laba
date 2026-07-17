@@ -1425,6 +1425,33 @@ button.readdot.busy {
   font: inherit;
 }
 
+/* Per-server management row: default marker, sign-out, and remove, on a full
+   row below the inline fields (mirrors the srv-signin layout). */
+.settings .srv-actions {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-left: 34px;
+  font-size: var(--fs-sm);
+}
+.settings .srv-default-badge {
+  font-size: var(--fs-xs);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-xs);
+  padding: 1px 6px;
+}
+.settings .srv-actions .linkbtn.danger {
+  color: var(--danger);
+}
+.settings .srv-remove-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Per-server advanced settings: collapsed by default so the common fields
    (enable, names, poll, timelog, sign-in) stay uncluttered. */
 .settings .srv-advanced {

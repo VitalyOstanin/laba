@@ -61,6 +61,17 @@ export const en = {
   "settings.server.token": "Paste API token, then Sign in",
   "settings.server.hasToken": "token stored",
   "settings.server.noToken": "no token",
+  "settings.server.default": "default",
+  "settings.server.makeDefault": "Make default",
+  "settings.server.logout": "Sign out",
+  "settings.server.logoutGithubHint":
+    "GitHub authenticates through the gh CLI — no token is stored here. Sign out with gh auth logout.",
+  "settings.server.logoutNoTokenHint":
+    "Not signed in — nothing to sign out of. Paste a token and Sign in.",
+  "settings.server.remove": "Remove server",
+  "settings.server.removeConfirm": "Remove this server and its token?",
+  "settings.server.removeYes": "Remove",
+  "settings.server.removeCancel": "Cancel",
   "settings.server.advanced": "Advanced (proxy, colors, filters, fields)",
   "settings.filters": "Status filter tabs",
   "settings.filters.hint":

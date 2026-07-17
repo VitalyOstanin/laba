@@ -15,6 +15,9 @@
     getGlobalProxy,
     setGlobalProxy,
     renameServer,
+    removeServer,
+    setDefaultServer,
+    logoutServer,
     addServer,
     loginServer,
   } from "$lib/api";
@@ -311,6 +314,40 @@
     }
   }
 
+  // Mark a server as the default (the one used when none is explicitly selected).
+  async function makeDefault(name: string): Promise<void> {
+    await setDefaultServer(name);
+    await refreshServers();
+  }
+
+  // Sign out of an OpenProject server: drop its stored token, keep the profile.
+  async function logout(name: string): Promise<void> {
+    await logoutServer(name);
+    await refreshServers();
+  }
+
+  // Removal is confirmed inline: the first click arms the confirm row for that
+  // server, a second click (or Cancel) resolves it. Keyed by server name so only
+  // the targeted row is armed.
+  let removeArmed = $state<Record<string, boolean>>({});
+  function armRemove(name: string): void {
+    removeArmed[name] = true;
+  }
+  function cancelRemove(name: string): void {
+    removeArmed[name] = false;
+  }
+  async function confirmRemove(name: string): Promise<void> {
+    removeArmed[name] = false;
+    await removeServer(name);
+    // Drop the active selection if it pointed at the removed server so the
+    // dashboard falls back to the (possibly new) default.
+    if (get(activeServer) === name) {
+      const next = get(servers).find((s) => s.name !== name);
+      activeServer.set(next ? next.name : null);
+    }
+    await refreshServers();
+  }
+
   // Interface scale is stored as a factor (1 = 100%); show it as a percentage.
   const scalePercent = (factor: number): number => Math.round(factor * 100);
 
@@ -548,6 +585,57 @@
               {/if}
             </div>
           {/if}
+          <div class="srv-actions">
+            {#if s.is_default}
+              <span class="srv-default-badge"
+                >{$t("settings.server.default")}</span
+              >
+            {:else}
+              <button
+                type="button"
+                class="linkbtn"
+                onclick={() => makeDefault(s.name)}
+                >{$t("settings.server.makeDefault")}</button
+              >
+            {/if}
+            {#if s.backend === "github"}
+              <span class="hint">{$t("settings.server.logoutGithubHint")}</span>
+            {:else if s.has_token}
+              <button
+                type="button"
+                class="linkbtn"
+                onclick={() => logout(s.name)}
+                >{$t("settings.server.logout")}</button
+              >
+            {:else}
+              <span class="hint">{$t("settings.server.logoutNoTokenHint")}</span
+              >
+            {/if}
+            {#if removeArmed[s.name]}
+              <span class="srv-remove-confirm">
+                <span class="hint">{$t("settings.server.removeConfirm")}</span>
+                <button
+                  type="button"
+                  class="linkbtn danger"
+                  onclick={() => confirmRemove(s.name)}
+                  >{$t("settings.server.removeYes")}</button
+                >
+                <button
+                  type="button"
+                  class="linkbtn"
+                  onclick={() => cancelRemove(s.name)}
+                  >{$t("settings.server.removeCancel")}</button
+                >
+              </span>
+            {:else}
+              <button
+                type="button"
+                class="linkbtn danger"
+                onclick={() => armRemove(s.name)}
+                >{$t("settings.server.remove")}</button
+              >
+            {/if}
+          </div>
           <details class="srv-advanced">
             <summary>{$t("settings.server.advanced")}</summary>
             <label class="srv-field adv">
