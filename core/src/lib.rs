@@ -5,6 +5,7 @@ pub mod client;
 pub mod config;
 pub mod datetime;
 pub mod duration;
+pub mod entities;
 pub mod error;
 pub mod github;
 pub mod holidays;
