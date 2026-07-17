@@ -48,15 +48,45 @@ pub enum Backend {
 }
 
 impl Backend {
+    /// The full capability set for this backend. Single source of truth: the
+    /// `supports_*` / `default_*` accessors below read from it, so a new backend
+    /// is described in one place instead of a dozen scattered `matches!` arms.
+    pub fn capabilities(self) -> Capabilities {
+        match self {
+            Backend::OpenProject => Capabilities {
+                notifications: true,
+                notification_read: ReadToggle::TwoWay,
+                status_filters: true,
+                task_detail: DetailSupport::InApp,
+                custom_fields: true,
+                timelog: TimelogSupport::WithActivities,
+                needs_local_history: true,
+                default_open_target: OpenTarget::App,
+                default_poll_secs: 120,
+            },
+            Backend::Github => Capabilities {
+                notifications: true,
+                notification_read: ReadToggle::OneWay,
+                status_filters: false,
+                task_detail: DetailSupport::None,
+                custom_fields: false,
+                timelog: TimelogSupport::None,
+                needs_local_history: false,
+                default_open_target: OpenTarget::Browser,
+                default_poll_secs: 900,
+            },
+        }
+    }
+
     /// Whether this backend tracks logged time (timelog aggregation applies).
     pub fn supports_timelog(self) -> bool {
-        matches!(self, Backend::OpenProject)
+        self.capabilities().timelog != TimelogSupport::None
     }
 
     /// Whether logging time supports selecting an activity type (OpenProject
     /// time-entry activities). Drives the activity picker in the log-time form.
     pub fn supports_time_activities(self) -> bool {
-        matches!(self, Backend::OpenProject)
+        self.capabilities().timelog == TimelogSupport::WithActivities
     }
 
     /// Whether laba keeps a local assignee history for this backend
@@ -66,14 +96,14 @@ impl Backend {
     /// (`include_past`). GitHub search can still surface past issues, so it does
     /// not need a local history.
     pub fn needs_local_history(self) -> bool {
-        matches!(self, Backend::OpenProject)
+        self.capabilities().needs_local_history
     }
 
     /// Whether this backend exposes a notification inbox. Both current backends
     /// do; kept as a capability so a future backend without notifications hides
     /// the column instead of showing an empty one.
     pub fn supports_notifications(self) -> bool {
-        matches!(self, Backend::OpenProject | Backend::Github)
+        self.capabilities().notifications
     }
 
     /// Whether a notification's read state can be written from the app. Both
@@ -82,14 +112,14 @@ impl Backend {
     /// the list and the reverse direction is never needed. Drives the read dot and
     /// the "mark all read" control.
     pub fn supports_notification_read_toggle(self) -> bool {
-        matches!(self, Backend::OpenProject | Backend::Github)
+        self.capabilities().notification_read != ReadToggle::None
     }
 
     /// Whether tasks carry a rich workflow status worth filtering by. Drives the
     /// status-filter tabs in the GUI. OpenProject work packages do; GitHub issues
     /// only have open/closed.
     pub fn supports_status_filters(self) -> bool {
-        matches!(self, Backend::OpenProject)
+        self.capabilities().status_filters
     }
 
     /// Whether a single task can be opened for its full description and comment
@@ -97,23 +127,20 @@ impl Backend {
     /// its description plus an activities/comments endpoint; the GitHub backend
     /// here does not fetch issue bodies or comments, so its rows only link out.
     pub fn supports_task_detail(self) -> bool {
-        matches!(self, Backend::OpenProject)
+        self.capabilities().task_detail != DetailSupport::None
     }
 
     /// Whether tasks carry custom fields the user can choose to show as extra
     /// list columns (`display_fields`). OpenProject work packages do; GitHub
     /// issues do not.
     pub fn supports_custom_fields(self) -> bool {
-        matches!(self, Backend::OpenProject)
+        self.capabilities().custom_fields
     }
 
     /// Default polling interval in seconds. GitHub is polled less often because
     /// `gh` shares the account's stricter API rate limit.
     pub fn default_poll_secs(self) -> u64 {
-        match self {
-            Backend::OpenProject => 120,
-            Backend::Github => 900,
-        }
+        self.capabilities().default_poll_secs
     }
 
     /// Where a task opens by default when the user has not overridden it. This
@@ -122,11 +149,70 @@ impl Backend {
     /// is good, so its tasks open in the browser. A per-server
     /// [`ServerProfile::open_content_in`] overrides this.
     pub fn default_open_target(self) -> OpenTarget {
-        match self {
-            Backend::OpenProject => OpenTarget::App,
-            Backend::Github => OpenTarget::Browser,
-        }
+        self.capabilities().default_open_target
     }
+}
+
+/// The capabilities of a backend, as data rather than a bag of boolean accessors.
+/// Nuances are modeled with enums (a one-way vs two-way read toggle, timelog with
+/// or without activities) instead of a boolean plus a comment. Built per backend
+/// by [`Backend::capabilities`]; adding a backend fills one of these in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Capabilities {
+    /// The backend exposes a notification inbox.
+    pub notifications: bool,
+    /// How a notification's read state can be written (see [`ReadToggle`]).
+    pub notification_read: ReadToggle,
+    /// Tasks carry a workflow status worth filtering by (drives the status tabs).
+    pub status_filters: bool,
+    /// A task can be opened for its description and comments (see [`DetailSupport`]).
+    pub task_detail: DetailSupport,
+    /// Tasks carry custom fields shown as extra list columns.
+    pub custom_fields: bool,
+    /// Time logging support (see [`TimelogSupport`]).
+    pub timelog: TimelogSupport,
+    /// laba keeps a local assignee history because the server forgets past
+    /// assignees.
+    pub needs_local_history: bool,
+    /// Where a task opens by default (per-server override notwithstanding).
+    pub default_open_target: OpenTarget,
+    /// Default polling interval in seconds.
+    pub default_poll_secs: u64,
+}
+
+/// How a notification's read state can be written from the app.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ReadToggle {
+    /// Read state cannot be changed from the app.
+    None,
+    /// Only "mark read" is possible (e.g. GitHub: the list is unread-only, so a
+    /// read item leaves the list and "mark unread" is never needed).
+    OneWay,
+    /// Read and unread can both be set (e.g. OpenProject).
+    TwoWay,
+}
+
+/// Whether a task can be opened for its full description and comment thread.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DetailSupport {
+    /// No in-app detail; rows only link out to the web page.
+    None,
+    /// An in-app detail screen (description plus comments) is available.
+    InApp,
+}
+
+/// Time-logging support for a backend.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TimelogSupport {
+    /// No time logging.
+    None,
+    /// Time logging without an activity type.
+    Basic,
+    /// Time logging with a selectable activity type (OpenProject activities).
+    WithActivities,
 }
 
 /// Where a task opens on click: inside laba's detail screen (`App`) or in the
@@ -708,6 +794,44 @@ mod tests {
         assert_eq!(Backend::Github.default_open_target(), OpenTarget::Browser);
         assert_eq!(OpenTarget::App.token(), "app");
         assert_eq!(OpenTarget::Browser.token(), "browser");
+    }
+
+    #[test]
+    fn capabilities_are_the_single_source_for_accessors() {
+        // OpenProject: full-featured — two-way read, in-app detail, timelog with
+        // activities, local history, status filters, custom fields.
+        let op = Backend::OpenProject.capabilities();
+        assert_eq!(op.notification_read, ReadToggle::TwoWay);
+        assert_eq!(op.task_detail, DetailSupport::InApp);
+        assert_eq!(op.timelog, TimelogSupport::WithActivities);
+        assert!(op.status_filters && op.custom_fields && op.needs_local_history);
+
+        // GitHub: one-way read, no in-app detail, no timelog, no local history.
+        let gh = Backend::Github.capabilities();
+        assert_eq!(gh.notification_read, ReadToggle::OneWay);
+        assert_eq!(gh.task_detail, DetailSupport::None);
+        assert_eq!(gh.timelog, TimelogSupport::None);
+        assert!(!gh.status_filters && !gh.custom_fields && !gh.needs_local_history);
+
+        // The boolean accessors must agree with the capability set they read from.
+        for b in [Backend::OpenProject, Backend::Github] {
+            let c = b.capabilities();
+            assert_eq!(b.supports_timelog(), c.timelog != TimelogSupport::None);
+            assert_eq!(
+                b.supports_time_activities(),
+                c.timelog == TimelogSupport::WithActivities
+            );
+            assert_eq!(
+                b.supports_notification_read_toggle(),
+                c.notification_read != ReadToggle::None
+            );
+            assert_eq!(
+                b.supports_task_detail(),
+                c.task_detail != DetailSupport::None
+            );
+            assert_eq!(b.default_poll_secs(), c.default_poll_secs);
+            assert_eq!(b.default_open_target(), c.default_open_target);
+        }
     }
 
     #[test]
