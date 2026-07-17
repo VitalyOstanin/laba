@@ -25,9 +25,9 @@ The format follows Keep a Changelog and Semantic Versioning.
   dashboard header doubles as a cross-server summary.
 - Settings → Dashboard layout: show/hide the notifications column, the tasks
   column, and the time-logged bar.
-- The dashboard now shows the last-known tasks and notifications from an on-disk
-  cache immediately on launch, instead of empty columns, while the first refresh
-  runs in the background.
+- The dashboard now shows the last-known tasks and notifications from a locally
+  cached first page immediately on launch, instead of empty columns, while the
+  first refresh runs in the background.
 - A sync indicator under the header shows whether a refresh is in progress, when
   the last successful sync happened, or that the server is unavailable and cached
   data is shown.
