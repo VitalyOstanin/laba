@@ -27,6 +27,9 @@ export interface ServerInfo {
   supports_custom_fields: boolean;
   // whether a task opens a detail screen (description + comments)
   supports_task_detail: boolean;
+  // where content (tasks, notifications) opens on click: "app" (laba detail) or
+  // "browser" (effective value: per-server override or backend default)
+  open_content_in: "app" | "browser";
   // custom-field names shown as extra task-list columns (and sort keys), e.g. Rank
   display_fields: string[];
   // per-server proxy override (URL, "direct", or null = inherit global/env)

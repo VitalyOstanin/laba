@@ -90,6 +90,12 @@ export const setServerProxy = (
   name: string,
   proxy: string | null,
 ): Promise<void> => invoke("set_server_proxy", { name, proxy });
+// Where this server's content (tasks and notifications) opens on click: "app",
+// "browser", or null to clear the override and defer to the backend default.
+export const setServerOpenContentIn = (
+  name: string,
+  target: "app" | "browser" | null,
+): Promise<void> => invoke("set_server_open_content_in", { name, target });
 // Global default proxy (applies to servers without their own override).
 export const getGlobalProxy = (): Promise<string | null> =>
   invoke("get_global_proxy");

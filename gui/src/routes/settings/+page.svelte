@@ -12,6 +12,7 @@
     setServerStatusFilters,
     setServerDisplayFields,
     setServerProxy,
+    setServerOpenContentIn,
     getGlobalProxy,
     setGlobalProxy,
     renameServer,
@@ -31,6 +32,7 @@
   import { language, t } from "$lib/i18n";
   import { fieldKeys } from "$lib/keys";
   import { friendlyError } from "$lib/friendly-error";
+  import { settingsSectionMatches } from "$lib/settings-search";
   import type {
     Theme,
     Lang,
@@ -39,6 +41,26 @@
     StatusFilter,
     ServerInfo,
   } from "$lib/types";
+
+  // Chrome-style settings search: filter fieldsets by their visible text. The
+  // effect runs whenever the query changes, hiding non-matching sections and
+  // flagging when nothing matches. `sectionsEl` is the container that holds every
+  // fieldset (bound in the markup).
+  let searchQuery = $state("");
+  let sectionsEl = $state<HTMLElement>();
+  let noMatches = $state(false);
+  $effect(() => {
+    const q = searchQuery;
+    const root = sectionsEl;
+    if (!root) return;
+    let anyShown = false;
+    for (const fs of root.querySelectorAll("fieldset")) {
+      const match = settingsSectionMatches(fs.textContent ?? "", q);
+      (fs as HTMLElement).hidden = !match;
+      if (match) anyShown = true;
+    }
+    noMatches = q.trim() !== "" && !anyShown;
+  });
 
   // How long the "Saved" indicator stays up after a successful save.
   const SAVED_FLASH_MS = 1500;
@@ -156,6 +178,11 @@
   }
   async function setProxy(name: string, value: string): Promise<void> {
     await setServerProxy(name, value.trim() === "" ? null : value.trim());
+    await refreshServers();
+  }
+  async function setOpenContent(name: string, value: string): Promise<void> {
+    const target = value === "app" || value === "browser" ? value : null;
+    await setServerOpenContentIn(name, target);
     await refreshServers();
   }
 
@@ -378,13 +405,30 @@
   const weekStarts: WeekStart[] = ["system", "monday", "sunday"];
 </script>
 
-<section class="settings" aria-label={$t("settings.title")}>
+<section
+  class="settings"
+  aria-label={$t("settings.title")}
+  bind:this={sectionsEl}
+>
   <header class="settings-head">
     <a class="back" href="/">← {$t("nav.dashboard")}</a>
     <h1>{$t("settings.title")}</h1>
     {#if saved}<span class="saved" role="status">{$t("settings.saved")}</span
       >{/if}
   </header>
+
+  <div class="settings-search">
+    <input
+      type="search"
+      aria-label={$t("settings.search")}
+      placeholder={$t("settings.search")}
+      bind:value={searchQuery}
+      use:fieldKeys={() => ""}
+    />
+  </div>
+  {#if noMatches}
+    <p class="settings-empty">{$t("settings.search.empty")}</p>
+  {/if}
 
   <fieldset>
     <legend>{$t("settings.theme")}</legend>
@@ -720,6 +764,26 @@
                 use:fieldKeys={() => s.proxy ?? ""}
               />
             </label>
+            <label class="srv-field adv">
+              <span>{$t("settings.server.openContent")}</span>
+              <select
+                value={s.open_content_in}
+                onchange={(e) => setOpenContent(s.name, e.currentTarget.value)}
+              >
+                <option value=""
+                  >{$t("settings.server.openContent.default")}</option
+                >
+                {#if s.supports_task_detail}
+                  <option value="app"
+                    >{$t("settings.server.openContent.app")}</option
+                  >
+                {/if}
+                <option value="browser"
+                  >{$t("settings.server.openContent.browser")}</option
+                >
+              </select>
+            </label>
+            <p class="srv-hint">{$t("settings.server.openContent.hint")}</p>
             <div class="srv-colors">
               <span class="srv-colors-title">{$t("settings.statusColors")}</span
               >

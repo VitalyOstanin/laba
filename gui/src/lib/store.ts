@@ -66,20 +66,127 @@ export const byServer = writable<ByServer>({});
 export const summaries = writable<Record<string, ServerSummary>>({});
 export const filterText = writable<string>("");
 
-/** Substring match over the concatenation of all field values. */
+/**
+ * Where a server is in its refresh cycle, for the sync indicator: `syncing` while
+ * a poll is in flight, `idle` after a success, `stale` after a failed poll (the
+ * last cached data is still shown). `lastSyncMs` is the epoch-ms of the last
+ * successful poll, or null before the first.
+ */
+export type SyncPhase = "syncing" | "idle" | "stale";
+export interface SyncInfo {
+  phase: SyncPhase;
+  lastSyncMs: number | null;
+}
+export const syncByServer = writable<Record<string, SyncInfo>>({});
+
+/**
+ * A server's first page persisted to the webview's local storage so the
+ * dashboard shows the last-known tasks and notifications immediately on launch,
+ * before the first network poll returns. `savedAtMs` stamps when it was written.
+ */
+export interface CacheEntry {
+  tasks: Task[];
+  notifications: Notification[];
+  taskCursor: number | null;
+  notifCursor: number | null;
+  unread: number;
+  savedAtMs: number;
+}
+
+/** Reduce a resident server state to the persisted cache entry. */
+export function toCacheEntry(
+  s: ServerState,
+  unread: number,
+  nowMs: number,
+): CacheEntry {
+  return {
+    tasks: s.tasks,
+    notifications: s.notifications,
+    taskCursor: s.taskCursor,
+    notifCursor: s.notifCursor,
+    unread,
+    savedAtMs: nowMs,
+  };
+}
+
+/** Rebuild a resident server state from a cache entry (no error on load). */
+export function fromCacheEntry(e: CacheEntry): ServerState {
+  return {
+    tasks: e.tasks,
+    notifications: e.notifications,
+    error: null,
+    taskCursor: e.taskCursor,
+    notifCursor: e.notifCursor,
+  };
+}
+
+/**
+ * Parse a persisted cache entry, tolerating absent or malformed data (returns
+ * null). Guards against a corrupt or partial storage value crashing startup.
+ */
+export function parseCacheEntry(raw: string | null): CacheEntry | null {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw) as Partial<CacheEntry>;
+    if (!Array.isArray(v.tasks) || !Array.isArray(v.notifications)) return null;
+    return {
+      tasks: v.tasks,
+      notifications: v.notifications,
+      taskCursor: v.taskCursor ?? null,
+      notifCursor: v.notifCursor ?? null,
+      unread: typeof v.unread === "number" ? v.unread : 0,
+      savedAtMs: typeof v.savedAtMs === "number" ? v.savedAtMs : 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A parsed filter query: whitespace-separated tokens, where a token prefixed
+ * with `-` or `!` excludes matching rows and any other token includes only
+ * matching rows. A lone `-`/`!` (no term after it) is ignored. A row passes when
+ * it contains every include term and none of the exclude terms.
+ */
+export interface FilterQuery {
+  include: string[];
+  exclude: string[];
+}
+
+export function parseFilter(text: string): FilterQuery {
+  const include: string[] = [];
+  const exclude: string[] = [];
+  for (const raw of text.trim().toLowerCase().split(/\s+/)) {
+    if (!raw) continue;
+    if ((raw[0] === "-" || raw[0] === "!") && raw.length > 1) {
+      exclude.push(raw.slice(1));
+    } else if (raw[0] !== "-" && raw[0] !== "!") {
+      include.push(raw);
+    }
+  }
+  return { include, exclude };
+}
+
+/**
+ * Include/exclude substring match over the concatenation of all field values.
+ * Empty (or exclude-only-but-blank) query returns every row.
+ */
 function filterRows<T extends Record<string, unknown>>(
   rows: T[],
   text: string,
 ): T[] {
-  const q = text.trim().toLowerCase();
-  if (!q) return rows;
-  return rows.filter((r) =>
-    Object.values(r)
+  const { include, exclude } = parseFilter(text);
+  if (include.length === 0 && exclude.length === 0) return rows;
+  return rows.filter((r) => {
+    const hay = Object.values(r)
       .map((v) => String(v ?? ""))
       .join(" ")
-      .toLowerCase()
-      .includes(q),
-  );
+      .toLowerCase();
+    return (
+      include.every((t) => hay.includes(t)) &&
+      !exclude.some((t) => hay.includes(t))
+    );
+  });
 }
 
 /** Filter tasks by a substring over all field values. */
@@ -97,14 +204,47 @@ export function filterNotifications(
 }
 
 /**
+ * Where a content link (a task or a notification's subject) should open, and
+ * whether a secondary "open in browser" control is needed. `openTarget` is the
+ * server's effective preference; `app` is only honored when the backend can
+ * render a detail screen (`canDetail`). When the app screen is preferred but the
+ * item also has a web URL, the secondary browser control is offered so a
+ * poor-web-UI server can still open in the browser.
+ */
+export function contentOpenPlan(p: {
+  openTarget: "app" | "browser";
+  canDetail: boolean;
+  hasHref: boolean;
+}): { primary: "app" | "browser" | "none"; secondaryBrowser: boolean } {
+  if (p.openTarget === "app" && p.canDetail) {
+    return { primary: "app", secondaryBrowser: p.hasHref };
+  }
+  return { primary: p.hasHref ? "browser" : "none", secondaryBrowser: false };
+}
+
+/**
  * Whether a normalized notification is unread.
  *
- * OpenProject sets `read: boolean` (`core::normalize::notification`); GitHub
- * notifications carry no read field and `gh api notifications` returns only
- * unread ones. So the rule is: unread unless explicitly `read === true`.
+ * Both backends set `read: boolean` (OpenProject in `core::normalize`, GitHub in
+ * `github::normalize_notification`, which fetches read items too via `all=true`).
+ * The rule is: unread unless explicitly `read === true`.
  */
 export function unreadOf(n: Notification): boolean {
   return n["read"] !== true;
+}
+
+/** Notification list view: only unread (triage pending) or everything. */
+export type NotifView = "unread" | "all";
+
+/**
+ * Filter a notification list for the chosen view: `all` passes everything,
+ * `unread` keeps only items not yet read. Pure, so the column can stay thin.
+ */
+export function notificationsForView(
+  list: Notification[],
+  view: NotifView,
+): Notification[] {
+  return view === "all" ? list : list.filter(unreadOf);
 }
 
 /** Number of unread notifications in a loaded server state. */

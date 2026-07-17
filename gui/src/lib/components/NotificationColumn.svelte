@@ -1,7 +1,14 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { t, locale } from "../i18n";
-  import { unreadOf, settings, filterNotifications } from "../store";
+  import {
+    unreadOf,
+    settings,
+    filterNotifications,
+    contentOpenPlan,
+    notificationsForView,
+    type NotifView,
+  } from "../store";
   import { setNotificationRead, markAllRead } from "../api";
   import { refreshServer } from "../poller";
   import { onVisible } from "../scroll";
@@ -52,8 +59,18 @@
   // Text filter, local to this column (the task column has its own), matched
   // across all fields (subject, reason, project, …).
   let filter = $state("");
+  // Read/unread view, to triage handled from pending: "unread" hides notifications
+  // already marked read, "all" shows everything. Defaults to unread so the column
+  // opens on what still needs attention. Local to this column.
+  let view = $state<NotifView>("unread");
+  function setView(v: NotifView): void {
+    view = v;
+    limit = PAGE;
+  }
   const shown = $derived(
-    sortNotifs(filterNotifications(notifications, filter)),
+    sortNotifs(
+      notificationsForView(filterNotifications(notifications, filter), view),
+    ),
   );
 
   // Windowed rendering: reveal a page at a time, then fetch the next backend
@@ -121,6 +138,27 @@
   function hrefOf(n: Notification): string | null {
     const u = n.htmlUrl;
     return typeof u === "string" && u ? u : null;
+  }
+
+  // Where a notification's subject opens on click: the server's effective
+  // preference, honored the same way as the task list (`contentOpenPlan`). The
+  // in-app screen is only reachable when the backend supports task detail and the
+  // notification points at a work package.
+  const openTarget = $derived(server?.open_content_in ?? "browser");
+  function plan(n: Notification) {
+    return contentOpenPlan({
+      openTarget,
+      canDetail: canDetail && wpIdOf(n) != null,
+      hasHref: hrefOf(n) != null,
+    });
+  }
+  function openBrowser(n: Notification): void {
+    const href = hrefOf(n);
+    if (href) openExternal(href);
+  }
+  function openPrimary(n: Notification): void {
+    if (plan(n).primary === "app") openTask(n);
+    else openBrowser(n);
   }
 
   // Semantic tint for a CI (CheckSuite) notification, by the run outcome the
@@ -193,6 +231,18 @@
           >
         {/each}
       </span>
+      <span class="seg view-seg">
+        <button
+          type="button"
+          aria-pressed={view === "unread"}
+          onclick={() => setView("unread")}>{$t("notif.viewUnread")}</button
+        >
+        <button
+          type="button"
+          aria-pressed={view === "all"}
+          onclick={() => setView("all")}>{$t("notif.viewAll")}</button
+        >
+      </span>
     </div>
     <div class="filterbar">
       <input
@@ -235,22 +285,26 @@
             ></span>
           {/if}
           <span class="reason">{n.reason}</span>
-          {#if canDetail && wpIdOf(n) != null}
+          {#if plan(n).primary !== "none"}
             <button
               type="button"
               class="subject subject-btn"
-              onclick={() => openTask(n)}
-              title={$t("task.openDetail")}>{n.wpTitle ?? n.subject}</button
-            >
-          {:else if hrefOf(n)}
-            <button
-              type="button"
-              class="subject subject-btn"
-              onclick={() => openExternal(hrefOf(n) ?? "")}
-              title={hrefOf(n)}>{n.wpTitle ?? n.subject}</button
+              onclick={() => openPrimary(n)}
+              title={plan(n).primary === "app"
+                ? $t("task.openDetail")
+                : (hrefOf(n) ?? "")}>{n.wpTitle ?? n.subject}</button
             >
           {:else}
             <span class="subject">{n.wpTitle ?? n.subject}</span>
+          {/if}
+          {#if plan(n).secondaryBrowser}
+            <button
+              type="button"
+              class="openbtn"
+              onclick={() => openBrowser(n)}
+              title={$t("content.openInBrowser")}
+              aria-label={$t("content.openInBrowser")}>↗</button
+            >
           {/if}
           {#if tsOf(n)}
             <time class="notif-time" datetime={tsOf(n)} title={tsAlternate(n)}

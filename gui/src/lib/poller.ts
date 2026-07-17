@@ -12,11 +12,16 @@ import {
   byServer,
   summaries,
   activeServer,
+  syncByServer,
   timelog,
   settings,
   unreadOf,
   freshUnread,
+  toCacheEntry,
+  fromCacheEntry,
+  parseCacheEntry,
   type ServerState,
+  type SyncPhase,
 } from "./store";
 import { t, locale, plural } from "./i18n";
 import { goto } from "$app/navigation";
@@ -137,6 +142,8 @@ export async function startPolling(): Promise<void> {
     const def = enabled.find((s) => s.is_default) ?? enabled[0];
     activeServer.set(def ? def.name : null);
   }
+  // Show the last-known data from cache immediately, before the first poll.
+  seedFromCache();
   for (const s of enabled) {
     void pollOnce(s);
     const id = setInterval(() => void pollOnce(s), s.poll_secs * 1000);
@@ -222,6 +229,73 @@ async function onActivate(name: string): Promise<void> {
   }
 }
 
+/** Local-storage key for a server's cached first page. */
+function cacheKey(name: string): string {
+  return `laba:cache:${name}`;
+}
+
+/** Persist a server's first page so it can be shown instantly on next launch. */
+function writeCache(
+  name: string,
+  entry: ReturnType<typeof toCacheEntry>,
+): void {
+  try {
+    localStorage.setItem(cacheKey(name), JSON.stringify(entry));
+  } catch {
+    // Storage unavailable or over quota: the cache is best-effort.
+  }
+}
+
+/** Read a server's cached first page, or null when absent/corrupt. */
+function readCache(name: string) {
+  try {
+    return parseCacheEntry(localStorage.getItem(cacheKey(name)));
+  } catch {
+    return null;
+  }
+}
+
+/** Update a server's sync phase, preserving its last-success timestamp. */
+function setSyncPhase(
+  name: string,
+  phase: SyncPhase,
+  lastSyncMs?: number,
+): void {
+  syncByServer.update((m) => {
+    const prev = m[name];
+    return {
+      ...m,
+      [name]: {
+        phase,
+        lastSyncMs: lastSyncMs ?? prev?.lastSyncMs ?? null,
+      },
+    };
+  });
+}
+
+/**
+ * Seed the dashboard from the on-disk cache before the first network poll, so
+ * the columns and unread badges show the last-known data immediately instead of
+ * an empty spinner. The active server's full arrays are made resident; every
+ * cached server's unread count seeds its summary. A following poll replaces this.
+ */
+export function seedFromCache(): void {
+  const active = get(activeServer);
+  for (const s of get(servers).filter((x) => x.enabled)) {
+    const entry = readCache(s.name);
+    if (!entry) continue;
+    summaries.update((m) =>
+      s.name in m
+        ? m
+        : { ...m, [s.name]: { error: null, unread: entry.unread } },
+    );
+    setSyncPhase(s.name, "syncing", entry.savedAtMs || undefined);
+    if (s.name === active && !get(byServer)[s.name]) {
+      byServer.update((by) => ({ ...by, [s.name]: fromCacheEntry(entry) }));
+    }
+  }
+}
+
 /**
  * Refresh one server's first page. The active server keeps its full arrays and
  * page cursors resident in `byServer`; other servers retain only a summary
@@ -229,6 +303,7 @@ async function onActivate(name: string): Promise<void> {
  * failure old data and the last summary are kept and the error is recorded.
  */
 async function pollOnce(s: ServerInfo): Promise<void> {
+  setSyncPhase(s.name, "syncing");
   try {
     const [tasks, notifs] = await Promise.all([
       listTasks(s.name, 1),
@@ -236,6 +311,21 @@ async function pollOnce(s: ServerInfo): Promise<void> {
     ]);
     const unread = notifs.items.filter(unreadOf).length;
     summaries.update((m) => ({ ...m, [s.name]: { error: null, unread } }));
+    setSyncPhase(s.name, "idle", Date.now());
+    writeCache(
+      s.name,
+      toCacheEntry(
+        {
+          tasks: tasks.items,
+          notifications: notifs.items,
+          error: null,
+          taskCursor: tasks.next_offset,
+          notifCursor: notifs.next_offset,
+        },
+        unread,
+        Date.now(),
+      ),
+    );
     // Announce items that became unread since the last poll (all servers, not
     // just the active one).
     maybeNotify(s, notifs.items);
@@ -266,6 +356,7 @@ async function pollOnce(s: ServerInfo): Promise<void> {
       ...m,
       [s.name]: { error: String(e), unread: m[s.name]?.unread ?? 0 },
     }));
+    setSyncPhase(s.name, "stale");
     if (get(activeServer) === s.name) {
       byServer.update((by) => ({
         ...by,

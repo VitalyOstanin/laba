@@ -4,9 +4,10 @@ use laba_core::auth::login_and_store;
 use laba_core::backend;
 use laba_core::client::Client;
 use laba_core::config::{
-    default_config_path, Backend, Config, ServerProfile, StatusColor, StatusFilter, TimelogStart,
+    default_config_path, Backend, Config, OpenTarget, ServerProfile, StatusColor, StatusFilter,
+    TimelogStart,
 };
-use laba_core::resources::{comment, notification, time, work_packages};
+use laba_core::resources::{comment, time, work_packages};
 use laba_core::secrets::Secrets;
 use laba_core::settings::{default_settings_path, Settings};
 use laba_core::timelog::{self, DayCell, TimelogStatus};
@@ -48,6 +49,9 @@ pub struct ServerInfo {
     pub supports_custom_fields: bool,
     /// Whether a task opens a detail screen (description + comments).
     pub supports_task_detail: bool,
+    /// Where a task opens on click: `app` (laba detail screen) or `browser`.
+    /// Effective value (per-server override or backend default).
+    pub open_content_in: String,
     /// Custom-field names shown as extra task-list columns (and sort keys).
     pub display_fields: Vec<String>,
     /// Per-server proxy override (URL, `"direct"`, or absent = inherit global/env).
@@ -92,6 +96,7 @@ pub fn server_infos(cfg: &Config) -> Vec<ServerInfo> {
             status_filters: p.status_filters.clone(),
             supports_custom_fields: p.backend.supports_custom_fields(),
             supports_task_detail: p.backend.supports_task_detail(),
+            open_content_in: p.effective_open_target().token().to_owned(),
             display_fields: p.display_fields.clone(),
             proxy: p.proxy.clone(),
             // Filled by list_servers (keyring lookup); kept out of the pure
@@ -382,6 +387,20 @@ pub async fn list_notifications(
 
 /// Build an OpenProject client for a write action. Errors clearly if the server
 /// is unknown, not an OpenProject backend, or has no token.
+/// Load a server's profile and its stored token (if any), for backend calls that
+/// dispatch across OpenProject and GitHub. GitHub authenticates through `gh`, so
+/// its token is normally `None`.
+fn profile_and_token(server: &str) -> Result<(ServerProfile, Option<String>), String> {
+    let cfg = load_cfg()?;
+    let p = cfg
+        .servers
+        .get(server)
+        .ok_or_else(|| format!("unknown server '{server}'"))?
+        .clone();
+    let token = token_for(server, p.backend)?;
+    Ok((p, token))
+}
+
 fn op_client(server: &str) -> Result<Client, String> {
     let cfg = load_cfg()?;
     let p = cfg
@@ -398,26 +417,23 @@ fn op_client(server: &str) -> Result<Client, String> {
     Client::new_with_global("", &p, token, None, cfg.proxy.as_deref()).map_err(|e| e.to_string())
 }
 
-/// Toggle a notification's read state (requirement 17).
+/// Toggle a notification's read state (requirement 17). OpenProject toggles both
+/// ways; GitHub can only mark read (its list is unread-only).
 #[tauri::command]
 pub async fn set_notification_read(server: String, id: i64, read: bool) -> Result<(), String> {
-    let client = op_client(&server)?;
-    let r = if read {
-        notification::read(&client, id).await
-    } else {
-        notification::unread(&client, id).await
-    };
-    r.map(|_| ()).map_err(|e| e.to_string())
+    let (profile, token) = profile_and_token(&server)?;
+    backend::set_notification_read(&profile, token.as_deref(), id, read)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// Mark all notifications on a server as read (requirement 6). Returns the count.
 #[tauri::command]
 pub async fn mark_all_read(server: String) -> Result<u64, String> {
-    let client = op_client(&server)?;
-    let v = notification::read_all(&client)
+    let (profile, token) = profile_and_token(&server)?;
+    backend::mark_all_read(&profile, token.as_deref())
         .await
-        .map_err(|e| e.to_string())?;
-    Ok(v.get("read").and_then(|x| x.as_u64()).unwrap_or(0))
+        .map_err(|e| e.to_string())
 }
 
 /// Add a comment to a work package (requirement 4).
@@ -742,6 +758,7 @@ pub fn add_server(
                 status_colors: Default::default(),
                 status_filters: Vec::new(),
                 display_fields: Vec::new(),
+                open_content_in: None,
             },
         );
         if cfg.default_server.is_none() {
@@ -819,6 +836,22 @@ fn normalize_proxy(v: Option<String>) -> Option<String> {
 pub fn set_server_proxy(name: String, proxy: Option<String>) -> Result<(), String> {
     with_config(|cfg| {
         profile_mut(cfg, &name)?.proxy = normalize_proxy(proxy);
+        Ok(())
+    })
+}
+
+/// Set where this server's tasks open on click: `"app"`, `"browser"`, or `None`
+/// to clear the override and defer to the backend default.
+#[tauri::command]
+pub fn set_server_open_content_in(name: String, target: Option<String>) -> Result<(), String> {
+    let parsed = match target.as_deref() {
+        None | Some("") => None,
+        Some("app") => Some(OpenTarget::App),
+        Some("browser") => Some(OpenTarget::Browser),
+        Some(other) => return Err(format!("unknown open target '{other}'")),
+    };
+    with_config(|cfg| {
+        profile_mut(cfg, &name)?.open_content_in = parsed;
         Ok(())
     })
 }
@@ -955,6 +988,7 @@ mod tests {
                 status_colors: Default::default(),
                 status_filters: Vec::new(),
                 display_fields: Vec::new(),
+                open_content_in: None,
             },
         );
         servers.insert(
@@ -972,6 +1006,7 @@ mod tests {
                 status_colors: Default::default(),
                 status_filters: Vec::new(),
                 display_fields: Vec::new(),
+                open_content_in: None,
             },
         );
         Config {

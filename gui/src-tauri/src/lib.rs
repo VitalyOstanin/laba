@@ -184,6 +184,7 @@ pub fn run() {
             commands::set_server_status_filters,
             commands::set_server_display_fields,
             commands::set_server_proxy,
+            commands::set_server_open_content_in,
             commands::get_global_proxy,
             commands::set_global_proxy,
             commands::rename_server,

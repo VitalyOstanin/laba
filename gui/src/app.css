@@ -117,11 +117,17 @@ body {
 
 .settings-link {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--text-dim);
   text-decoration: none;
-  font-size: var(--fs-md);
-  padding: 4px 8px;
+  padding: 6px;
   border-radius: var(--radius-sm);
+}
+
+.settings-icon {
+  display: block;
 }
 
 .settings-link:hover {
@@ -677,6 +683,46 @@ body {
   color: var(--text-dim);
 }
 
+/* Sync indicator: a slim bar under the topbar showing whether a refresh is in
+   flight (syncing), succeeded (idle), or failed and is showing cache (stale). */
+.syncbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  font-size: var(--fs-xs);
+  border-bottom: 1px solid var(--border);
+}
+.syncbar.syncing {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  color: var(--text);
+}
+.syncbar.idle {
+  background: var(--surface);
+  color: var(--text-dim);
+}
+.syncbar.stale {
+  background: color-mix(in srgb, var(--warn) 16%, var(--surface));
+  color: var(--text);
+}
+.syncbar .when {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.syncbar .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+.syncbar .dot.ok {
+  background: var(--ok);
+}
+.syncbar .dot.warn {
+  background: var(--warn);
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -1221,6 +1267,27 @@ button.readdot.busy {
   text-decoration: underline;
 }
 
+/* Secondary "open in browser" affordance, shown next to a title that opens the
+   in-laba detail screen (poor-web-UI servers) so the browser is still one click
+   away. A quiet glyph button that gains the accent on hover. */
+.list .openbtn {
+  flex: none;
+  align-self: center;
+  font: inherit;
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--surface);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.list .openbtn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 /* Extra display-field cell (custom fields such as Rank), right-aligned numerics. */
 .list .task .field {
   flex: none;
@@ -1228,6 +1295,11 @@ button.readdot.busy {
   font-variant-numeric: tabular-nums;
   font-size: var(--fs-sm);
   white-space: nowrap;
+}
+
+/* The unread/all view toggle sits at the right end of the notification sortbar. */
+.sortbar .view-seg {
+  margin-left: auto;
 }
 
 /* Sort control above the task list: a segmented button group. */
@@ -1289,6 +1361,24 @@ button.readdot.busy {
   display: flex;
   align-items: baseline;
   gap: 12px;
+}
+
+/* Chrome-style settings filter box, sticky under the header. */
+.settings-search {
+  margin: 12px 0;
+}
+.settings-search input {
+  width: 100%;
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.settings-empty {
+  color: var(--text-dim);
+  padding: 8px 0 16px;
 }
 
 .settings-head h1 {

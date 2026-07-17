@@ -51,6 +51,7 @@ const SEED_SERVERS: ServerInfo[] = [
     ],
     supports_custom_fields: true,
     supports_task_detail: true,
+    open_content_in: "app",
     display_fields: ["НПП"],
     proxy: null,
     has_token: true,
@@ -67,11 +68,12 @@ const SEED_SERVERS: ServerInfo[] = [
     timelog_start: null,
     status_colors: {},
     has_notifications: true,
-    can_toggle_read: false,
+    can_toggle_read: true,
     supports_status_filters: false,
     status_filters: [],
     supports_custom_fields: false,
     supports_task_detail: false,
+    open_content_in: "browser",
     display_fields: [],
     proxy: null,
     has_token: false,
@@ -461,6 +463,17 @@ export async function mockInvoke(
         (s) => (s.proxy = (a.proxy as string | null) ?? null),
       );
       return null;
+    case "set_server_open_content_in":
+      patchServer(a.name, (s) => {
+        const t = a.target as string | null;
+        s.open_content_in =
+          t === "app" || t === "browser"
+            ? t
+            : s.supports_task_detail
+              ? "app"
+              : "browser";
+      });
+      return null;
     case "set_server_display_fields":
       patchServer(
         a.name,
@@ -507,6 +520,7 @@ export async function mockInvoke(
               status_filters: [],
               supports_custom_fields: false,
               supports_task_detail: false,
+              open_content_in: "browser",
               display_fields: [],
               proxy: null,
               has_token: false,

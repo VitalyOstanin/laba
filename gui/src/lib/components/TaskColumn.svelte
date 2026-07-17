@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { filterTasks, filterText } from "../store";
+  import { filterTasks, filterText, contentOpenPlan } from "../store";
   import { t } from "../i18n";
   import { onVisible } from "../scroll";
   import { openExternal } from "../external";
@@ -177,6 +177,25 @@
     );
   }
 
+  // Where a task opens on click: the server's effective preference (`app` opens
+  // the in-laba detail screen, `browser` the web URL). See `contentOpenPlan`.
+  const openTarget = $derived(server?.open_content_in ?? "browser");
+  function plan(task: Task) {
+    return contentOpenPlan({
+      openTarget,
+      canDetail,
+      hasHref: taskHref(task) != null,
+    });
+  }
+  function openInBrowser(task: Task): void {
+    const href = taskHref(task);
+    if (href) openExternal(href);
+  }
+  function openPrimary(task: Task): void {
+    if (plan(task).primary === "app") openDetail(task);
+    else openInBrowser(task);
+  }
+
   // Semantic row tint for a task, looked up by its exact status string in the
   // server's per-status color map. Unmapped statuses render neutral.
   function tone(task: Task): string {
@@ -252,15 +271,26 @@
           {:else}
             <span class="id">{task.id}</span>
           {/if}
-          {#if canDetail}
+          {#if plan(task).primary !== "none"}
             <button
               type="button"
               class="subject subject-btn"
-              onclick={() => openDetail(task)}
-              title={$t("task.openDetail")}>{task.subject}</button
+              onclick={() => openPrimary(task)}
+              title={plan(task).primary === "app"
+                ? $t("task.openDetail")
+                : (taskHref(task) ?? "")}>{task.subject}</button
             >
           {:else}
             <span class="subject">{task.subject}</span>
+          {/if}
+          {#if plan(task).secondaryBrowser}
+            <button
+              type="button"
+              class="openbtn"
+              onclick={() => openInBrowser(task)}
+              title={$t("content.openInBrowser")}
+              aria-label={$t("content.openInBrowser")}>↗</button
+            >
           {/if}
           {#each displayFields as f (f)}
             <span class="field" title={f}>{fieldText(task, f)}</span>
