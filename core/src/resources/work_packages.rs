@@ -101,6 +101,16 @@ async fn with_custom_fields(client: &Client, item: &Value) -> Result<Value, Erro
     Ok(norm)
 }
 
+/// Drop the heavy `description` body from a normalized list row (lazy loading):
+/// the task list shows only the subject, and the detail screen fetches the full
+/// body on demand, so shipping every row's description wastes transfer/memory.
+fn strip_description(mut item: Value) -> Value {
+    if let Some(map) = item.as_object_mut() {
+        map.remove("description");
+    }
+    item
+}
+
 /// Render a list of raw elements: as-is when `raw`, else normalized with custom
 /// fields.
 async fn render_elements(client: &Client, elements: Vec<Value>, raw: bool) -> Result<Value, Error> {
@@ -109,7 +119,7 @@ async fn render_elements(client: &Client, elements: Vec<Value>, raw: bool) -> Re
     }
     let mut out = Vec::with_capacity(elements.len());
     for e in &elements {
-        out.push(with_custom_fields(client, e).await?);
+        out.push(strip_description(with_custom_fields(client, e).await?));
     }
     Ok(Value::Array(out))
 }
@@ -453,6 +463,7 @@ mod tests {
             status_colors: Default::default(),
             status_filters: Vec::new(),
             display_fields: Vec::new(),
+            open_content_in: None,
         }
     }
 
@@ -494,6 +505,37 @@ mod tests {
         assert_eq!(arr.len(), 1);
         assert_eq!(arr[0]["id"], json!(1));
         assert!(arr[0].get("customFields").is_some());
+    }
+
+    #[tokio::test]
+    async fn list_drops_description_but_detail_keeps_it() {
+        let server = MockServer::start().await;
+        let element = json!({
+            "id": 9,
+            "subject": "S",
+            "description": { "raw": "big body" },
+            "updatedAt": "2026-01-01T00:00:00Z",
+            "_links": {"status": {"title": "New"}}
+        });
+        Mock::given(method("GET"))
+            .and(path("/api/v3/work_packages"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "_embedded": {"elements": [element.clone()]}
+            })))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/api/v3/work_packages/9"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(element))
+            .mount(&server)
+            .await;
+        let c = client_for(&server, "wp-strip-desc");
+        // The list row omits the body (lazy loading)...
+        let listed = list(&c, WpListParams::default(), false).await.unwrap();
+        assert!(listed.as_array().unwrap()[0].get("description").is_none());
+        // ...but opening the task fetches it in full.
+        let detail = get(&c, 9, false).await.unwrap();
+        assert_eq!(detail["description"], json!("big body"));
     }
 
     #[tokio::test]
