@@ -158,6 +158,50 @@ pub async fn list_notifications(
     }
 }
 
+/// Set one notification's read state. OpenProject toggles both ways; GitHub can
+/// only mark read (`read == true`) — its list is unread-only, so `read == false`
+/// (mark unread) is unreachable from the UI and treated as a no-op.
+pub async fn set_notification_read(
+    profile: &ServerProfile,
+    token: Option<&str>,
+    id: i64,
+    read: bool,
+) -> Result<(), Error> {
+    match profile.backend {
+        Backend::OpenProject => {
+            let client = openproject_client(profile, token)?;
+            if read {
+                notification::read(&client, id).await?;
+            } else {
+                notification::unread(&client, id).await?;
+            }
+            Ok(())
+        }
+        Backend::Github => {
+            if !read {
+                return Ok(());
+            }
+            let host = profile.base_url.clone();
+            run_blocking_unit(move || github_mark_read(GhCli { host }, id)).await
+        }
+    }
+}
+
+/// Mark every notification on a server as read. Returns the count marked.
+pub async fn mark_all_read(profile: &ServerProfile, token: Option<&str>) -> Result<u64, Error> {
+    match profile.backend {
+        Backend::OpenProject => {
+            let client = openproject_client(profile, token)?;
+            let v = notification::read_all(&client).await?;
+            Ok(v.get("read").and_then(|x| x.as_u64()).unwrap_or(0))
+        }
+        Backend::Github => {
+            let host = profile.base_url.clone();
+            run_blocking_count(move || github_mark_all_read(GhCli { host })).await
+        }
+    }
+}
+
 fn openproject_client(profile: &ServerProfile, token: Option<&str>) -> Result<Client, Error> {
     let token = token
         .ok_or_else(|| Error::Auth("openproject backend requires a token".into()))?
@@ -183,6 +227,36 @@ fn github_tasks<R: GhRunner>(runner: R) -> Result<Vec<Value>, Error> {
 /// Seam for testing the GitHub notification branch with a fake runner.
 fn github_notifications<R: GhRunner>(runner: R) -> Result<Vec<Value>, Error> {
     GithubBackend::new(runner).list_notifications()
+}
+
+/// Seam for testing the GitHub mark-one-read branch with a fake runner.
+fn github_mark_read<R: GhRunner>(runner: R, id: i64) -> Result<(), Error> {
+    GithubBackend::new(runner).mark_notification_read(id)
+}
+
+/// Seam for testing the GitHub mark-all-read branch with a fake runner.
+fn github_mark_all_read<R: GhRunner>(runner: R) -> Result<u64, Error> {
+    GithubBackend::new(runner).mark_all_notifications_read()
+}
+
+/// Run a blocking `gh`-backed unit-returning closure off the async executor.
+async fn run_blocking_unit<F>(f: F) -> Result<(), Error>
+where
+    F: FnOnce() -> Result<(), Error> + Send + 'static,
+{
+    tokio::task::spawn_blocking(f)
+        .await
+        .map_err(|e| Error::Internal(format!("join gh task: {e}")))?
+}
+
+/// Run a blocking `gh`-backed count-returning closure off the async executor.
+async fn run_blocking_count<F>(f: F) -> Result<u64, Error>
+where
+    F: FnOnce() -> Result<u64, Error> + Send + 'static,
+{
+    tokio::task::spawn_blocking(f)
+        .await
+        .map_err(|e| Error::Internal(format!("join gh task: {e}")))?
 }
 
 fn as_array(v: Value) -> Vec<Value> {
@@ -272,6 +346,7 @@ mod tests {
             status_colors: Default::default(),
             status_filters: Vec::new(),
             display_fields: Vec::new(),
+            open_content_in: None,
         };
         let err = list_tasks(&p, None).await.unwrap_err();
         assert!(matches!(err, Error::Auth(_)));

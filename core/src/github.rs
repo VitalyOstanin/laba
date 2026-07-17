@@ -1,6 +1,8 @@
-//! GitHub backend (read-only) driven through the `gh` CLI.
+//! GitHub backend driven through the `gh` CLI.
 //!
-//! First slice: list my open issues and pull requests, and my notifications.
+//! Lists my open issues and pull requests and my notifications (read and unread,
+//! via `all=true`, each tagged with a `read` flag), and marks notifications read
+//! (`PATCH`/`PUT`); GitHub's REST API has no mark-unread, so read is one-way.
 //! `gh` handles authentication and host selection, so no token is stored here.
 //! Output is normalized to the same shape as an OpenProject work package so the
 //! CLI and GUI can render both backends uniformly.
@@ -196,6 +198,11 @@ pub fn normalize_notification(v: &Value) -> Value {
         "updatedAt".into(),
         v.get("updated_at").cloned().unwrap_or(Value::Null),
     );
+    // Read state, so the client can triage handled from pending. GitHub carries
+    // `unread: bool`; a missing flag is treated as unread (the pre-`all=true`
+    // behavior, when only unread items were ever returned).
+    let unread = v.get("unread").and_then(Value::as_bool).unwrap_or(true);
+    m.insert("read".into(), Value::Bool(!unread));
     m.insert(
         "url".into(),
         subject
@@ -280,6 +287,56 @@ fn notification_html_url(v: &Value) -> Option<String> {
     }
 }
 
+/// Workflow name from a CheckSuite title, phrased "<workflow> workflow run
+/// <status> for <branch> branch". Returns the leading workflow name, or `None`
+/// when the title lacks the "workflow run" marker.
+fn check_suite_workflow(title: &str) -> Option<&str> {
+    let idx = title.find(" workflow run")?;
+    let wf = title[..idx].trim();
+    (!wf.is_empty()).then_some(wf)
+}
+
+/// Branch from a CheckSuite title (the token between "for" and the trailing
+/// "branch"). Returns the branch (`main`, `feature/x`, …), or `None`.
+fn check_suite_branch(title: &str) -> Option<String> {
+    let after = title.split(" for ").nth(1)?.trim();
+    let branch = after.strip_suffix(" branch").unwrap_or(after).trim();
+    (!branch.is_empty()).then(|| branch.to_string())
+}
+
+/// Browser URL of the workflow run a CheckSuite notification refers to. Matches
+/// `runs` (a repository's `workflow_runs`) by the workflow name and branch parsed
+/// from `title`, then picks the run whose `updated_at` is closest to the
+/// notification's `notif_updated`. Returns `None` when nothing matches.
+fn match_run_url(runs: &[Value], title: &str, notif_updated: &str) -> Option<String> {
+    let workflow = check_suite_workflow(title)?;
+    let branch = check_suite_branch(title);
+    let target = parse_ts(notif_updated);
+    runs.iter()
+        .filter(|r| r.get("name").and_then(Value::as_str) == Some(workflow))
+        .filter(|r| match &branch {
+            Some(b) => r.get("head_branch").and_then(Value::as_str) == Some(b.as_str()),
+            None => true,
+        })
+        .min_by_key(|r| {
+            let run_ts = r.get("updated_at").and_then(Value::as_str).and_then(parse_ts);
+            match (target, run_ts) {
+                (Some(t), Some(u)) => (t - u).num_seconds().abs(),
+                _ => i64::MAX,
+            }
+        })
+        .and_then(|r| {
+            r.get("html_url")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        })
+}
+
+/// Parse an RFC 3339 timestamp, or `None` when it does not parse.
+fn parse_ts(s: &str) -> Option<chrono::DateTime<chrono::FixedOffset>> {
+    chrono::DateTime::parse_from_rfc3339(s).ok()
+}
+
 fn parse_tasks(raw: &[u8], kind: TaskKind) -> Result<Vec<Value>, Error> {
     let arr: Vec<Value> =
         serde_json::from_slice(raw).map_err(|e| Error::Api(format!("parse gh output: {e}")))?;
@@ -304,7 +361,8 @@ fn dedup_by_id(tasks: Vec<Value>) -> Vec<Value> {
         .collect()
 }
 
-/// Read-only GitHub backend over a [`GhRunner`].
+/// GitHub backend over a [`GhRunner`]: reads tasks/notifications and marks
+/// notifications read.
 pub struct GithubBackend<R: GhRunner> {
     runner: R,
 }
@@ -392,12 +450,84 @@ impl<R: GhRunner> GithubBackend<R> {
         Ok(dedup_by_id(out))
     }
 
-    /// My GitHub notifications, normalized.
+    /// My GitHub notifications, normalized. Fetches read ones too (`all=true`) so
+    /// the dashboard can triage handled from pending; each item carries a `read`
+    /// flag ([`normalize_notification`]) for the client to filter on.
     pub fn list_notifications(&self) -> Result<Vec<Value>, Error> {
-        let raw = self.runner.run(&["api", "notifications"])?;
+        let raw = self.runner.run(&["api", "notifications?all=true"])?;
         let arr: Vec<Value> = serde_json::from_slice(&raw)
             .map_err(|e| Error::Api(format!("parse gh output: {e}")))?;
-        Ok(arr.iter().map(normalize_notification).collect())
+        let mut items: Vec<Value> = arr.iter().map(normalize_notification).collect();
+        self.link_check_suite_runs(&mut items);
+        Ok(items)
+    }
+
+    /// Upgrade each CI (CheckSuite) notification's link from the repository Actions
+    /// page to the specific workflow run it refers to. The notification carries no
+    /// run id, so the run is matched by the workflow name and branch parsed from
+    /// the title and the run whose `updated_at` is closest to the notification's.
+    /// Best-effort: a repository whose runs cannot be fetched keeps the
+    /// Actions-page fallback, and a notification with no confident match is left
+    /// unchanged.
+    fn link_check_suite_runs(&self, items: &mut [Value]) {
+        let is_ci = |i: &Value| i.get("type").and_then(Value::as_str) == Some("CheckSuite");
+        let repos: std::collections::BTreeSet<String> = items
+            .iter()
+            .filter(|i| is_ci(i))
+            .filter_map(|i| i.get("project").and_then(Value::as_str).map(str::to_string))
+            .collect();
+        if repos.is_empty() {
+            return;
+        }
+        let runs_by_repo: std::collections::HashMap<String, Vec<Value>> = repos
+            .into_iter()
+            .filter_map(|repo| self.fetch_recent_runs(&repo).map(|runs| (repo, runs)))
+            .collect();
+        for item in items.iter_mut() {
+            if !is_ci(item) {
+                continue;
+            }
+            let Some(runs) = item
+                .get("project")
+                .and_then(Value::as_str)
+                .and_then(|repo| runs_by_repo.get(repo))
+            else {
+                continue;
+            };
+            let title = item.get("subject").and_then(Value::as_str).unwrap_or("");
+            let updated = item.get("updatedAt").and_then(Value::as_str).unwrap_or("");
+            if let Some(url) = match_run_url(runs, title, updated) {
+                item["htmlUrl"] = Value::String(url);
+            }
+        }
+    }
+
+    /// A repository's recent workflow runs (`workflow_runs` array), or `None` when
+    /// the Actions API call or its parse fails (kept non-fatal so listing still
+    /// succeeds with the Actions-page fallback).
+    fn fetch_recent_runs(&self, repo: &str) -> Option<Vec<Value>> {
+        let path = format!("repos/{repo}/actions/runs?per_page=100");
+        let raw = self.runner.run(&["api", &path]).ok()?;
+        let v: Value = serde_json::from_slice(&raw).ok()?;
+        v.get("workflow_runs").and_then(Value::as_array).cloned()
+    }
+
+    /// Mark one notification thread as read (`PATCH /notifications/threads/{id}`).
+    /// GitHub's notification list is unread-only, so a thread marked read simply
+    /// drops from the next poll; there is no "mark unread" over the REST API.
+    pub fn mark_notification_read(&self, id: i64) -> Result<(), Error> {
+        let path = format!("notifications/threads/{id}");
+        self.runner.run(&["api", "-X", "PATCH", &path])?;
+        Ok(())
+    }
+
+    /// Mark every notification as read (`PUT /notifications`). Returns the number
+    /// that were unread before the call, counted from the current list (GitHub's
+    /// endpoint itself reports no count).
+    pub fn mark_all_notifications_read(&self) -> Result<u64, Error> {
+        let count = self.list_notifications()?.len() as u64;
+        self.runner.run(&["api", "-X", "PUT", "notifications"])?;
+        Ok(count)
     }
 }
 
@@ -428,10 +558,50 @@ pub mod tests_support {
             match (args.first().copied(), args.get(1).copied()) {
                 (Some("search"), Some("issues")) => Ok(self.issues.clone()),
                 (Some("search"), Some("prs")) => Ok(self.prs.clone()),
-                // `gh api user` (login lookup) vs `gh api notifications`.
+                // `gh api user` (login lookup) vs `gh api notifications[?all=true]`.
                 (Some("api"), Some("user")) => Ok(b"testuser".to_vec()),
-                (Some("api"), Some("notifications")) => Ok(self.notifications.clone()),
+                (Some("api"), Some(p)) if p.starts_with("notifications") => {
+                    Ok(self.notifications.clone())
+                }
                 _ => Err(Error::Api(format!("unexpected gh args: {args:?}"))),
+            }
+        }
+    }
+
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    /// Recording fake runner: returns the given notifications for
+    /// `api notifications`, empty for any write, and records each invocation's
+    /// joined args so a test can assert the exact endpoint and method.
+    pub struct RecordGh {
+        notifications: Vec<u8>,
+        calls: Rc<RefCell<Vec<String>>>,
+    }
+
+    impl RecordGh {
+        /// Returns the runner and a shared handle to inspect recorded calls after
+        /// the runner has been moved into a backend.
+        pub fn new(notifications: Vec<u8>) -> (Self, Rc<RefCell<Vec<String>>>) {
+            let calls = Rc::new(RefCell::new(Vec::new()));
+            (
+                Self {
+                    notifications,
+                    calls: calls.clone(),
+                },
+                calls,
+            )
+        }
+    }
+
+    impl GhRunner for RecordGh {
+        fn run(&self, args: &[&str]) -> Result<Vec<u8>, Error> {
+            self.calls.borrow_mut().push(args.join(" "));
+            match (args.first().copied(), args.get(1).copied()) {
+                (Some("api"), Some(p)) if p.starts_with("notifications") => {
+                    Ok(self.notifications.clone())
+                }
+                _ => Ok(Vec::new()),
             }
         }
     }
@@ -439,9 +609,65 @@ pub mod tests_support {
 
 #[cfg(test)]
 mod tests {
-    use super::tests_support::FakeGh;
+    use super::tests_support::{FakeGh, RecordGh};
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn mark_notification_read_patches_the_thread() {
+        let (gh, calls) = RecordGh::new(b"[]".to_vec());
+        GithubBackend::new(gh).mark_notification_read(42).unwrap();
+        assert_eq!(
+            calls.borrow().as_slice(),
+            &["api -X PATCH notifications/threads/42"]
+        );
+    }
+
+    #[test]
+    fn mark_all_read_counts_unread_then_puts() {
+        let notifs = json!([
+            {"id":"1","subject":{"title":"A"}},
+            {"id":"2","subject":{"title":"B"}}
+        ])
+        .to_string()
+        .into_bytes();
+        let (gh, calls) = RecordGh::new(notifs);
+        let count = GithubBackend::new(gh)
+            .mark_all_notifications_read()
+            .unwrap();
+        assert_eq!(count, 2);
+        // The list is read first (to count), then the mark-all PUT is issued.
+        assert_eq!(
+            calls.borrow().as_slice(),
+            &["api notifications?all=true", "api -X PUT notifications"]
+        );
+    }
+
+    #[test]
+    fn list_notifications_requests_read_ones_too() {
+        let (gh, calls) = RecordGh::new(b"[]".to_vec());
+        GithubBackend::new(gh).list_notifications().unwrap();
+        assert_eq!(calls.borrow().as_slice(), &["api notifications?all=true"]);
+    }
+
+    #[test]
+    fn normalize_sets_read_flag_from_unread() {
+        let read = normalize_notification(&json!({
+            "id": "1", "unread": false, "subject": {"title": "done"}
+        }));
+        assert_eq!(read.get("read"), Some(&Value::Bool(true)));
+
+        let unread = normalize_notification(&json!({
+            "id": "2", "unread": true, "subject": {"title": "pending"}
+        }));
+        assert_eq!(unread.get("read"), Some(&Value::Bool(false)));
+
+        // A missing `unread` flag is treated as unread (read == false).
+        let absent = normalize_notification(&json!({
+            "id": "3", "subject": {"title": "legacy"}
+        }));
+        assert_eq!(absent.get("read"), Some(&Value::Bool(false)));
+    }
 
     /// Fake runner whose `--version` / `auth status` outcomes are configurable,
     /// to classify [`gh_status`] without the real binary.
@@ -669,6 +895,115 @@ mod tests {
         assert_eq!(out[0]["id"], json!("acme/app#1"));
         assert_eq!(out[0]["subject"], json!("first"));
         assert_eq!(out[1]["id"], json!("acme/app#2"));
+    }
+
+    #[test]
+    fn parses_workflow_and_branch_from_check_suite_title() {
+        let t = "CI workflow run failed for deps/keyring-core branch";
+        assert_eq!(check_suite_workflow(t), Some("CI"));
+        assert_eq!(check_suite_branch(t), Some("deps/keyring-core".to_string()));
+        // A title without the marker yields no workflow / no branch.
+        assert_eq!(check_suite_workflow("Deploy done"), None);
+        assert_eq!(check_suite_branch("no branch marker here"), None);
+    }
+
+    #[test]
+    fn match_run_url_picks_workflow_branch_and_nearest_time() {
+        let runs = json!([
+            {"name":"CI","head_branch":"feat","updated_at":"2026-07-15T11:21:20Z",
+             "html_url":"https://github.com/acme/app/actions/runs/999"},
+            {"name":"CI","head_branch":"master","updated_at":"2026-07-15T11:21:19Z",
+             "html_url":"https://github.com/acme/app/actions/runs/111"},
+            {"name":"Audit","head_branch":"feat","updated_at":"2026-07-15T11:21:18Z",
+             "html_url":"https://github.com/acme/app/actions/runs/222"},
+            {"name":"CI","head_branch":"feat","updated_at":"2026-07-10T00:00:00Z",
+             "html_url":"https://github.com/acme/app/actions/runs/333"}
+        ]);
+        let runs = runs.as_array().unwrap();
+        // Workflow "CI" + branch "feat", nearest to 11:21:18 → run 999 (not the
+        // wrong branch 111, wrong workflow 222, or the far-older 333).
+        assert_eq!(
+            match_run_url(
+                runs,
+                "CI workflow run failed for feat branch",
+                "2026-07-15T11:21:18Z"
+            ),
+            Some("https://github.com/acme/app/actions/runs/999".to_string())
+        );
+        // No run for that workflow → no match.
+        assert_eq!(
+            match_run_url(
+                runs,
+                "Release workflow run failed for feat branch",
+                "2026-07-15T11:21:18Z"
+            ),
+            None
+        );
+    }
+
+    /// Fake runner serving both the notifications inbox and a repository's runs.
+    struct CiGh {
+        notifs: Vec<u8>,
+        runs: Result<Vec<u8>, ()>,
+    }
+    impl GhRunner for CiGh {
+        fn run(&self, args: &[&str]) -> Result<Vec<u8>, Error> {
+            match (args.first().copied(), args.get(1).copied()) {
+                (Some("api"), Some(p)) if p.starts_with("notifications") => Ok(self.notifs.clone()),
+                (Some("api"), Some(p)) if p.contains("/actions/runs") => self
+                    .runs
+                    .clone()
+                    .map_err(|()| Error::Api("runs unavailable".into())),
+                _ => Err(Error::Api(format!("unexpected gh args: {args:?}"))),
+            }
+        }
+    }
+
+    fn ci_notification() -> Vec<u8> {
+        json!([{
+            "id":"1","reason":"ci_activity",
+            "subject":{"title":"CI workflow run failed for deps/keyring-core branch",
+                       "type":"CheckSuite","url":null},
+            "repository":{"full_name":"acme/app","html_url":"https://github.com/acme/app"},
+            "updated_at":"2026-07-15T11:21:18Z"
+        }])
+        .to_string()
+        .into_bytes()
+    }
+
+    #[test]
+    fn list_notifications_links_check_suite_to_specific_run() {
+        let runs = json!({"workflow_runs":[
+            {"name":"CI","head_branch":"deps/keyring-core","updated_at":"2026-07-15T11:21:20Z",
+             "html_url":"https://github.com/acme/app/actions/runs/999"},
+            {"name":"CI","head_branch":"master","updated_at":"2026-07-15T11:21:19Z",
+             "html_url":"https://github.com/acme/app/actions/runs/111"}
+        ]})
+        .to_string()
+        .into_bytes();
+        let gh = CiGh {
+            notifs: ci_notification(),
+            runs: Ok(runs),
+        };
+        let out = GithubBackend::new(gh).list_notifications().unwrap();
+        assert_eq!(
+            out[0]["htmlUrl"],
+            json!("https://github.com/acme/app/actions/runs/999")
+        );
+    }
+
+    #[test]
+    fn check_suite_keeps_actions_fallback_when_runs_unavailable() {
+        let gh = CiGh {
+            notifs: ci_notification(),
+            runs: Err(()),
+        };
+        let out = GithubBackend::new(gh).list_notifications().unwrap();
+        // Runs could not be fetched → the link stays the repository Actions page.
+        assert_eq!(
+            out[0]["htmlUrl"],
+            json!("https://github.com/acme/app/actions")
+        );
     }
 
     #[test]
