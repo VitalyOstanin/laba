@@ -40,6 +40,8 @@ log = "0.4"
 unicode-normalization = "0.1"
 # IANA timezone database for the configurable day-boundary/display zone.
 chrono-tz = { version = "0.10", default-features = false }
+# Object-safe async methods for the Backend trait (dyn dispatch per server).
+async-trait = "0.1"
 
 # OS-native keyring-core credential store + legacy keyring 3 reader (migration).
 [target.'cfg(target_os = "linux")'.dependencies]

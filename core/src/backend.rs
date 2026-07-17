@@ -4,6 +4,7 @@
 //! single place. Returns the shared normalized task/notification shape as
 //! `Vec<Value>`.
 
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -39,6 +40,197 @@ fn next_page(page: i64, page_size: i64, total: i64) -> Option<i64> {
     }
 }
 
+/// A server's backend: lists tasks and notifications and writes notification read
+/// state, hiding which tracker (OpenProject, GitHub, …) is behind it. One
+/// implementation per backend; [`backend_for`] builds the right one from a
+/// profile, so backend routing lives in that single `match` instead of one per
+/// operation. Adding a backend is a new implementation plus a factory arm.
+#[async_trait]
+pub trait Backend: Send + Sync {
+    /// Which tracker this backend talks to.
+    fn kind(&self) -> BackendKind;
+    /// One page of my open tasks, normalized, plus the next cursor.
+    async fn list_tasks_page(&self, page: i64, page_size: i64) -> Result<Page, Error>;
+    /// One page of my notifications, normalized, plus the next cursor.
+    async fn list_notifications_page(&self, page: i64, page_size: i64) -> Result<Page, Error>;
+    /// All my open tasks, normalized (no pagination).
+    async fn list_tasks(&self) -> Result<Vec<Value>, Error>;
+    /// All my notifications, normalized (no pagination).
+    async fn list_notifications(&self) -> Result<Vec<Value>, Error>;
+    /// Set one notification's read state.
+    async fn set_notification_read(&self, id: i64, read: bool) -> Result<(), Error>;
+    /// Mark every notification read. Returns the count marked.
+    async fn mark_all_read(&self) -> Result<u64, Error>;
+}
+
+/// Build the backend for a server profile. This is the one place backends are
+/// enumerated; every operation dispatches through the returned trait object.
+pub fn backend_for(profile: &ServerProfile, token: Option<&str>) -> Box<dyn Backend> {
+    match profile.backend {
+        BackendKind::OpenProject => Box::new(OpenProjectBackend {
+            profile: profile.clone(),
+            token: token.map(str::to_owned),
+        }),
+        BackendKind::Github => Box::new(GithubBackendFacade {
+            host: profile.base_url.clone(),
+        }),
+    }
+}
+
+/// The OpenProject backend: an HTTP client against the work-package and
+/// notification APIs. Requires a token, built lazily per call.
+struct OpenProjectBackend {
+    profile: ServerProfile,
+    token: Option<String>,
+}
+
+impl OpenProjectBackend {
+    fn client(&self) -> Result<Client, Error> {
+        let token = self
+            .token
+            .clone()
+            .ok_or_else(|| Error::Auth("openproject backend requires a token".into()))?;
+        Client::new("", &self.profile, token, None)
+    }
+}
+
+#[async_trait]
+impl Backend for OpenProjectBackend {
+    fn kind(&self) -> BackendKind {
+        BackendKind::OpenProject
+    }
+
+    async fn list_tasks_page(&self, page: i64, page_size: i64) -> Result<Page, Error> {
+        let client = self.client()?;
+        if self.profile.backend.needs_local_history() {
+            // The server forgets past assignees, so aggregate current + locally
+            // tracked past-assigned tasks in one shot (the include_past path does
+            // not paginate on the server).
+            let params = work_packages::WpListParams {
+                assignee: Some("me".into()),
+                open: true,
+                include_past: true,
+                ..Default::default()
+            };
+            let items = work_packages::list(&client, params, false).await?;
+            Ok(Page {
+                items: as_array(items),
+                next_offset: None,
+            })
+        } else {
+            let params = work_packages::WpListParams {
+                assignee: Some("me".into()),
+                open: true,
+                offset: page.max(1),
+                limit: Some(page_size),
+                ..Default::default()
+            };
+            let (items, total) = work_packages::list_page(&client, params, false).await?;
+            Ok(Page {
+                items: as_array(items),
+                next_offset: next_page(page, page_size, total),
+            })
+        }
+    }
+
+    async fn list_notifications_page(&self, page: i64, page_size: i64) -> Result<Page, Error> {
+        let client = self.client()?;
+        let (items, total) =
+            notification::list_page(&client, page.max(1), Some(page_size), false).await?;
+        Ok(Page {
+            items: as_array(items),
+            next_offset: next_page(page, page_size, total),
+        })
+    }
+
+    async fn list_tasks(&self) -> Result<Vec<Value>, Error> {
+        let client = self.client()?;
+        let params = work_packages::WpListParams {
+            assignee: Some("me".into()),
+            open: true,
+            offset: 1,
+            ..Default::default()
+        };
+        Ok(as_array(work_packages::list(&client, params, false).await?))
+    }
+
+    async fn list_notifications(&self) -> Result<Vec<Value>, Error> {
+        let client = self.client()?;
+        Ok(as_array(notification::list(&client, 1, None, false).await?))
+    }
+
+    async fn set_notification_read(&self, id: i64, read: bool) -> Result<(), Error> {
+        let client = self.client()?;
+        if read {
+            notification::read(&client, id).await?;
+        } else {
+            notification::unread(&client, id).await?;
+        }
+        Ok(())
+    }
+
+    async fn mark_all_read(&self) -> Result<u64, Error> {
+        let client = self.client()?;
+        let v = notification::read_all(&client).await?;
+        Ok(v.get("read").and_then(|x| x.as_u64()).unwrap_or(0))
+    }
+}
+
+/// The GitHub backend: drives the `gh` CLI on a blocking thread. Authenticates
+/// through `gh` (no token stored), returns the whole collection in one page, and
+/// can only mark notifications read (its list is unread-only).
+struct GithubBackendFacade {
+    host: String,
+}
+
+#[async_trait]
+impl Backend for GithubBackendFacade {
+    fn kind(&self) -> BackendKind {
+        BackendKind::Github
+    }
+
+    async fn list_tasks_page(&self, _page: i64, _page_size: i64) -> Result<Page, Error> {
+        let items = self.list_tasks().await?;
+        Ok(Page {
+            items,
+            next_offset: None,
+        })
+    }
+
+    async fn list_notifications_page(&self, _page: i64, _page_size: i64) -> Result<Page, Error> {
+        let items = self.list_notifications().await?;
+        Ok(Page {
+            items,
+            next_offset: None,
+        })
+    }
+
+    async fn list_tasks(&self) -> Result<Vec<Value>, Error> {
+        let host = self.host.clone();
+        run_blocking(move || github_tasks(GhCli { host })).await
+    }
+
+    async fn list_notifications(&self) -> Result<Vec<Value>, Error> {
+        let host = self.host.clone();
+        run_blocking(move || github_notifications(GhCli { host })).await
+    }
+
+    async fn set_notification_read(&self, id: i64, read: bool) -> Result<(), Error> {
+        // GitHub can only mark read; the list is unread-only, so mark-unread is
+        // unreachable from the UI and a no-op here.
+        if !read {
+            return Ok(());
+        }
+        let host = self.host.clone();
+        run_blocking_unit(move || github_mark_read(GhCli { host }, id)).await
+    }
+
+    async fn mark_all_read(&self) -> Result<u64, Error> {
+        let host = self.host.clone();
+        run_blocking_count(move || github_mark_all_read(GhCli { host })).await
+    }
+}
+
 /// One page of my open tasks for a server, normalized, plus the next cursor.
 /// OpenProject paginates by `page` (1-based); GitHub returns everything on the
 /// first page and `None` thereafter.
@@ -48,48 +240,9 @@ pub async fn list_tasks_page(
     page: i64,
     page_size: i64,
 ) -> Result<Page, Error> {
-    match profile.backend {
-        BackendKind::OpenProject => {
-            let client = openproject_client(profile, token)?;
-            if profile.backend.needs_local_history() {
-                // The server forgets past assignees, so aggregate current +
-                // locally tracked past-assigned tasks in one shot (the
-                // include_past path does not paginate on the server).
-                let params = work_packages::WpListParams {
-                    assignee: Some("me".into()),
-                    open: true,
-                    include_past: true,
-                    ..Default::default()
-                };
-                let items = work_packages::list(&client, params, false).await?;
-                Ok(Page {
-                    items: as_array(items),
-                    next_offset: None,
-                })
-            } else {
-                let params = work_packages::WpListParams {
-                    assignee: Some("me".into()),
-                    open: true,
-                    offset: page.max(1),
-                    limit: Some(page_size),
-                    ..Default::default()
-                };
-                let (items, total) = work_packages::list_page(&client, params, false).await?;
-                Ok(Page {
-                    items: as_array(items),
-                    next_offset: next_page(page, page_size, total),
-                })
-            }
-        }
-        BackendKind::Github => {
-            let host = profile.base_url.clone();
-            let items = run_blocking(move || github_tasks(GhCli { host })).await?;
-            Ok(Page {
-                items,
-                next_offset: None,
-            })
-        }
-    }
+    backend_for(profile, token)
+        .list_tasks_page(page, page_size)
+        .await
 }
 
 /// One page of my notifications for a server, normalized, plus the next cursor.
@@ -99,46 +252,15 @@ pub async fn list_notifications_page(
     page: i64,
     page_size: i64,
 ) -> Result<Page, Error> {
-    match profile.backend {
-        BackendKind::OpenProject => {
-            let client = openproject_client(profile, token)?;
-            let (items, total) =
-                notification::list_page(&client, page.max(1), Some(page_size), false).await?;
-            Ok(Page {
-                items: as_array(items),
-                next_offset: next_page(page, page_size, total),
-            })
-        }
-        BackendKind::Github => {
-            let host = profile.base_url.clone();
-            let items = run_blocking(move || github_notifications(GhCli { host })).await?;
-            Ok(Page {
-                items,
-                next_offset: None,
-            })
-        }
-    }
+    backend_for(profile, token)
+        .list_notifications_page(page, page_size)
+        .await
 }
 
 /// My open tasks for a server, normalized. OpenProject requires a token; GitHub
 /// authenticates through `gh` and ignores it.
 pub async fn list_tasks(profile: &ServerProfile, token: Option<&str>) -> Result<Vec<Value>, Error> {
-    match profile.backend {
-        BackendKind::OpenProject => {
-            let client = openproject_client(profile, token)?;
-            let params = work_packages::WpListParams {
-                assignee: Some("me".into()),
-                open: true,
-                offset: 1,
-                ..Default::default()
-            };
-            Ok(as_array(work_packages::list(&client, params, false).await?))
-        }
-        BackendKind::Github => {
-            let host = profile.base_url.clone();
-            run_blocking(move || github_tasks(GhCli { host })).await
-        }
-    }
+    backend_for(profile, token).list_tasks().await
 }
 
 /// My notifications for a server, normalized.
@@ -146,16 +268,7 @@ pub async fn list_notifications(
     profile: &ServerProfile,
     token: Option<&str>,
 ) -> Result<Vec<Value>, Error> {
-    match profile.backend {
-        BackendKind::OpenProject => {
-            let client = openproject_client(profile, token)?;
-            Ok(as_array(notification::list(&client, 1, None, false).await?))
-        }
-        BackendKind::Github => {
-            let host = profile.base_url.clone();
-            run_blocking(move || github_notifications(GhCli { host })).await
-        }
-    }
+    backend_for(profile, token).list_notifications().await
 }
 
 /// Set one notification's read state. OpenProject toggles both ways; GitHub can
@@ -167,46 +280,14 @@ pub async fn set_notification_read(
     id: i64,
     read: bool,
 ) -> Result<(), Error> {
-    match profile.backend {
-        BackendKind::OpenProject => {
-            let client = openproject_client(profile, token)?;
-            if read {
-                notification::read(&client, id).await?;
-            } else {
-                notification::unread(&client, id).await?;
-            }
-            Ok(())
-        }
-        BackendKind::Github => {
-            if !read {
-                return Ok(());
-            }
-            let host = profile.base_url.clone();
-            run_blocking_unit(move || github_mark_read(GhCli { host }, id)).await
-        }
-    }
+    backend_for(profile, token)
+        .set_notification_read(id, read)
+        .await
 }
 
 /// Mark every notification on a server as read. Returns the count marked.
 pub async fn mark_all_read(profile: &ServerProfile, token: Option<&str>) -> Result<u64, Error> {
-    match profile.backend {
-        BackendKind::OpenProject => {
-            let client = openproject_client(profile, token)?;
-            let v = notification::read_all(&client).await?;
-            Ok(v.get("read").and_then(|x| x.as_u64()).unwrap_or(0))
-        }
-        BackendKind::Github => {
-            let host = profile.base_url.clone();
-            run_blocking_count(move || github_mark_all_read(GhCli { host })).await
-        }
-    }
-}
-
-fn openproject_client(profile: &ServerProfile, token: Option<&str>) -> Result<Client, Error> {
-    let token = token
-        .ok_or_else(|| Error::Auth("openproject backend requires a token".into()))?
-        .to_owned();
-    Client::new("", profile, token, None)
+    backend_for(profile, token).mark_all_read().await
 }
 
 /// Run a blocking `gh`-backed closure off the async executor.
@@ -329,6 +410,38 @@ mod tests {
         };
         assert_eq!(page.items.len(), 1);
         assert_eq!(page.next_offset, None);
+    }
+
+    #[test]
+    fn backend_for_selects_the_impl_by_kind() {
+        let op = ServerProfile {
+            backend: BackendKind::OpenProject,
+            ..probe("https://op.example")
+        };
+        let gh = ServerProfile {
+            backend: BackendKind::Github,
+            ..probe("https://github.com")
+        };
+        assert_eq!(backend_for(&op, Some("t")).kind(), BackendKind::OpenProject);
+        assert_eq!(backend_for(&gh, None).kind(), BackendKind::Github);
+    }
+
+    fn probe(base: &str) -> ServerProfile {
+        ServerProfile {
+            base_url: base.into(),
+            backend: BackendKind::OpenProject,
+            timeout: 30,
+            verify_ssl: true,
+            proxy: None,
+            display_name: None,
+            enabled: true,
+            poll_secs: None,
+            timelog_start: None,
+            status_colors: Default::default(),
+            status_filters: Vec::new(),
+            display_fields: Vec::new(),
+            open_content_in: None,
+        }
     }
 
     #[tokio::test]

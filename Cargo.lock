@@ -2547,6 +2547,7 @@ name = "laba-core"
 version = "0.1.5"
 dependencies = [
  "apple-native-keyring-store",
+ "async-trait",
  "chrono",
  "chrono-tz",
  "futures-util",
