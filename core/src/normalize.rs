@@ -7,6 +7,12 @@
 use serde_json::{Map, Value};
 
 use crate::duration::iso8601_to_hours;
+use crate::entities;
+
+/// Read a flattened key as an owned `String`, or `None` when absent/`Null`/non-string.
+fn opt_str(v: &Value, k: &str) -> Option<String> {
+    v.get(k).and_then(Value::as_str).map(str::to_owned)
+}
 
 /// Clone `p[k]`, or [`Value::Null`] if absent.
 pub fn get(p: &Value, k: &str) -> Value {
@@ -97,6 +103,87 @@ pub fn work_package(p: &Value) -> Value {
         ("lockVersion", get(p, "lockVersion")),
         ("description", text(&get(p, "description"))),
     ])
+}
+
+/// Build a typed [`entities::Task`] from a flattened work package (the output of
+/// [`work_package`], optionally with a `customFields` array appended). Reuses the
+/// existing flattening so custom fields and links are already resolved. The
+/// OpenProject status label is instance-specific, so `status_category` stays
+/// `Unknown` and the per-status color config drives the row tint instead.
+pub fn work_package_task(v: &Value) -> entities::Task {
+    let id_num = v.get("id").and_then(Value::as_i64);
+    let raw = id_num.map(|n| n.to_string()).unwrap_or_default();
+    let display = id_num.map(|n| format!("#{n}")).unwrap_or_default();
+    let custom_fields = v
+        .get("customFields")
+        .and_then(Value::as_array)
+        .map(|a| a.iter().map(custom_field).collect())
+        .unwrap_or_default();
+    entities::Task {
+        id: entities::TaskId { display, raw },
+        kind: entities::TaskKind::WorkPackage,
+        // OpenProject lists the user's assigned and involved work packages (plus
+        // a local history of previously-assigned ones); "assigned" is the reason.
+        reason: entities::InboxReason::Assigned,
+        title: opt_str(v, "subject").unwrap_or_default(),
+        url: None,
+        status: opt_str(v, "status"),
+        status_category: entities::StatusCategory::Unknown,
+        project: opt_str(v, "project"),
+        assignee: opt_str(v, "assignee"),
+        author: opt_str(v, "author"),
+        created_at: opt_str(v, "createdAt"),
+        updated_at: opt_str(v, "updatedAt"),
+        due_date: opt_str(v, "dueDate"),
+        priority: opt_str(v, "priority"),
+        labels: Vec::new(),
+        custom_fields,
+    }
+}
+
+/// Convert one `{ key, name, value }` custom-field object into a typed
+/// [`entities::CustomField`].
+fn custom_field(v: &Value) -> entities::CustomField {
+    entities::CustomField {
+        key: opt_str(v, "key").unwrap_or_default(),
+        name: opt_str(v, "name"),
+        value: v.get("value").cloned().unwrap_or(Value::Null),
+    }
+}
+
+/// Build a typed [`entities::Notification`] from a flattened OpenProject
+/// notification (the output of [`notification`]). OpenProject notifications point
+/// at a work package (`wp_id`), which the GUI opens in-app; they carry no CI
+/// outcome or browser URL.
+pub fn notification_entity(v: &Value) -> entities::Notification {
+    entities::Notification {
+        id: v
+            .get("id")
+            .map(|x| match x {
+                Value::String(s) => s.clone(),
+                other => other.to_string(),
+            })
+            .unwrap_or_default(),
+        reason: opt_str(v, "reason").unwrap_or_default(),
+        kind: entities::NotifKind::Other("workPackage".into()),
+        title: opt_str(v, "wpTitle").unwrap_or_default(),
+        project: opt_str(v, "project"),
+        url: None,
+        updated_at: opt_str(v, "createdAt"),
+        read: v.get("read").and_then(Value::as_bool).unwrap_or(false),
+        outcome: None,
+        wp_id: v.get("wpId").and_then(Value::as_i64),
+    }
+}
+
+/// Build a typed [`entities::Comment`] from a flattened comment (the output of
+/// [`comment`]): the `comment` text becomes the body, the linked `user` the author.
+pub fn comment_entity(v: &Value) -> entities::Comment {
+    entities::Comment {
+        author: opt_str(v, "user"),
+        created_at: opt_str(v, "createdAt"),
+        body: opt_str(v, "comment").unwrap_or_default(),
+    }
 }
 
 /// Flatten a time entry resource.
@@ -273,6 +360,78 @@ mod tests {
         assert_eq!(v["type"], json!("Task"));
         assert_eq!(v["projectId"], json!(7));
         assert_eq!(v["description"], json!("D"));
+    }
+
+    #[test]
+    fn work_package_task_maps_flattened_wp_to_typed_entity() {
+        let p = json!({
+            "id": 42, "subject": "Do the thing",
+            "createdAt": "2026-07-01T09:00:00Z", "updatedAt": "2026-07-10T12:00:00Z",
+            "dueDate": "2026-07-20",
+            "_links": {
+                "status": { "title": "In progress" },
+                "priority": { "title": "High" },
+                "project": { "href": "/api/v3/projects/7", "title": "Ops" },
+                "author": { "title": "Robin" },
+                "assignee": { "title": "Dana" }
+            }
+        });
+        let mut flat = work_package(&p);
+        flat.as_object_mut().unwrap().insert(
+            "customFields".into(),
+            json!([{ "key": "customField1", "name": "Rank", "value": 3 }]),
+        );
+        let t = work_package_task(&flat);
+        assert_eq!(t.id.display, "#42");
+        assert_eq!(t.id.raw, "42");
+        assert_eq!(t.kind, entities::TaskKind::WorkPackage);
+        assert_eq!(t.reason, entities::InboxReason::Assigned);
+        assert_eq!(t.title, "Do the thing");
+        assert_eq!(t.status.as_deref(), Some("In progress"));
+        assert_eq!(t.status_category, entities::StatusCategory::Unknown);
+        assert_eq!(t.project.as_deref(), Some("Ops"));
+        assert_eq!(t.assignee.as_deref(), Some("Dana"));
+        assert_eq!(t.author.as_deref(), Some("Robin"));
+        assert_eq!(t.priority.as_deref(), Some("High"));
+        assert_eq!(t.due_date.as_deref(), Some("2026-07-20"));
+        assert_eq!(t.custom_fields.len(), 1);
+        assert_eq!(t.custom_fields[0].name.as_deref(), Some("Rank"));
+        assert_eq!(t.custom_fields[0].value, json!(3));
+    }
+
+    #[test]
+    fn notification_entity_carries_work_package_id_and_read_flag() {
+        let p = json!({
+            "id": 9001, "reason": "mentioned", "readIAN": false,
+            "createdAt": "2026-07-10T09:25:00Z",
+            "_links": {
+                "resource": { "href": "/api/v3/work_packages/42", "title": "Do the thing" },
+                "project": { "title": "Ops" }
+            }
+        });
+        let n = notification_entity(&notification(&p));
+        assert_eq!(n.id, "9001");
+        assert_eq!(n.reason, "mentioned");
+        assert_eq!(n.title, "Do the thing");
+        assert_eq!(n.project.as_deref(), Some("Ops"));
+        assert_eq!(n.wp_id, Some(42));
+        assert!(!n.read);
+        assert_eq!(n.outcome, None);
+        assert_eq!(n.updated_at.as_deref(), Some("2026-07-10T09:25:00Z"));
+    }
+
+    #[test]
+    fn comment_entity_maps_body_and_author() {
+        let p = json!({
+            "id": 5, "_type": "Activity",
+            "comment": { "raw": "Looks good" },
+            "createdAt": "2026-07-10T12:00:00Z",
+            "_links": { "user": { "title": "Dana" } }
+        });
+        let c = comment_entity(&comment(&p));
+        assert_eq!(c.author.as_deref(), Some("Dana"));
+        assert_eq!(c.body, "Looks good");
+        assert_eq!(c.created_at.as_deref(), Some("2026-07-10T12:00:00Z"));
     }
 
     #[test]
