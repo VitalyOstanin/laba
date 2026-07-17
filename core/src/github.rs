@@ -10,6 +10,7 @@
 use serde::Serialize;
 use serde_json::{Map, Value};
 
+use crate::entities;
 use crate::error::Error;
 
 /// Availability of the `gh` CLI, which the GitHub task backend requires. The
@@ -161,6 +162,135 @@ pub fn normalize_task(v: &Value, kind: TaskKind) -> Value {
     );
     m.insert("url".into(), v.get("url").cloned().unwrap_or(Value::Null));
     Value::Object(m)
+}
+
+/// Assignees as a comma-joined string, or `None` when there are none.
+fn assignees_string(v: &Value) -> Option<String> {
+    match assignees_label(v) {
+        Value::String(s) => Some(s),
+        _ => None,
+    }
+}
+
+/// Map a GitHub issue/PR `state` (`open` / `closed` / `merged`) to a normalized
+/// status bucket.
+fn status_category_from_state(state: Option<&str>) -> entities::StatusCategory {
+    match state {
+        Some(s) if s.eq_ignore_ascii_case("open") => entities::StatusCategory::Open,
+        Some(s) if s.eq_ignore_ascii_case("closed") || s.eq_ignore_ascii_case("merged") => {
+            entities::StatusCategory::Done
+        }
+        _ => entities::StatusCategory::Unknown,
+    }
+}
+
+/// Build a typed [`entities::Task`] from one `gh search issues`/`prs` element.
+/// `reason` is supplied by the caller, which knows the search that produced the
+/// item (involves / review-requested / owner); GitHub search does not tag it.
+pub fn task_from_gh(v: &Value, kind: TaskKind, reason: entities::InboxReason) -> entities::Task {
+    let repo = v
+        .get("repository")
+        .and_then(|r| r.get("nameWithOwner"))
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let number = v.get("number").and_then(Value::as_i64);
+    let display = match number {
+        Some(n) if !repo.is_empty() => format!("{repo}#{n}"),
+        Some(n) => n.to_string(),
+        None => String::new(),
+    };
+    let raw = number.map(|n| n.to_string()).unwrap_or_default();
+    let state = v.get("state").and_then(Value::as_str);
+    entities::Task {
+        id: entities::TaskId { display, raw },
+        kind: match kind {
+            TaskKind::Issue => entities::TaskKind::Issue,
+            TaskKind::PullRequest => entities::TaskKind::PullRequest,
+        },
+        reason,
+        title: v
+            .get("title")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_owned(),
+        url: v.get("url").and_then(Value::as_str).map(str::to_owned),
+        status: state.map(str::to_owned),
+        status_category: status_category_from_state(state),
+        project: (!repo.is_empty()).then(|| repo.to_owned()),
+        assignee: assignees_string(v),
+        author: None,
+        created_at: v
+            .get("createdAt")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        updated_at: v
+            .get("updatedAt")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        due_date: None,
+        priority: None,
+        labels: Vec::new(),
+        custom_fields: Vec::new(),
+    }
+}
+
+/// Map a GitHub notification subject type (PascalCase: `Issue`, `PullRequest`,
+/// `CheckSuite`, `Discussion`, …) to a [`entities::NotifKind`].
+fn notif_kind_from_subject_type(t: Option<&str>) -> entities::NotifKind {
+    match t {
+        Some("Issue") => entities::NotifKind::Issue,
+        Some("PullRequest") => entities::NotifKind::PullRequest,
+        Some("CheckSuite") => entities::NotifKind::CheckSuite,
+        Some(other) => entities::NotifKind::Other(other.to_owned()),
+        None => entities::NotifKind::Other(String::new()),
+    }
+}
+
+/// The typed CI outcome for a check-suite title (mirrors [`check_suite_outcome`]).
+fn ci_outcome_from_title(title: &str) -> entities::CiOutcome {
+    match check_suite_outcome(title) {
+        "failure" => entities::CiOutcome::Failure,
+        "success" => entities::CiOutcome::Success,
+        _ => entities::CiOutcome::Neutral,
+    }
+}
+
+/// Build a typed [`entities::Notification`] from one `gh api notifications`
+/// element. `url` is the browser-viewable subject address (the REST `subject.url`
+/// is not viewable); a check-suite item also carries its run `outcome`.
+pub fn notification_from_gh(v: &Value) -> entities::Notification {
+    let subject = v.get("subject");
+    let subject_type = subject.and_then(|s| s.get("type")).and_then(Value::as_str);
+    let title = subject
+        .and_then(|s| s.get("title"))
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_owned();
+    let unread = v.get("unread").and_then(Value::as_bool).unwrap_or(true);
+    let outcome = (subject_type == Some("CheckSuite")).then(|| ci_outcome_from_title(&title));
+    entities::Notification {
+        id: v.get("id").and_then(Value::as_str).unwrap_or("").to_owned(),
+        reason: v
+            .get("reason")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_owned(),
+        kind: notif_kind_from_subject_type(subject_type),
+        title,
+        project: v
+            .get("repository")
+            .and_then(|r| r.get("full_name"))
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        url: notification_html_url(v),
+        updated_at: v
+            .get("updated_at")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        read: !unread,
+        outcome,
+        wp_id: None,
+    }
 }
 
 /// Normalize one element of `gh api notifications` (GitHub REST) to a compact
@@ -319,7 +449,10 @@ fn match_run_url(runs: &[Value], title: &str, notif_updated: &str) -> Option<Str
             None => true,
         })
         .min_by_key(|r| {
-            let run_ts = r.get("updated_at").and_then(Value::as_str).and_then(parse_ts);
+            let run_ts = r
+                .get("updated_at")
+                .and_then(Value::as_str)
+                .and_then(parse_ts);
             match (target, run_ts) {
                 (Some(t), Some(u)) => (t - u).num_seconds().abs(),
                 _ => i64::MAX,
@@ -856,6 +989,67 @@ mod tests {
             "repository": {"full_name": "acme/app"}
         });
         assert_eq!(normalize_notification(&issue).get("outcome"), None);
+    }
+
+    #[test]
+    fn task_from_gh_maps_to_the_typed_entity() {
+        let v = json!({
+            "number": 7, "title": "Fix gearbox", "state": "open",
+            "repository": {"nameWithOwner": "acme/widgets"},
+            "assignees": [{"login": "dana"}, {"login": "robin"}],
+            "createdAt": "2026-07-01T09:00:00Z", "updatedAt": "2026-07-10T12:00:00Z",
+            "url": "https://example.test/acme/widgets/pull/7"
+        });
+        let t = task_from_gh(
+            &v,
+            TaskKind::PullRequest,
+            entities::InboxReason::ReviewRequested,
+        );
+        assert_eq!(t.id.display, "acme/widgets#7");
+        assert_eq!(t.id.raw, "7");
+        assert_eq!(t.kind, entities::TaskKind::PullRequest);
+        assert_eq!(t.reason, entities::InboxReason::ReviewRequested);
+        assert_eq!(t.title, "Fix gearbox");
+        assert_eq!(t.status.as_deref(), Some("open"));
+        assert_eq!(t.status_category, entities::StatusCategory::Open);
+        assert_eq!(t.project.as_deref(), Some("acme/widgets"));
+        assert_eq!(t.assignee.as_deref(), Some("dana, robin"));
+        assert_eq!(
+            t.url.as_deref(),
+            Some("https://example.test/acme/widgets/pull/7")
+        );
+    }
+
+    #[test]
+    fn notification_from_gh_maps_check_suite_with_outcome_and_browser_url() {
+        let v = json!({
+            "id": "42", "reason": "ci_activity", "unread": true,
+            "subject": {"title": "CI workflow run failed for main branch", "type": "CheckSuite"},
+            "repository": {"full_name": "acme/widgets"},
+            "updated_at": "2026-07-10T12:00:00Z"
+        });
+        let n = notification_from_gh(&v);
+        assert_eq!(n.id, "42");
+        assert_eq!(n.reason, "ci_activity");
+        assert_eq!(n.kind, entities::NotifKind::CheckSuite);
+        assert_eq!(n.outcome, Some(entities::CiOutcome::Failure));
+        assert!(!n.read);
+        assert_eq!(n.wp_id, None);
+        // Issue notification: browser url derived from the subject number, read flag set.
+        let issue = json!({
+            "id": "9", "reason": "mention", "unread": false,
+            "subject": {"title": "Ping", "type": "Issue",
+                "url": "https://api.github.com/repos/acme/widgets/issues/3"},
+            "repository": {"full_name": "acme/widgets"}
+        });
+        let n2 = notification_from_gh(&issue);
+        assert_eq!(n2.kind, entities::NotifKind::Issue);
+        assert!(n2.read);
+        assert_eq!(n2.outcome, None);
+        assert_eq!(
+            n2.url.as_deref(),
+            Some("https://github.com/acme/widgets/issues/3")
+        );
     }
 
     #[test]
