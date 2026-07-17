@@ -163,6 +163,7 @@ pub async fn run(cmd: ServerCmd, config_flag: &Option<PathBuf>) -> Result<(), Er
                         status_colors: Default::default(),
                         status_filters: Vec::new(),
                         display_fields: Vec::new(),
+                        open_content_in: None,
                     },
                 )
                 .is_some();

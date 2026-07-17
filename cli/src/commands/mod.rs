@@ -115,6 +115,7 @@ mod tests {
             status_colors: Default::default(),
             status_filters: Vec::new(),
             display_fields: Vec::new(),
+            open_content_in: None,
         }
     }
 

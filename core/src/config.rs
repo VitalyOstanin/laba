@@ -76,11 +76,13 @@ impl Backend {
         matches!(self, Backend::OpenProject | Backend::Github)
     }
 
-    /// Whether a notification's read state can be toggled from the app. Only
-    /// OpenProject exposes a per-notification read/unread write; GitHub
-    /// notifications are read-only here.
+    /// Whether a notification's read state can be written from the app. Both
+    /// backends can: OpenProject toggles read/unread both ways, while GitHub can
+    /// mark read (`PATCH`/`PUT`) — its list is unread-only, so a read item leaves
+    /// the list and the reverse direction is never needed. Drives the read dot and
+    /// the "mark all read" control.
     pub fn supports_notification_read_toggle(self) -> bool {
-        matches!(self, Backend::OpenProject)
+        matches!(self, Backend::OpenProject | Backend::Github)
     }
 
     /// Whether tasks carry a rich workflow status worth filtering by. Drives the
@@ -111,6 +113,38 @@ impl Backend {
         match self {
             Backend::OpenProject => 120,
             Backend::Github => 900,
+        }
+    }
+
+    /// Where a task opens by default when the user has not overridden it. This
+    /// encodes the quality of each backend's own web UI: OpenProject's web view
+    /// is heavy, so its tasks open inside laba's detail screen; GitHub's web UI
+    /// is good, so its tasks open in the browser. A per-server
+    /// [`ServerProfile::open_content_in`] overrides this.
+    pub fn default_open_target(self) -> OpenTarget {
+        match self {
+            Backend::OpenProject => OpenTarget::App,
+            Backend::Github => OpenTarget::Browser,
+        }
+    }
+}
+
+/// Where a task opens on click: inside laba's detail screen (`App`) or in the
+/// system browser (`Browser`). Chosen per server, defaulting by backend (see
+/// [`Backend::default_open_target`]).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum OpenTarget {
+    App,
+    Browser,
+}
+
+impl OpenTarget {
+    /// The lowercase token passed to the GUI (`app` / `browser`).
+    pub fn token(self) -> &'static str {
+        match self {
+            OpenTarget::App => "app",
+            OpenTarget::Browser => "browser",
         }
     }
 }
@@ -233,12 +267,32 @@ pub struct ServerProfile {
     /// backends with custom fields (see [`Backend::supports_custom_fields`]).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub display_fields: Vec<String>,
+    /// Preferred place to open a task on click: `app` (laba's detail screen) or
+    /// `browser`. Absent defers to the backend default (see
+    /// [`Backend::default_open_target`]): OpenProject → app, GitHub → browser.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub open_content_in: Option<OpenTarget>,
 }
 
 impl ServerProfile {
     /// The configured tint for a task with the given status, if any.
     pub fn status_color(&self, status: &str) -> Option<StatusColor> {
         self.status_colors.get(status).copied()
+    }
+
+    /// Effective open target for tasks: the per-server `open_content_in` override,
+    /// else the backend default. `App` is only honored when the backend can
+    /// actually render a detail screen ([`Backend::supports_task_detail`]);
+    /// otherwise it falls back to `Browser` so the title is never left inert.
+    pub fn effective_open_target(&self) -> OpenTarget {
+        let want = self
+            .open_content_in
+            .unwrap_or_else(|| self.backend.default_open_target());
+        if want == OpenTarget::App && !self.backend.supports_task_detail() {
+            OpenTarget::Browser
+        } else {
+            want
+        }
     }
 
     /// Full display name: `display_name` if set, else the profile's map key
@@ -434,6 +488,7 @@ mod tests {
                     statuses: vec!["In progress".into(), "Under review".into()],
                 }],
                 display_fields: vec!["Rank".into()],
+                open_content_in: Some(OpenTarget::Browser),
             },
         );
         cfg.save(&path).unwrap();
@@ -500,6 +555,7 @@ mod tests {
                     status_colors: Default::default(),
                     status_filters: Vec::new(),
                     display_fields: Vec::new(),
+                    open_content_in: None,
                 },
             );
         }
@@ -637,10 +693,54 @@ mod tests {
         assert!(Backend::OpenProject.supports_notifications());
         assert!(Backend::Github.supports_notifications());
         assert!(Backend::OpenProject.supports_notification_read_toggle());
-        assert!(!Backend::Github.supports_notification_read_toggle());
+        assert!(Backend::Github.supports_notification_read_toggle());
         assert!(Backend::OpenProject.supports_status_filters());
         assert!(!Backend::Github.supports_status_filters());
         assert_eq!(Backend::OpenProject.default_poll_secs(), 120);
         assert_eq!(Backend::Github.default_poll_secs(), 900);
+    }
+
+    #[test]
+    fn default_open_target_reflects_web_ui_quality() {
+        // OpenProject's heavy web UI opens in laba; GitHub's good web UI opens
+        // in the browser.
+        assert_eq!(Backend::OpenProject.default_open_target(), OpenTarget::App);
+        assert_eq!(Backend::Github.default_open_target(), OpenTarget::Browser);
+        assert_eq!(OpenTarget::App.token(), "app");
+        assert_eq!(OpenTarget::Browser.token(), "browser");
+    }
+
+    #[test]
+    fn effective_open_target_falls_back_to_browser_without_detail() {
+        let op = ServerProfile {
+            backend: Backend::OpenProject,
+            ..profile("https://op.example")
+        };
+        assert_eq!(op.effective_open_target(), OpenTarget::App);
+        let gh = ServerProfile {
+            backend: Backend::Github,
+            ..profile("https://github.com")
+        };
+        // GitHub cannot render a detail screen, so App would degrade to Browser;
+        // its default is already Browser.
+        assert_eq!(gh.effective_open_target(), OpenTarget::Browser);
+    }
+
+    fn profile(base: &str) -> ServerProfile {
+        ServerProfile {
+            display_name: None,
+            backend: Backend::OpenProject,
+            base_url: base.into(),
+            timeout: 30,
+            verify_ssl: true,
+            proxy: None,
+            enabled: true,
+            poll_secs: None,
+            timelog_start: None,
+            status_colors: BTreeMap::new(),
+            status_filters: Vec::new(),
+            display_fields: Vec::new(),
+            open_content_in: None,
+        }
     }
 }
