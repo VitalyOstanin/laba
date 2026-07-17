@@ -20,3 +20,4 @@ ADR that supersedes the old one.
 | [0010](0010-webview-content-security-policy.md) | Restrictive Content-Security-Policy for the webview | Accepted |
 | [0011](0011-reqwest-ring-crypto-provider.md) | Stay on reqwest 0.12 with the ring rustls provider | Accepted |
 | [0012](0012-signed-self-update.md) | Signed in-app self-update via the Tauri updater | Accepted |
+| [0013](0013-backend-trait-capabilities-typed-entities.md) | Backend abstraction: trait, capabilities, and typed cross-backend entities | Proposed |
