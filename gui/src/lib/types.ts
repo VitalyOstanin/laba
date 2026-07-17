@@ -15,18 +15,11 @@ export interface ServerInfo {
   timelog_start: TimelogStart | null;
   // per-status row tint tokens (status -> "danger"|"warn"|"success"|"progress"|"dimmed")
   status_colors: Record<string, StatusColorToken>;
-  // whether this server has a notification inbox (else the column is hidden)
-  has_notifications: boolean;
-  // whether notification read state can be toggled from the app
-  can_toggle_read: boolean;
-  // whether tasks have a workflow status worth filtering by (drives the tabs)
-  supports_status_filters: boolean;
+  // static backend capabilities (notifications, read toggle, status filters,
+  // task detail, custom fields, ...); read via the helpers in ./capabilities
+  capabilities: Capabilities;
   // named status filters (label -> statuses) shown as task-list tabs
   status_filters: StatusFilter[];
-  // whether tasks carry custom fields (drives the display-fields editor)
-  supports_custom_fields: boolean;
-  // whether a task opens a detail screen (description + comments)
-  supports_task_detail: boolean;
   // where content (tasks, notifications) opens on click: "app" (laba detail) or
   // "browser" (effective value: per-server override or backend default)
   open_content_in: "app" | "browser";
@@ -37,6 +30,38 @@ export interface ServerInfo {
   // whether an OpenProject token is stored (drives "sign in / update token");
   // always false for GitHub (authenticates via gh)
   has_token: boolean;
+}
+
+// How a notification's read state can be written from the app (mirrors the Rust
+// ReadToggle enum; serde renames the variants to lowercase).
+export type ReadToggle = "none" | "oneway" | "twoway";
+// Whether a task can be opened for its description and comments (Rust DetailSupport).
+export type DetailSupport = "none" | "inapp";
+// Time-logging support for a backend (Rust TimelogSupport).
+export type TimelogSupport = "none" | "basic" | "withactivities";
+
+// Static capabilities of a backend, mirroring the Rust `Capabilities` struct.
+// Nuances are enums (one-way vs two-way read, timelog with/without activities)
+// rather than bare booleans; use the helpers in ./capabilities to read them.
+export interface Capabilities {
+  // the backend exposes a notification inbox
+  notifications: boolean;
+  // how a notification's read state can be written
+  notification_read: ReadToggle;
+  // tasks carry a workflow status worth filtering by (drives the status tabs)
+  status_filters: boolean;
+  // a task can be opened for its description and comments
+  task_detail: DetailSupport;
+  // tasks carry custom fields shown as extra list columns
+  custom_fields: boolean;
+  // time logging support
+  timelog: TimelogSupport;
+  // laba keeps a local assignee history because the server forgets past assignees
+  needs_local_history: boolean;
+  // where a task opens by default (per-server override notwithstanding)
+  default_open_target: "app" | "browser";
+  // default polling interval in seconds
+  default_poll_secs: number;
 }
 
 // One expanded custom field on a task: {key, name, value}. `name` is the human

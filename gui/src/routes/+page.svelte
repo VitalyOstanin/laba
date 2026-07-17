@@ -15,6 +15,7 @@
   import TimelogIndicator from "$lib/components/TimelogIndicator.svelte";
   import SetupWizard from "$lib/components/SetupWizard.svelte";
   import { t } from "$lib/i18n";
+  import { hasNotifications } from "$lib/capabilities";
 
   onMount(startPolling);
   onDestroy(stopPolling);
@@ -94,7 +95,7 @@
   </p>
 {:else}
   <main class="cols">
-    {#if $settings.show_notifications && (activeInfo?.has_notifications ?? true)}
+    {#if $settings.show_notifications && hasNotifications(activeInfo)}
       <NotificationColumn
         notifications={srvState?.notifications ?? []}
         server={activeInfo}

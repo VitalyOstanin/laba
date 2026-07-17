@@ -33,6 +33,11 @@
   import { fieldKeys } from "$lib/keys";
   import { friendlyError } from "$lib/friendly-error";
   import { settingsSectionMatches } from "$lib/settings-search";
+  import {
+    supportsStatusFilters,
+    supportsCustomFields,
+    supportsTaskDetail,
+  } from "$lib/capabilities";
   import type {
     Theme,
     Lang,
@@ -773,7 +778,7 @@
                 <option value=""
                   >{$t("settings.server.openContent.default")}</option
                 >
-                {#if s.supports_task_detail}
+                {#if supportsTaskDetail(s)}
                   <option value="app"
                     >{$t("settings.server.openContent.app")}</option
                   >
@@ -835,7 +840,7 @@
                 >
               </div>
             </div>
-            {#if s.supports_status_filters}
+            {#if supportsStatusFilters(s)}
               <div class="srv-colors">
                 <span class="srv-colors-title">{$t("settings.filters")}</span>
                 <span class="hint">{$t("settings.filters.hint")}</span>
@@ -887,7 +892,7 @@
                 </div>
               </div>
             {/if}
-            {#if s.supports_custom_fields}
+            {#if supportsCustomFields(s)}
               <div class="srv-colors">
                 <span class="srv-colors-title"
                   >{$t("settings.displayFields")}</span

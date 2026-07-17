@@ -4,8 +4,8 @@ use laba_core::auth::login_and_store;
 use laba_core::backend;
 use laba_core::client::Client;
 use laba_core::config::{
-    default_config_path, BackendKind, Config, OpenTarget, ServerProfile, StatusColor, StatusFilter,
-    TimelogStart,
+    default_config_path, BackendKind, Capabilities, Config, OpenTarget, ServerProfile, StatusColor,
+    StatusFilter, TimelogStart,
 };
 use laba_core::resources::{comment, time, work_packages};
 use laba_core::secrets::Secrets;
@@ -37,18 +37,12 @@ pub struct ServerInfo {
     /// Per-status row tint tokens (status -> `danger`/`warn`/`success`/`dimmed`),
     /// for tinting task rows and editing in settings.
     pub status_colors: BTreeMap<String, String>,
-    /// Whether this server has a notification inbox (else the column is hidden).
-    pub has_notifications: bool,
-    /// Whether notification read state can be toggled from the app.
-    pub can_toggle_read: bool,
-    /// Whether tasks have a workflow status worth filtering by (drives the tabs).
-    pub supports_status_filters: bool,
+    /// Static backend capabilities (notifications, read toggle, status filters,
+    /// task detail, custom fields, timelog, ...). Nested so the frontend reads one
+    /// object instead of a growing list of flat `supports_*` booleans.
+    pub capabilities: Capabilities,
     /// Named status filters (label -> statuses) shown as task-list tabs.
     pub status_filters: Vec<StatusFilter>,
-    /// Whether tasks carry custom fields (drives the display-fields editor).
-    pub supports_custom_fields: bool,
-    /// Whether a task opens a detail screen (description + comments).
-    pub supports_task_detail: bool,
     /// Where a task opens on click: `app` (laba detail screen) or `browser`.
     /// Effective value (per-server override or backend default).
     pub open_content_in: String,
@@ -90,12 +84,8 @@ pub fn server_infos(cfg: &Config) -> Vec<ServerInfo> {
                 .iter()
                 .map(|(status, color)| (status.clone(), color.token().to_owned()))
                 .collect(),
-            has_notifications: p.backend.supports_notifications(),
-            can_toggle_read: p.backend.supports_notification_read_toggle(),
-            supports_status_filters: p.backend.supports_status_filters(),
+            capabilities: p.backend.capabilities(),
             status_filters: p.status_filters.clone(),
-            supports_custom_fields: p.backend.supports_custom_fields(),
-            supports_task_detail: p.backend.supports_task_detail(),
             open_content_in: p.effective_open_target().token().to_owned(),
             display_fields: p.display_fields.clone(),
             proxy: p.proxy.clone(),

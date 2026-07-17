@@ -23,6 +23,7 @@ import {
   type ServerState,
   type SyncPhase,
 } from "./store";
+import { supportsTaskDetail } from "./capabilities";
 import { t, locale, plural } from "./i18n";
 import { goto } from "$app/navigation";
 import { openExternal } from "./external";
@@ -110,7 +111,7 @@ function buildNotifyItems(s: ServerInfo, fresh: Notification[]): NotifyItem[] {
     const reason = n.reason ? `${String(n.reason)}: ` : "";
     const wpId = Number(n.wpId);
     let target: unknown;
-    if (s.supports_task_detail && Number.isFinite(wpId)) {
+    if (supportsTaskDetail(s) && Number.isFinite(wpId)) {
       target = { kind: "task", server: s.name, id: wpId };
     } else if (typeof n.htmlUrl === "string" && n.htmlUrl) {
       target = { kind: "external", url: n.htmlUrl };

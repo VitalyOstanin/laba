@@ -55,6 +55,10 @@ The format follows Keep a Changelog and Semantic Versioning.
 ### Changed
 - The task list no longer transfers each task's description body; it is fetched
   on demand when the task's detail screen is opened (lazy loading).
+- Backend capabilities are now a single nested object on the server info the GUI
+  reads (one `capabilities` record instead of a growing list of flat `supports_*`
+  booleans), with enums for the nuanced ones (one-way vs two-way read toggle,
+  timelog with or without activities). Groundwork for additional backends.
 
 ### Fixed
 - Dashboard: hide the time-logged indicator entirely when no enabled server

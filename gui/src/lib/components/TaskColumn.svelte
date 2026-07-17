@@ -5,6 +5,7 @@
   import { onVisible } from "../scroll";
   import { openExternal } from "../external";
   import FilterRow from "./FilterRow.svelte";
+  import { supportsStatusFilters, supportsTaskDetail } from "../capabilities";
   import type { Task, ServerInfo, CustomField } from "../types";
 
   let {
@@ -28,7 +29,7 @@
   type Tab = { label: string; statuses: string[] | null };
   const tabs = $derived.by((): Tab[] => {
     const all: Tab = { label: $t("tabs.all"), statuses: null };
-    if (!(server?.supports_status_filters ?? false)) return [all];
+    if (!supportsStatusFilters(server)) return [all];
     const configured = server?.status_filters ?? [];
     let groups: Tab[];
     if (configured.length > 0) {
@@ -169,7 +170,7 @@
   }
 
   // Opening the detail screen (description + comments) is a backend capability.
-  const canDetail = $derived(server?.supports_task_detail ?? false);
+  const canDetail = $derived(supportsTaskDetail(server));
   function openDetail(task: Task): void {
     if (!server || task.id == null) return;
     goto(

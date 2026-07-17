@@ -40,17 +40,23 @@ const SEED_SERVERS: ServerInfo[] = [
       Blocked: "danger",
       Done: "success",
     },
-    has_notifications: true,
-    can_toggle_read: true,
-    supports_status_filters: true,
+    capabilities: {
+      notifications: true,
+      notification_read: "twoway",
+      status_filters: true,
+      task_detail: "inapp",
+      custom_fields: true,
+      timelog: "withactivities",
+      needs_local_history: true,
+      default_open_target: "app",
+      default_poll_secs: 120,
+    },
     status_filters: [
       { label: "Active", statuses: ["In progress"] },
       { label: "Review", statuses: ["Under review"] },
       { label: "Blocked", statuses: ["Blocked"] },
       { label: "Done", statuses: ["Done"] },
     ],
-    supports_custom_fields: true,
-    supports_task_detail: true,
     open_content_in: "app",
     display_fields: ["НПП"],
     proxy: null,
@@ -67,12 +73,18 @@ const SEED_SERVERS: ServerInfo[] = [
     enabled: true,
     timelog_start: null,
     status_colors: {},
-    has_notifications: true,
-    can_toggle_read: true,
-    supports_status_filters: false,
+    capabilities: {
+      notifications: true,
+      notification_read: "oneway",
+      status_filters: false,
+      task_detail: "none",
+      custom_fields: false,
+      timelog: "none",
+      needs_local_history: false,
+      default_open_target: "browser",
+      default_poll_secs: 900,
+    },
     status_filters: [],
-    supports_custom_fields: false,
-    supports_task_detail: false,
     open_content_in: "browser",
     display_fields: [],
     proxy: null,
@@ -469,7 +481,7 @@ export async function mockInvoke(
         s.open_content_in =
           t === "app" || t === "browser"
             ? t
-            : s.supports_task_detail
+            : s.capabilities.task_detail !== "none"
               ? "app"
               : "browser";
       });
@@ -514,12 +526,32 @@ export async function mockInvoke(
               enabled: true,
               timelog_start: null,
               status_colors: {},
-              has_notifications: false,
-              can_toggle_read: false,
-              supports_status_filters: false,
+              capabilities:
+                ((a.backend as ServerInfo["backend"]) || "openproject") ===
+                "github"
+                  ? {
+                      notifications: true,
+                      notification_read: "oneway",
+                      status_filters: false,
+                      task_detail: "none",
+                      custom_fields: false,
+                      timelog: "none",
+                      needs_local_history: false,
+                      default_open_target: "browser",
+                      default_poll_secs: 900,
+                    }
+                  : {
+                      notifications: true,
+                      notification_read: "twoway",
+                      status_filters: true,
+                      task_detail: "inapp",
+                      custom_fields: true,
+                      timelog: "withactivities",
+                      needs_local_history: true,
+                      default_open_target: "app",
+                      default_poll_secs: 120,
+                    },
               status_filters: [],
-              supports_custom_fields: false,
-              supports_task_detail: false,
               open_content_in: "browser",
               display_fields: [],
               proxy: null,

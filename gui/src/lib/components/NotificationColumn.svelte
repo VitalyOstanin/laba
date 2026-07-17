@@ -15,6 +15,7 @@
   import { fieldKeys } from "../keys";
   import { openExternal } from "../external";
   import { fmtDateTime, fmtRelative } from "../format";
+  import { canToggleRead, supportsTaskDetail } from "../capabilities";
   import type { Notification, ServerInfo } from "../types";
 
   let {
@@ -87,7 +88,7 @@
 
   // Read/unread toggling is a backend capability (only some backends expose a
   // per-notification read write).
-  const canToggle = $derived(server?.can_toggle_read ?? false);
+  const canToggle = $derived(canToggleRead(server));
   // Async feedback (project rule): show which dot is in flight, disable it while
   // the toggle runs. `busyId` is the notification being toggled; `busyAll` marks
   // the mark-all action. Any in-flight action blocks the others.
@@ -119,7 +120,7 @@
 
   // Opening the notification's work package on the task-detail screen is a
   // backend capability (same one the task list uses to make subjects clickable).
-  const canDetail = $derived(server?.supports_task_detail ?? false);
+  const canDetail = $derived(supportsTaskDetail(server));
   // The related work package id a notification points at, or null when absent
   // (the notification is not about a work package, or the backend omits it).
   function wpIdOf(n: Notification): number | null {
