@@ -20,7 +20,7 @@
 {#if state.phase === "checking"}
   <span class="update-status checking" role="status" aria-live="polite">
     <span class="spinner" aria-hidden="true"></span>
-    <span class="update-status-label">{$t("update.checking")}</span>
+    <span>{$t("update.checking")}</span>
   </span>
 {:else if state.phase === "available"}
   <button
@@ -31,9 +31,7 @@
     aria-label={$t("update.available")}
   >
     <span class="update-flag-icon" aria-hidden="true">↓</span>
-    <span class="update-flag-label"
-      >{$t("update.headerAction")} {state.update.version}</span
-    >
+    <span>{$t("update.headerAction")} {state.update.version}</span>
   </button>
 {:else if state.phase === "current"}
   <span
@@ -42,7 +40,7 @@
     title={$t("update.upToDate")}
   >
     <span class="update-status-icon" aria-hidden="true">✓</span>
-    <span class="update-status-label">{$t("update.upToDate")}</span>
+    <span>{$t("update.upToDate")}</span>
   </span>
 {:else if state.phase === "failed"}
   <button
@@ -53,6 +51,6 @@
     aria-label={$t("update.checkFailed")}
   >
     <span class="update-status-icon" aria-hidden="true">!</span>
-    <span class="update-status-label">{$t("update.checkFailed")}</span>
+    <span>{$t("update.checkFailed")}</span>
   </button>
 {/if}

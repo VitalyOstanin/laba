@@ -13,6 +13,13 @@ import type { Update } from "@tauri-apps/plugin-updater";
 /** Fake install delay in the browser dev stub, so a spinner is briefly visible. */
 const DEV_INSTALL_DELAY_MS = 300;
 
+/**
+ * Version reported by the browser dev fixture (no Tauri runtime). A named
+ * constant so the fixture's "available" outcome is not a bare magic string and
+ * can be referenced from tests.
+ */
+export const DEV_FIXTURE_VERSION = "0.2.0";
+
 /** An available update the banner can present. */
 export interface AvailableUpdate {
   version: string;
@@ -76,7 +83,7 @@ export async function checkForUpdate(): Promise<UpdateCheck> {
     return {
       status: "available",
       update: {
-        version: "0.2.0",
+        version: DEV_FIXTURE_VERSION,
         notes: "Example release notes for the dev mock.",
       },
     };

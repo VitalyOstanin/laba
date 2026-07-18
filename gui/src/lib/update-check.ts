@@ -31,5 +31,13 @@ export async function runUpdateCheck(): Promise<void> {
     case "failed":
       updateState.set({ phase: "failed" });
       break;
+    default:
+      // Exhaustiveness guard: a new UpdateCheck.status would fail to compile here.
+      return assertNever(res);
   }
+}
+
+/** Compile-time exhaustiveness check for discriminated unions. */
+function assertNever(value: never): never {
+  throw new Error(`unhandled update check outcome: ${JSON.stringify(value)}`);
 }

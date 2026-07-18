@@ -1,5 +1,10 @@
-import { describe, it, expect, afterEach } from "vitest";
-import { shouldShowUpdate, canSelfUpdate } from "./updater";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import {
+  shouldShowUpdate,
+  canSelfUpdate,
+  checkForUpdate,
+  DEV_FIXTURE_VERSION,
+} from "./updater";
 
 describe("shouldShowUpdate", () => {
   const avail = { version: "0.2.0", notes: null };
@@ -23,6 +28,61 @@ describe("shouldShowUpdate", () => {
     expect(shouldShowUpdate({ version: "0.3.0", notes: null }, "0.2.0")).toBe(
       true,
     );
+  });
+});
+
+describe("checkForUpdate", () => {
+  afterEach(() => {
+    vi.resetModules();
+    vi.unstubAllGlobals();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (globalThis.window as any).__TAURI_INTERNALS__;
+  });
+
+  it("returns the dev fixture when no Tauri runtime is present", async () => {
+    const res = await checkForUpdate();
+    expect(res).toEqual({
+      status: "available",
+      update: {
+        version: DEV_FIXTURE_VERSION,
+        notes: "Example release notes for the dev mock.",
+      },
+    });
+  });
+
+  // With a Tauri runtime, the outcome mirrors the plugin's check(): a handle →
+  // "available", null → "current", a thrown error → "failed". `hasTauri` is a
+  // module-load constant, so each case re-imports the module with the flag set.
+  async function withTauri(
+    checkImpl: () => Promise<unknown>,
+  ): Promise<Awaited<ReturnType<typeof checkForUpdate>>> {
+    vi.resetModules();
+    (
+      globalThis.window as unknown as Record<string, unknown>
+    ).__TAURI_INTERNALS__ = {};
+    vi.doMock("@tauri-apps/plugin-updater", () => ({ check: checkImpl }));
+    const mod = await import("./updater");
+    return mod.checkForUpdate();
+  }
+
+  it("reports available when the plugin returns an update handle", async () => {
+    const res = await withTauri(() =>
+      Promise.resolve({ version: "1.2.3", body: "notes" }),
+    );
+    expect(res).toEqual({
+      status: "available",
+      update: { version: "1.2.3", notes: "notes" },
+    });
+  });
+
+  it("reports current when the plugin returns no update", async () => {
+    const res = await withTauri(() => Promise.resolve(null));
+    expect(res).toEqual({ status: "current" });
+  });
+
+  it("reports failed when the plugin throws", async () => {
+    const res = await withTauri(() => Promise.reject(new Error("network")));
+    expect(res).toEqual({ status: "failed" });
   });
 });
 
