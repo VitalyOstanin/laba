@@ -38,7 +38,20 @@
   --fs-xl: 18px;
   --fs-2xl: 20px;
 
+  /* Spacing scale on a 4px grid, mirroring the radius/font scales. --gap keeps
+     its historical name and equals --space-3. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
   --gap: 12px;
+
+  /* Elevation scale. The shadow colour stays black over both themes (shadows
+     read against the surface, not the accent). */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
 
   font-family:
     "Inter",
@@ -245,9 +258,9 @@ body {
   display: inline-block;
   min-width: 1.4em;
   padding: 0 0.4em;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-text);
   font-size: var(--fs-2xs);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -314,7 +327,7 @@ body {
   background: transparent;
   border-color: transparent !important;
   color: var(--accent);
-  padding: 4px 6px !important;
+  padding: var(--space-1) var(--space-2) !important;
   text-decoration: underline;
 }
 
@@ -507,7 +520,7 @@ body {
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 7px 12px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -593,7 +606,7 @@ body {
   flex-direction: column;
   align-items: center;
   min-width: 52px;
-  padding: 5px 6px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   font-variant-numeric: tabular-nums;
@@ -815,7 +828,7 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lg);
 }
 .wizard-head {
   display: flex;
@@ -1000,7 +1013,7 @@ body {
   background: color-mix(in srgb, var(--text) 10%, var(--surface));
   border-color: color-mix(in srgb, var(--text-dim) 55%, transparent);
   color: var(--text);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-sm);
 }
 .btn.ghost:hover:not(:disabled) {
   background: color-mix(in srgb, var(--text) 16%, var(--surface));
@@ -1142,7 +1155,7 @@ body {
 
 .filterbar input {
   flex: 1;
-  padding: 5px 9px;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg);
@@ -1452,7 +1465,7 @@ button.readdot.busy {
 }
 .settings-search input {
   width: 100%;
-  padding: 7px 11px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -1750,7 +1763,7 @@ button.readdot.busy {
 }
 
 .settings .srv-color-row select {
-  padding: 4px 6px;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg);
@@ -1856,7 +1869,7 @@ button.readdot.busy {
   font: inherit;
   color: var(--accent);
   cursor: pointer;
-  padding: 3px 8px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
 }
 .backlink:hover {
