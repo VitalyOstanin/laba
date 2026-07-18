@@ -39,6 +39,9 @@ export const defaultSettings: Settings = {
 
 export const settings = writable<Settings>(defaultSettings);
 
+// This bundle's version (CARGO_PKG_VERSION); empty until loaded on startup.
+export const appVersion = writable<string>("");
+
 export const timelog = writable<TimelogResult | null>(null);
 
 /**

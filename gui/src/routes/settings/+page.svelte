@@ -4,7 +4,13 @@
   import { goto } from "$app/navigation";
   import { onGlobalEscape } from "$lib/keys";
   import { runUpdateCheck } from "$lib/update-check";
-  import { settings, servers, activeServer, parsePollSecs } from "$lib/store";
+  import {
+    settings,
+    servers,
+    activeServer,
+    parsePollSecs,
+    appVersion,
+  } from "$lib/store";
   import {
     saveSettings,
     listServers,
@@ -1007,4 +1013,8 @@
       {#if addError}<span class="add-error" role="alert">{addError}</span>{/if}
     </div>
   </fieldset>
+
+  {#if $appVersion}
+    <p class="app-version">laba {$appVersion}</p>
+  {/if}
 </section>

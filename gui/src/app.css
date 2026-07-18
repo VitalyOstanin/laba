@@ -2182,3 +2182,11 @@ button.readdot.busy {
   flex: 1;
   font-variant-numeric: tabular-nums;
 }
+
+/* Running version footer at the bottom of the settings page. */
+.app-version {
+  margin: var(--space-3) 0 0;
+  text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}

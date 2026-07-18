@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from "../i18n";
-  import { updateState, updateBannerOpen } from "$lib/store";
+  import { updateState, updateBannerOpen, appVersion } from "$lib/store";
   import { runUpdateCheck } from "$lib/update-check";
 
   // Always-visible header affordance reflecting the single startup update check,
@@ -37,7 +37,9 @@
   <span
     class="update-status current"
     role="status"
-    title={$t("update.upToDate")}
+    title={$appVersion
+      ? `laba ${$appVersion} — ${$t("update.upToDate")}`
+      : $t("update.upToDate")}
   >
     <span class="update-status-icon" aria-hidden="true">✓</span>
     <span>{$t("update.upToDate")}</span>

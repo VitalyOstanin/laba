@@ -206,6 +206,7 @@ pub fn run() {
             commands::create_time_entry,
             commands::pick_candidates,
             commands::set_tray_status,
+            commands::app_version,
             commands::get_changelog,
             commands::gh_dependency,
             notify::notify_items,

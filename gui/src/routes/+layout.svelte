@@ -9,6 +9,7 @@
     quitApp,
     closeWindow,
     setTrayStatus,
+    getAppVersion,
   } from "$lib/api";
   import {
     settings,
@@ -16,6 +17,7 @@
     byServer,
     activeServer,
     servers,
+    appVersion,
   } from "$lib/store";
   import { applyTheme } from "$lib/theme";
   import {
@@ -119,6 +121,11 @@
       language.set(s.language);
     } catch {
       // Keep defaults when settings cannot be loaded.
+    }
+    try {
+      appVersion.set(await getAppVersion());
+    } catch {
+      // Leave the version empty when it cannot be read.
     }
   });
 </script>

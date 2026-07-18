@@ -3,12 +3,13 @@ import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import UpdateIndicator from "./UpdateIndicator.svelte";
-import { updateState, updateBannerOpen } from "../store";
+import { updateState, updateBannerOpen, appVersion } from "../store";
 
 afterEach(() => {
   cleanup();
   updateState.set({ phase: "checking" });
   updateBannerOpen.set(false);
+  appVersion.set("");
 });
 
 describe("UpdateIndicator", () => {
@@ -29,6 +30,23 @@ describe("UpdateIndicator", () => {
     updateState.set({ phase: "current" });
     render(UpdateIndicator);
     expect(screen.getByText("Up to date")).toBeInTheDocument();
+  });
+
+  it("puts the running version in the up-to-date hover when known", () => {
+    updateState.set({ phase: "current" });
+    appVersion.set("0.1.7");
+    render(UpdateIndicator);
+    expect(screen.getByRole("status")).toHaveAttribute(
+      "title",
+      "laba 0.1.7 — Up to date",
+    );
+  });
+
+  it("falls back to the plain up-to-date hover when the version is unknown", () => {
+    updateState.set({ phase: "current" });
+    appVersion.set("");
+    render(UpdateIndicator);
+    expect(screen.getByRole("status")).toHaveAttribute("title", "Up to date");
   });
 
   it("shows the available version and forces the banner open on click", async () => {

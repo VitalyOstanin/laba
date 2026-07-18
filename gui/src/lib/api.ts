@@ -19,6 +19,9 @@ import type {
 } from "./types";
 
 export const listServers = (): Promise<ServerInfo[]> => invoke("list_servers");
+// This bundle's version (CARGO_PKG_VERSION), for display in Settings and the
+// "up to date" indicator's hover.
+export const getAppVersion = (): Promise<string> => invoke("app_version");
 // Cumulative changelog (versions newer than the running one) for the update
 // banner's "what's new".
 export const getChangelog = (): Promise<ReleaseNote[]> =>

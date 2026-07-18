@@ -130,6 +130,9 @@ let settings: Settings = {
 let globalProxy: string | null = null;
 
 // Cumulative changelog fixture so the update banner renders under `npm run dev`.
+// Placeholder version reported in browser dev mode (no real bundle version).
+const DEV_APP_VERSION = "0.0.0-dev";
+
 const CHANGELOG: ReleaseNote[] = [
   {
     version: "0.2.0",
@@ -535,6 +538,8 @@ export async function mockInvoke(
       return servers.some((s) => s.enabled && s.backend === "openproject")
         ? TIMELOG
         : null;
+    case "app_version":
+      return DEV_APP_VERSION;
     case "get_changelog":
       return CHANGELOG;
     case "gh_dependency":

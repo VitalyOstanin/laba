@@ -469,6 +469,13 @@ pub fn set_tray_status(count: u32) -> Result<(), String> {
     Ok(())
 }
 
+/// This bundle's version (`CARGO_PKG_VERSION`), for display in the UI — the
+/// Settings footer and the "up to date" indicator's hover. Static, no async work.
+#[tauri::command]
+pub fn app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
 /// Cumulative changelog for versions newer than the running one, for the update
 /// banner's "what's new". Display only; the updater plugin performs the actual
 /// update. The running version is this bundle's `CARGO_PKG_VERSION`.
