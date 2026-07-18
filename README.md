@@ -131,6 +131,12 @@ File locations follow the XDG base directories and can be overridden:
 | `OPENPROJECT_SECRETS`| Token file; when set, the system keyring is skipped and this file is the only store | `secrets.json` next to `config.json` |
 | `XDG_CONFIG_HOME`    | Config directory (`config.json`, GUI settings) | `~/.config`             |
 
+Logging verbosity is controlled independently:
+
+| Variable   | Purpose                                                          | Default                                  |
+|------------|-----------------------------------------------------------------|------------------------------------------|
+| `RUST_LOG` | Log level (`error`/`warn`/`info`/`debug`/`trace`); records go to stderr | CLI: `warn` (raised by `-v`/`-vv`); GUI: `info` |
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
