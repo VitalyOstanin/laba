@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>laba — OpenProject desktop client &amp; CLI (Tauri + Rust)</title>
+    <meta
+      name="description"
+      content="laba is an open-source desktop tray client and command-line interface for OpenProject, built with Tauri and Rust. Manage work packages, notifications and time tracking, and aggregate GitHub issues from one dashboard."
+    />
+    <meta
+      name="keywords"
+      content="OpenProject desktop client, OpenProject CLI, OpenProject tray app, GitHub issues dashboard, Tauri, Rust, task management, project management"
+    />
+    <link rel="canonical" href="https://vitalyostanin.github.io/laba/" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <meta name="theme-color" content="#3b6ea5" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="laba" />
+    <meta
+      property="og:title"
+      content="laba — OpenProject desktop client & CLI"
+    />
+    <meta
+      property="og:description"
+      content="Open-source desktop tray client and CLI for OpenProject, built with Tauri and Rust. Work packages, notifications, time tracking, and GitHub issues in one dashboard."
+    />
+    <meta property="og:url" content="https://vitalyostanin.github.io/laba/" />
+    <meta
+      property="og:image"
+      content="https://vitalyostanin.github.io/laba/og-image.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="laba — OpenProject desktop client & CLI"
+    />
+    <meta
+      name="twitter:description"
+      content="Open-source desktop tray client and CLI for OpenProject, built with Tauri and Rust."
+    />
+    <meta
+      name="twitter:image"
+      content="https://vitalyostanin.github.io/laba/og-image.png"
+    />
+
+    <!-- Structured data: helps search engines classify the project -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "laba",
+        "description": "Open-source desktop tray client and command-line interface for OpenProject, built with Tauri and Rust. Work packages, notifications, time tracking, and GitHub issues in one dashboard.",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Linux, Windows, macOS",
+        "url": "https://vitalyostanin.github.io/laba/",
+        "codeRepository": "https://github.com/VitalyOstanin/laba",
+        "programmingLanguage": ["Rust", "TypeScript", "Svelte"],
+        "license": "https://opensource.org/licenses/MIT",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Vitaly Ostanin"
+        }
+      }
+    </script>
+
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #ffffff;
+        --fg: #1c2530;
+        --dim: #5b636e;
+        --accent: #3b6ea5;
+        --card: #f4f6f8;
+        --border: #dfe4ea;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f1720;
+          --fg: #e7ecf1;
+          --dim: #9aa4b0;
+          --accent: #5a92cc;
+          --card: #17212c;
+          --border: #26313d;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family:
+          "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+        line-height: 1.55;
+        color: var(--fg);
+        background: var(--bg);
+      }
+      a {
+        color: var(--accent);
+      }
+      .wrap {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+      header {
+        padding: 72px 0 32px;
+        text-align: center;
+      }
+      h1 {
+        font-size: 64px;
+        margin: 0 0 8px;
+        letter-spacing: -1px;
+      }
+      .tagline {
+        font-size: 22px;
+        color: var(--dim);
+        margin: 0 auto 28px;
+        max-width: 620px;
+      }
+      .cta {
+        display: inline-flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .btn {
+        display: inline-block;
+        padding: 12px 22px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        border: 1px solid var(--accent);
+      }
+      .btn.primary {
+        background: var(--accent);
+        color: #fff;
+      }
+      .btn.ghost {
+        color: var(--accent);
+      }
+      .shot {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        margin: 40px auto 0;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+      }
+      section {
+        padding: 48px 0;
+        border-top: 1px solid var(--border);
+      }
+      h2 {
+        font-size: 28px;
+        margin: 0 0 20px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 18px;
+      }
+      .feature {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 18px 20px;
+      }
+      .feature h3 {
+        margin: 0 0 6px;
+        font-size: 18px;
+      }
+      .feature p {
+        margin: 0;
+        color: var(--dim);
+        font-size: 15px;
+      }
+      pre {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        overflow-x: auto;
+        font-size: 14px;
+      }
+      footer {
+        padding: 40px 0 64px;
+        text-align: center;
+        color: var(--dim);
+        font-size: 14px;
+        border-top: 1px solid var(--border);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap">
+        <h1>laba</h1>
+        <p class="tagline">
+          Desktop tray client and command-line interface for
+          <a href="https://www.openproject.org/">OpenProject</a> — built with
+          <a href="https://tauri.app/">Tauri</a> and a shared Rust core.
+        </p>
+        <div class="cta">
+          <a class="btn primary" href="https://github.com/VitalyOstanin/laba"
+            >View on GitHub</a
+          >
+          <a
+            class="btn ghost"
+            href="https://github.com/VitalyOstanin/laba/releases"
+            >Download releases</a
+          >
+        </div>
+        <img
+          class="shot"
+          src="screenshot-dashboard.png"
+          alt="laba dashboard showing OpenProject work packages and notifications"
+          width="900"
+          loading="lazy"
+        />
+      </div>
+    </header>
+
+    <section>
+      <div class="wrap">
+        <h2>What it does</h2>
+        <div class="grid">
+          <div class="feature">
+            <h3>Native desktop tray app</h3>
+            <p>
+              Work packages, notifications and logged time for OpenProject in a
+              small tray application for Linux, Windows and macOS.
+            </p>
+          </div>
+          <div class="feature">
+            <h3>Scriptable CLI</h3>
+            <p>
+              A <code>laba</code> command-line binary with JSON output by
+              default, for automation and scripting against the OpenProject API.
+            </p>
+          </div>
+          <div class="feature">
+            <h3>Multiple backends</h3>
+            <p>
+              Several OpenProject servers with a selectable default, and GitHub
+              issues and notifications aggregated in the same dashboard.
+            </p>
+          </div>
+          <div class="feature">
+            <h3>Open source</h3>
+            <p>
+              MIT-licensed, a single Rust workspace. The desktop app talks to
+              the OpenProject API directly through the core library.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <h2>Get started</h2>
+        <p>Command-line interface:</p>
+        <pre><code>laba server add my-op https://op.example
+laba auth login --server my-op
+laba wp list</code></pre>
+        <p>
+          The desktop app is distributed as release builds (including a Debian
+          package) on the
+          <a href="https://github.com/VitalyOstanin/laba/releases"
+            >releases page</a
+          >. Build instructions are in the
+          <a href="https://github.com/VitalyOstanin/laba#building">README</a>.
+        </p>
+      </div>
+    </section>
+
+    <footer>
+      <div class="wrap">
+        laba — open-source OpenProject desktop client &amp; CLI ·
+        <a href="https://github.com/VitalyOstanin/laba">GitHub</a> · MIT License
+      </div>
+    </footer>
+  </body>
+</html>
