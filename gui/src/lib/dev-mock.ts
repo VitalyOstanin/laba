@@ -150,7 +150,7 @@ const CHANGELOG: ReleaseNote[] = [
 
 // gh dependency fixture so the hint banner renders under `npm run dev`. Flip
 // `status` to "ready" to hide it, or "unauthenticated" for the login variant.
-const GH_DEPENDENCY: GhDependency = { used: true, status: "missing" };
+const GH_DEPENDENCY: GhDependency = { used: true, status: "ready" };
 
 // --- fixtures keyed by server ------------------------------------------------
 
@@ -544,6 +544,10 @@ export async function mockInvoke(
       return CHANGELOG;
     case "gh_dependency":
       return GH_DEPENDENCY;
+    case "gh_probe":
+      return "ready";
+    case "gh_account":
+      return { login: "octo-dev", host: "github.com" };
     case "get_global_proxy":
       return globalProxy;
     case "set_global_proxy":

@@ -37,16 +37,16 @@ Website: <https://vitalyostanin.github.io/laba/>
 
 ![laba demo](gui/media/demo.gif)
 
-The recording walks the first-run setup wizard and then the dashboard it fills
-in. It runs against built-in mock data (anonymized), so no real server or account
-is needed to preview the interface, and is reproducible with
+The recording walks the first-run setup wizard (adding a GitHub server) and then
+the dashboard it fills in — GitHub issues, pull requests and notifications. It
+runs against built-in mock data (fictional), so no real server or account is
+needed to preview the interface, and is reproducible with
 `gui/scripts/record-demo.sh` (drives `vite dev` in headless Chrome under Xvfb and
 captures it with ffmpeg).
 
-|                                                          |                                                        |
-| -------------------------------------------------------- | ------------------------------------------------------ |
-| ![Setup wizard](gui/media/screenshots/wizard-backend.png) | ![Dashboard](gui/media/screenshots/dashboard.png)      |
-| ![Task detail](gui/media/screenshots/task-detail.png)    | ![Settings](gui/media/screenshots/settings.png)        |
+| Setup wizard (GitHub)                                     | Dashboard                                         | Settings                                        |
+| -------------------------------------------------------- | ------------------------------------------------- | ----------------------------------------------- |
+| ![Setup wizard](gui/media/screenshots/wizard-backend.png) | ![Dashboard](gui/media/screenshots/dashboard.png) | ![Settings](gui/media/screenshots/settings.png) |
 
 ## Goals
 

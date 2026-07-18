@@ -60,39 +60,33 @@ fs.writeFileSync(MARKER, JSON.stringify({ startedAt: Date.now() }));
 const wizardNext = () =>
   page.click(".wizard-nav .btn.primary", { timeout: 3000 });
 
-// Wizard step 1: pick the OpenProject backend.
+// Wizard step 1: pick the GitHub backend (the primary backend). Wait for the
+// mock gh probe to report "ready" so the Continue button enables.
 await step("wizard-backend", async () => {
-  await page.click(".wizard-card", { timeout: 3000 });
+  await page.click(".wizard-card:has-text('GitHub')", { timeout: 3000 });
+  await page.waitForSelector(".wizard-nav .btn.primary:not([disabled])", {
+    timeout: 5000,
+  });
   await sleep(1400);
   await shot("wizard-backend");
   await wizardNext();
   await sleep(1000);
 });
 
-// Wizard step 2: connection details (a seed name brings its fixtures along).
+// Wizard step 2: connection. The GitHub host is prefilled; the seed name "oss"
+// brings the GitHub issue/notification fixtures along.
 await step("wizard-connection", async () => {
   const fields = page.locator(".wizard-field input");
-  await fields.nth(0).fill("demo");
-  await fields.nth(1).fill("https://demo.example/op");
-  await fields.nth(2).fill("Demo Tracker");
+  await fields.nth(0).fill("oss");
+  await fields.nth(1).fill("github.com");
+  await fields.nth(2).fill("OSS Issues");
   await sleep(1400);
   await wizardNext();
   await sleep(1000);
 });
 
-// Wizard step 3: API token.
-await step("wizard-token", async () => {
-  await page
-    .locator(".wizard-field input")
-    .first()
-    .fill("demo-token-0123456789");
-  await sleep(1200);
-  await shot("wizard-token");
-  await wizardNext();
-  await sleep(1000);
-});
-
-// Wizard step 4: verify and finish -> the dashboard fills in.
+// Wizard step 3: review and finish (GitHub skips the token step) -> the
+// dashboard fills in.
 await step("wizard-finish", async () => {
   await sleep(1200);
   await page.click(".wizard-nav .btn.primary", { timeout: 3000 });
@@ -107,34 +101,15 @@ await sleep(1200);
 await shot("dashboard");
 await step("show-dashboard", () => sleep(1800));
 
-// Expand the timelog panel.
-await step("timelog-expand", async () => {
-  await page.click(".timelog-bar", { timeout: 3000 });
-  await sleep(1400);
-});
-await step("timelog-collapse", async () => {
-  await page.click(".timelog-bar", { timeout: 3000 });
-  await sleep(1000);
-});
-
-// Glance through the task column.
+// Glance through the task column (GitHub issues and pull requests). The GitHub
+// backend has no in-app task detail (rows open on github.com) and no time
+// tracking, so the demo tours the list instead of opening a detail pane.
 await step("scroll-tasks", async () => {
   await page.mouse.move(640, 380);
   await page.mouse.wheel(0, 320);
-  await sleep(1000);
+  await sleep(1200);
   await page.mouse.wheel(0, -320);
-  await sleep(800);
-});
-
-// Open a task detail if a task row is clickable.
-await step("open-task", async () => {
-  const row = page.locator(".list > li, .task, .card li").first();
-  await row.click({ timeout: 3000 });
-  await sleep(1000);
-  await shot("task-detail");
-  await sleep(1000);
-  await page.goBack({ timeout: 3000 }).catch(() => {});
-  await sleep(1000);
+  await sleep(900);
 });
 
 // Settings screen.
