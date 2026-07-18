@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { get } from "svelte/store";
   import { t } from "../i18n";
-  import { settings } from "$lib/store";
+  import { settings, availableUpdate, updateBannerOpen } from "$lib/store";
   import { saveSettings, getChangelog } from "$lib/api";
   import type { ReleaseNote } from "$lib/types";
   import {
@@ -11,7 +11,6 @@
     shouldShowUpdate,
     canSelfUpdate,
     RELEASES_URL,
-    type AvailableUpdate,
   } from "$lib/updater";
   import { openExternal } from "$lib/external";
 
@@ -19,7 +18,9 @@
   // release page for a manual download instead of installing in place.
   const selfUpdate = canSelfUpdate();
 
-  let available = $state<AvailableUpdate | null>(null);
+  // The available update lives in a shared store so the always-visible header
+  // indicator and this banner reflect the single startup check.
+  const available = $derived($availableUpdate);
   // Cumulative changelog from the running version up to the latest, newest first.
   let changelog = $state<ReleaseNote[]>([]);
   let showNotes = $state(false);
@@ -32,10 +33,15 @@
   let progress = $state<number | null>(null);
   let failed = $state<string | null>(null);
 
+  // The banner shows either on its own (an update is available, not dismissed
+  // this session, not skipped) or when the header indicator forces it open,
+  // which overrides both "remind later" and a persisted "skip".
   const visible = $derived(
-    shouldShowUpdate(available, $settings.dismissed_update_version) &&
-      !installing &&
-      !remindedLater,
+    !installing &&
+      available != null &&
+      ($updateBannerOpen ||
+        (shouldShowUpdate(available, $settings.dismissed_update_version) &&
+          !remindedLater)),
   );
 
   // Split a release body into renderable lines; a leading "- "/"* " marks a
@@ -73,8 +79,9 @@
   );
 
   onMount(async () => {
-    available = await checkForUpdate();
-    if (available) {
+    const found = await checkForUpdate();
+    availableUpdate.set(found);
+    if (found) {
       try {
         changelog = await getChangelog();
       } catch (e) {
@@ -83,19 +90,23 @@
     }
   });
 
-  // Hide until the next launch (this session only, not persisted).
+  // Hide until the next launch (this session only, not persisted). Also clears
+  // the forced-open flag so a header re-open does not keep it visible.
   function remindLater(): void {
     remindedLater = true;
+    updateBannerOpen.set(false);
   }
 
-  // Never show this version again (persisted in settings).
+  // Never show this version again (persisted in settings); also clears the
+  // forced-open flag so dismissing from a header re-open takes effect.
   function skipVersion(): void {
     if (!available) return;
     settings.update((s) => ({
       ...s,
-      dismissed_update_version: available!.version,
+      dismissed_update_version: available.version,
     }));
     void saveSettings(get(settings));
+    updateBannerOpen.set(false);
   }
 
   async function install(): Promise<void> {

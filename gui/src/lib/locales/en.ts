@@ -197,6 +197,7 @@ export const en = {
   "update.remindLater": "Remind me later",
   "update.skip": "Skip this version",
   "update.failed": "Update failed",
+  "update.headerAction": "Update",
   "gh.missing.title": "GitHub servers use the GitHub CLI",
   "gh.missing.body":
     "To show your GitHub issues and pull requests, install the GitHub CLI (gh). Your other servers and the update checker don't need it.",

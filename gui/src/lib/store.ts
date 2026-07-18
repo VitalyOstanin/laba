@@ -6,6 +6,7 @@ import type {
   Settings,
   TimelogResult,
 } from "./types";
+import type { AvailableUpdate } from "./updater";
 
 export const defaultSettings: Settings = {
   theme: "system",
@@ -65,6 +66,20 @@ export const activeServer = writable<string | null>(null);
 export const byServer = writable<ByServer>({});
 export const summaries = writable<Record<string, ServerSummary>>({});
 export const filterText = writable<string>("");
+
+/**
+ * The update discovered by the startup check (null = none available, or not yet
+ * checked). Shared state so the always-visible header indicator and the
+ * dismissible update banner reflect a single check.
+ */
+export const availableUpdate = writable<AvailableUpdate | null>(null);
+
+/**
+ * Session flag set by the header update indicator to force the update banner
+ * open, overriding a prior "remind later"/"skip" for the current run. The banner
+ * clears it when the user dismisses again.
+ */
+export const updateBannerOpen = writable<boolean>(false);
 
 /**
  * Where a server is in its refresh cycle, for the sync indicator: `syncing` while

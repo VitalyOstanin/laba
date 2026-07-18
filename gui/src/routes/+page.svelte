@@ -8,6 +8,7 @@
     loadMoreNotifications,
   } from "$lib/poller";
   import ServerSwitcher from "$lib/components/ServerSwitcher.svelte";
+  import UpdateIndicator from "$lib/components/UpdateIndicator.svelte";
   import TaskColumn from "$lib/components/TaskColumn.svelte";
   import NotificationColumn from "$lib/components/NotificationColumn.svelte";
   import StatusBanner from "$lib/components/StatusBanner.svelte";
@@ -48,6 +49,7 @@
 
 <header class="topbar">
   <ServerSwitcher />
+  <UpdateIndicator />
   <a
     class="settings-link"
     href="/settings"

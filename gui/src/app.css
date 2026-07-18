@@ -148,6 +148,35 @@ body {
   background: var(--surface-2);
 }
 
+/* Always-visible update affordance in the header. `margin-left: auto` groups it
+   with the settings gear at the right edge, so it survives the dismissible
+   update banner. */
+.update-flag {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--accent) 15%, var(--surface));
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.update-flag:hover {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.update-flag-icon {
+  font-weight: 700;
+  line-height: 1;
+}
+
 .server-switch {
   display: flex;
   gap: 8px;

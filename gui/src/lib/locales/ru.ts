@@ -201,6 +201,7 @@ export const ru: Dict = {
   "update.remindLater": "Напомнить позже",
   "update.skip": "Пропустить версию",
   "update.failed": "Не удалось обновить",
+  "update.headerAction": "Обновить",
   "gh.missing.title": "Серверы GitHub используют GitHub CLI",
   "gh.missing.body":
     "Чтобы показывать ваши задачи и pull request с GitHub, установите GitHub CLI (gh). Другим серверам и проверке обновлений он не нужен.",
