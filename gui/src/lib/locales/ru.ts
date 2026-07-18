@@ -118,6 +118,7 @@ export const ru: Dict = {
   "settings.color.progress": "Бирюзовый",
   "settings.color.dimmed": "Приглушённый",
   "server.switcher": "Активный сервер",
+  "server.refresh": "Обновить",
   "server.off": "выкл",
   "server.disabled": "отключён",
   "server.unreadCount.one": "непрочитанное",

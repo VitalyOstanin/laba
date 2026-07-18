@@ -114,6 +114,7 @@ export const en = {
   "settings.color.progress": "Teal",
   "settings.color.dimmed": "Dimmed",
   "server.switcher": "Active server",
+  "server.refresh": "Refresh",
   "server.off": "off",
   "server.disabled": "disabled",
   "server.unreadCount.one": "unread",

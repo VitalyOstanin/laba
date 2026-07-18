@@ -141,23 +141,68 @@ body {
   flex-wrap: wrap;
 }
 
-.server-switch button {
+/* The pill is the container; the select area and the refresh icon are two
+   borderless buttons sharing it, so they read as one control. */
+.server-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-2);
   color: var(--text);
+  overflow: hidden;
+}
+
+.server-item .server-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: none;
+  background: none;
+  color: inherit;
   font: inherit;
   cursor: pointer;
 }
 
-.server-switch button[aria-current="true"] {
+/* Refresh icon: divider on its left, dim glyph that brightens on hover. */
+.server-item .server-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  padding: 0 8px;
+  border: none;
+  border-left: 1px solid var(--border);
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+.server-item .server-refresh:hover:not(:disabled) {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text-dim) 12%, transparent);
+}
+.server-item .server-refresh:disabled {
+  cursor: default;
+}
+.server-item .refresh-glyph {
+  font-size: var(--fs-md);
+}
+
+.server-item.active {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--accent-text);
+}
+.server-item.active .server-refresh {
+  border-left-color: color-mix(in srgb, var(--accent-text) 35%, transparent);
+  color: color-mix(in srgb, var(--accent-text) 80%, transparent);
+}
+.server-item.active .server-refresh:hover:not(:disabled) {
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent-text) 15%, transparent);
 }
 
 .server-switch .dot {
@@ -179,8 +224,10 @@ body {
   background: color-mix(in srgb, var(--text-dim) 22%, transparent);
 }
 
-.server-switch button.off {
+.server-item.off {
   opacity: 0.5;
+}
+.server-item.off .server-pick {
   cursor: default;
 }
 
