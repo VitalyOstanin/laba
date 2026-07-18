@@ -197,7 +197,7 @@
     {#if canToggle}
       <button
         type="button"
-        class="linkbtn"
+        class="btn ghost btn-sm"
         class:busy={busyAll}
         disabled={anyBusy}
         aria-busy={busyAll}

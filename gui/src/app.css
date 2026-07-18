@@ -993,6 +993,27 @@ body {
   opacity: 0.5;
   cursor: default;
 }
+/* Neutral button for routine header actions (e.g. "Mark all read") — a real,
+   raised button (fill lighter than the card, defined border, slight shadow) so
+   it reads as a control, without spending the accent on a low-emphasis action. */
+.btn.ghost {
+  background: color-mix(in srgb, var(--text) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--text-dim) 55%, transparent);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+.btn.ghost:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 16%, var(--surface));
+  border-color: var(--accent);
+}
+.btn.ghost:active:not(:disabled) {
+  box-shadow: none;
+}
+/* Compact button for tight spots like a card header. */
+.btn-sm {
+  padding: 2px 8px;
+  font-size: var(--fs-xs);
+}
 
 .list > li.unread .subject {
   font-weight: 600;
