@@ -68,7 +68,9 @@ jobs:
       - name: Lint shell scripts
         run: shellcheck scripts/*.sh scripts/tests/*.sh
       - name: Run script tests
-        run: scripts/tests/build-updater-json.test.sh
+        run: |
+          scripts/tests/build-updater-json.test.sh
+          scripts/tests/changelog-section.test.sh
 
   gui:
     runs-on: ubuntu-24.04

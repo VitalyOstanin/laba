@@ -58,7 +58,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${{ needs.gate.outputs.tag }}"
-          gh release create "$tag" --verify-tag --title "$tag" --notes "See CHANGELOG.md" || true
+          version="${{ needs.gate.outputs.version }}"
+          # Release notes are this version's CHANGELOG section, so the release
+          # page shows the changes directly instead of a "See CHANGELOG.md" link.
+          chmod +x scripts/changelog-section.sh
+          scripts/changelog-section.sh "$version" > release-notes.md
+          gh release create "$tag" --verify-tag --title "$tag" --notes-file release-notes.md || true
           id="$(gh release view "$tag" --json databaseId -q .databaseId)"
           echo "release_id=$id" >> "$GITHUB_OUTPUT"
 
@@ -89,6 +94,31 @@ jobs:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
       - run: cargo build --release --locked --target ${{ matrix.target }} --bin laba
+      - name: Smoke-test the built binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin="target/${{ matrix.target }}/release/laba"
+          [[ "${{ matrix.target }}" == *windows* ]] && bin="${bin}.exe"
+          # Only run a natively-executable artifact: skip when the binary's arch
+          # differs from the runner's (e.g. the x86_64 macOS build on an arm64
+          # runner), which would fail to exec rather than signal a real problem.
+          case "${{ matrix.target }}" in
+            x86_64-*)  barch=x86_64 ;;
+            aarch64-*) barch=arm64 ;;
+            *)         barch=unknown ;;
+          esac
+          case "$(uname -m)" in
+            x86_64|amd64)   harch=x86_64 ;;
+            arm64|aarch64)  harch=arm64 ;;
+            *)              harch="$(uname -m)" ;;
+          esac
+          if [[ "$barch" == "$harch" ]]; then
+            "$bin" --version
+            "$bin" --help >/dev/null
+          else
+            echo "skipping smoke test: $barch binary on $harch runner"
+          fi
       - name: Package
         shell: bash
         run: |
