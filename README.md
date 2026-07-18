@@ -110,6 +110,26 @@ scripts/tauri-container.sh 'cd gui && npm ci && npm run tauri dev'
 
 Run `cargo run -p laba-cli -- --help` for the full command list.
 
+`scripts/gui-relaunch.sh` launches the GUI as a singleton (the newest launch
+replaces any running instance) and is meant to be bound to a hotkey (Ctrl+Alt+P
+in the author's setup) so pressing it after a rebuild runs the fresh binary. It
+picks the binary as follows:
+
+- the installed deb build (`/usr/bin/laba-gui`) runs only when it exists **and**
+  the local `laba.dev` marker file (in the repo root) is present — the normal,
+  stable everyday build;
+- otherwise the freshly built debug binary (`target/debug/laba-gui`) runs, i.e.
+  when the deb is not installed, or while developing. **Delete `laba.dev` to
+  develop against the debug build; restore it (`touch laba.dev`) for the deb.**
+
+`LABA_GUI_BIN` overrides the choice with an explicit path; `LABA_DEV_MARKER`
+overrides the marker file location. `laba.dev` is gitignored (a local toggle).
+
+The GUI checks GitHub for a newer release once on launch and shows the result in
+the header (checking / update available / up to date / check failed). Turn this
+off in Settings → Updates; when off, no network call is made and the indicator
+is hidden.
+
 ## Environment variables
 
 CLI request options can be supplied via the environment (equivalent to the
@@ -130,6 +150,13 @@ File locations follow the XDG base directories and can be overridden:
 | `OPENPROJECT_STATE`  | State file (last-seen history)         | `$XDG_STATE_HOME/laba`    |
 | `OPENPROJECT_SECRETS`| Token file; when set, the system keyring is skipped and this file is the only store | `secrets.json` next to `config.json` |
 | `XDG_CONFIG_HOME`    | Config directory (`config.json`, GUI settings) | `~/.config`             |
+
+The GUI relaunch helper (`scripts/gui-relaunch.sh`) reads two more:
+
+| Variable          | Overrides                                        | Default                  |
+|-------------------|--------------------------------------------------|--------------------------|
+| `LABA_GUI_BIN`    | Binary to launch (explicit path wins over all)   | chosen by the `laba.dev` marker |
+| `LABA_DEV_MARKER` | Dev marker file location (present → deb build)    | `<repo>/laba.dev`        |
 
 Logging verbosity is controlled independently:
 
