@@ -32,7 +32,11 @@ fn log_level_from_env() -> log::LevelFilter {
 /// controlled by `LABA_DEVTOOLS`, opt-in (any non-empty value other than "0").
 #[cfg(debug_assertions)]
 fn devtools_requested() -> bool {
-    match std::env::var("LABA_DEVTOOLS").ok().as_deref().map(str::trim) {
+    match std::env::var("LABA_DEVTOOLS")
+        .ok()
+        .as_deref()
+        .map(str::trim)
+    {
         Some("") | None => false,
         Some(v) => v != "0",
     }
