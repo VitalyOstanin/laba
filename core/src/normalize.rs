@@ -130,6 +130,8 @@ pub fn work_package_task(v: &Value) -> entities::Task {
         status: opt_str(v, "status"),
         status_category: entities::StatusCategory::Unknown,
         project: opt_str(v, "project"),
+        // OpenProject has no repository ownership; the scope tabs are GitHub-only.
+        mine: false,
         assignee: opt_str(v, "assignee"),
         author: opt_str(v, "author"),
         created_at: opt_str(v, "createdAt"),

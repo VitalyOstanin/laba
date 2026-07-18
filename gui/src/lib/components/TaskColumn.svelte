@@ -54,15 +54,35 @@
     if (activeTab >= tabs.length) activeTab = 0;
   });
 
+  // Scope tabs: "My repos" (tasks in repositories the user owns) vs "Others"
+  // (everything else — repos the user only follows / commented on). The two are
+  // disjoint. GitHub-only: repository ownership is meaningless for OpenProject,
+  // which already lists just the user's own work packages. Default to "mine".
+  const showScope = $derived(server?.backend === "github");
+  let scope = $state<"mine" | "others">("mine");
+  const mineCount = $derived(tasks.filter((t) => t.mine).length);
+  const othersCount = $derived(tasks.filter((t) => !t.mine).length);
+  const scopedTasks = $derived.by(() => {
+    if (!showScope) return tasks;
+    return scope === "mine"
+      ? tasks.filter((t) => t.mine)
+      : tasks.filter((t) => !t.mine);
+  });
+  function selectScope(s: "mine" | "others"): void {
+    scope = s;
+    activeTab = 0;
+    limit = PAGE;
+  }
+
   function matchesTab(task: Task, tab: Tab): boolean {
     return tab.statuses == null || tab.statuses.includes(statusOf(task));
   }
-  // Counts are over all loaded tasks (not the text filter), so a tab always
-  // shows how many tasks are in that status overall.
+  // Counts are over the scoped tasks (not the text filter), so a tab always
+  // shows how many tasks are in that status within the current scope.
   function tabCount(tab: Tab): number {
     return tab.statuses == null
-      ? tasks.length
-      : tasks.filter((task) => matchesTab(task, tab)).length;
+      ? scopedTasks.length
+      : scopedTasks.filter((task) => matchesTab(task, tab)).length;
   }
   function selectTab(i: number): void {
     activeTab = i;
@@ -135,7 +155,9 @@
   const shown = $derived(
     sortTasks(
       filterTasks(
-        tasks.filter((task) => matchesTab(task, tabs[activeTab] ?? tabs[0])),
+        scopedTasks.filter((task) =>
+          matchesTab(task, tabs[activeTab] ?? tabs[0]),
+        ),
         $filterText,
       ),
     ),
@@ -219,6 +241,28 @@
 
 <section class="card" aria-label={$t("col.tasks")}>
   <header><h2>{$t("col.tasks")}</h2></header>
+  {#if showScope}
+    <nav class="tabs scope-tabs" aria-label={$t("scope.aria")}>
+      <button
+        type="button"
+        class="tab"
+        aria-current={scope === "mine"}
+        onclick={() => selectScope("mine")}
+      >
+        {$t("scope.mine")}
+        <span class="tab-count">{mineCount}</span>
+      </button>
+      <button
+        type="button"
+        class="tab"
+        aria-current={scope === "others"}
+        onclick={() => selectScope("others")}
+      >
+        {$t("scope.others")}
+        <span class="tab-count">{othersCount}</span>
+      </button>
+    </nav>
+  {/if}
   {#if tabs.length > 1}
     <nav class="tabs" aria-label={$t("tabs.aria")}>
       {#each tabs as tab, i (tab.label + i)}

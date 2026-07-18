@@ -985,6 +985,12 @@ body {
   gap: 4px;
   padding: 8px 12px 0;
 }
+/* Scope row (My repos / All) sits above the status row; a hairline divider
+   groups it apart so the two tab rows don't read as one. */
+.scope-tabs {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
 .tab {
   display: inline-flex;
   align-items: center;

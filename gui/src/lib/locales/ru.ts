@@ -4,6 +4,9 @@ export const ru: Dict = {
   "col.tasks": "Мои задачи",
   "tabs.all": "Все",
   "tabs.aria": "Фильтр задач по статусу",
+  "scope.aria": "Охват задач",
+  "scope.mine": "Мои репозитории",
+  "scope.others": "Другие",
   "col.notifications": "Уведомления",
   "filter.placeholder": "Фильтр задач — id, тема, статус; -слово исключает…",
   "filter.notifications":

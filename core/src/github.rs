@@ -168,6 +168,8 @@ pub fn task_from_gh(v: &Value, kind: TaskKind, reason: entities::InboxReason) ->
         status: state.map(str::to_owned),
         status_category: status_category_from_state(state),
         project: (!repo.is_empty()).then(|| repo.to_owned()),
+        // Set by `list_my_tasks` once the login is known (repo owner == login).
+        mine: false,
         assignee: assignees_string(v),
         author: None,
         created_at: v
@@ -489,6 +491,12 @@ impl<R: GhRunner> GithubBackend<R> {
                 TaskKind::PullRequest,
                 reason,
             )?);
+        }
+        // Mark tasks in repositories the user owns (repo owner == login), so the
+        // client can offer a "My repos" vs "All" scope. Derived from the project
+        // "owner/repo", not from `reason` (which encodes display priority).
+        for t in &mut out {
+            t.mine = t.project.as_deref().and_then(|p| p.split('/').next()) == Some(login.as_str());
         }
         Ok(dedup_by_id(out))
     }
@@ -898,6 +906,34 @@ mod tests {
         assert_eq!(out[1].id.display, "acme/app#2");
         // The PR surfaces first from the review-requested search, so its reason wins.
         assert_eq!(out[1].reason, entities::InboxReason::ReviewRequested);
+        // "acme/app" is not owned by the login ("testuser"), so not "mine".
+        assert!(!out[0].mine);
+        assert!(!out[1].mine);
+    }
+
+    #[test]
+    fn list_my_tasks_marks_tasks_in_own_repos() {
+        // One issue in the login's own repo, one in someone else's.
+        let fake = FakeGh::new(
+            json!([
+                {"number": 1, "title": "mine", "state": "open",
+                 "repository": {"nameWithOwner": "testuser/app"}, "assignees": []},
+                {"number": 2, "title": "theirs", "state": "open",
+                 "repository": {"nameWithOwner": "acme/app"}, "assignees": []}
+            ])
+            .to_string()
+            .into_bytes(),
+            b"[]".to_vec(),
+            b"[]".to_vec(),
+        );
+        let out = GithubBackend::new(fake).list_my_tasks().unwrap();
+        let mine = out
+            .iter()
+            .find(|t| t.id.display == "testuser/app#1")
+            .unwrap();
+        let theirs = out.iter().find(|t| t.id.display == "acme/app#2").unwrap();
+        assert!(mine.mine, "own-repo task must be marked mine");
+        assert!(!theirs.mine, "other-repo task must not be marked mine");
     }
 
     /// Build a minimal typed task with the given display id and reason.
@@ -914,6 +950,7 @@ mod tests {
             status: None,
             status_category: entities::StatusCategory::Unknown,
             project: None,
+            mine: false,
             assignee: None,
             author: None,
             created_at: None,

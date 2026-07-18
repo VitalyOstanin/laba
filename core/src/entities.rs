@@ -106,6 +106,11 @@ pub struct Task {
     pub status_category: StatusCategory,
     /// Repository / project the task belongs to.
     pub project: Option<String>,
+    /// True when the task lives in a repository the user owns (GitHub: the
+    /// repository owner equals the authenticated login). Drives the "My repos"
+    /// vs "All" scope tabs. `#[serde(default)]` keeps older payloads loadable.
+    #[serde(default)]
+    pub mine: bool,
     pub assignee: Option<String>,
     pub author: Option<String>,
     pub created_at: Option<String>,
@@ -246,6 +251,7 @@ mod tests {
             status: Some("open".into()),
             status_category: StatusCategory::Open,
             project: Some("acme/widgets".into()),
+            mine: true,
             assignee: Some("dana".into()),
             author: Some("robin".into()),
             created_at: Some("2026-07-01T09:00:00Z".into()),
@@ -270,6 +276,7 @@ mod tests {
                 "status": "open",
                 "statusCategory": "open",
                 "project": "acme/widgets",
+                "mine": true,
                 "assignee": "dana",
                 "author": "robin",
                 "createdAt": "2026-07-01T09:00:00Z",
@@ -343,6 +350,7 @@ mod tests {
                 status: Some("New".into()),
                 status_category: StatusCategory::Open,
                 project: Some("Ops".into()),
+                mine: false,
                 assignee: None,
                 author: None,
                 created_at: None,

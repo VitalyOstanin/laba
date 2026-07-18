@@ -2,6 +2,9 @@ export const en = {
   "col.tasks": "My tasks",
   "tabs.all": "All",
   "tabs.aria": "Filter tasks by status",
+  "scope.aria": "Task scope",
+  "scope.mine": "My repos",
+  "scope.others": "Others",
   "col.notifications": "Notifications",
   "filter.placeholder": "Filter tasks — id, subject, status; -word excludes…",
   "filter.notifications":

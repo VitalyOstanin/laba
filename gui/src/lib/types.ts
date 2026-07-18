@@ -114,6 +114,9 @@ export interface Task {
   status: string | null;
   statusCategory: StatusCategory;
   project: string | null;
+  // true when the task is in a repository the user owns (GitHub: repo owner ==
+  // login); drives the "My repos" vs "All" scope tabs
+  mine: boolean;
   assignee: string | null;
   author: string | null;
   createdAt: string | null;

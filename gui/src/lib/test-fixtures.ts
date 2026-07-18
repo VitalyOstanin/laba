@@ -12,6 +12,7 @@ export function makeTask(over: Partial<Task> = {}): Task {
     status: null,
     statusCategory: "unknown",
     project: null,
+    mine: false,
     assignee: null,
     author: null,
     createdAt: null,

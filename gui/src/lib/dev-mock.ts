@@ -172,6 +172,7 @@ function wp(
     status,
     statusCategory: "unknown",
     project: "Demo Tracker",
+    mine: false,
     assignee,
     author: null,
     createdAt: null,
@@ -183,22 +184,25 @@ function wp(
   };
 }
 
-// A typed GitHub-style issue task.
+// A typed GitHub-style issue task. `mine` marks a repo the user owns, so the
+// dev server can show the "My repos" vs "All" scope split.
 function ghIssue(
   repo: string,
   n: number,
   title: string,
   updatedAt: string,
+  mine = false,
 ): Task {
   return {
     id: { display: `${repo}#${n}`, raw: String(n) },
     kind: "issue",
-    reason: "involved",
+    reason: mine ? "own" : "involved",
     title,
     url: `https://github.com/${repo}/issues/${n}`,
     status: "open",
     statusCategory: "open",
     project: repo,
+    mine,
     assignee: null,
     author: null,
     createdAt: null,
@@ -246,6 +250,21 @@ const TASKS: Record<string, Task[]> = {
     ),
   ],
   oss: [
+    // Two in the user's own repo (mine), two in a repo they only follow.
+    ghIssue(
+      "octo-dev/laba",
+      214,
+      "Add a quiet-hours setting",
+      "2026-07-11T09:00:00Z",
+      true,
+    ),
+    ghIssue(
+      "octo-dev/laba",
+      208,
+      "Flaky test on CI runner",
+      "2026-07-09T16:20:00Z",
+      true,
+    ),
     ghIssue(
       "acme/tool",
       5521,
