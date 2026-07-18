@@ -5,6 +5,8 @@ The format follows Keep a Changelog and Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-07-18
+
 ### Added
 - Always-visible update indicator in the header, reflecting the launch update
   check in every state: checking, an available version (click to open the update
