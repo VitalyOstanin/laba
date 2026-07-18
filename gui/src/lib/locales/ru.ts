@@ -49,6 +49,10 @@ export const ru: Dict = {
   "settings.layout.backendsHint": "Показывать подсказку о бэкендах",
   "settings.layout.hint":
     "Скройте панели, которые не нужны, чтобы разгрузить вид.",
+  "settings.updates": "Обновления",
+  "settings.updates.check": "Проверять обновления при запуске",
+  "settings.updates.hint":
+    "Индикатор в заголовке показывает результат проверки. Если выключить, приложение не обращается к серверу релизов и индикатор не отображается.",
   "settings.scale": "Масштаб интерфейса",
   "settings.scale.decrease": "Уменьшить масштаб",
   "settings.scale.increase": "Увеличить масштаб",
@@ -202,6 +206,9 @@ export const ru: Dict = {
   "update.skip": "Пропустить версию",
   "update.failed": "Не удалось обновить",
   "update.headerAction": "Обновить",
+  "update.checking": "Проверка обновлений…",
+  "update.upToDate": "Установлена последняя версия",
+  "update.checkFailed": "Не удалось проверить обновления",
   "gh.missing.title": "Серверы GitHub используют GitHub CLI",
   "gh.missing.body":
     "Чтобы показывать ваши задачи и pull request с GitHub, установите GitHub CLI (gh). Другим серверам и проверке обновлений он не нужен.",

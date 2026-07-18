@@ -5,6 +5,14 @@ The format follows Keep a Changelog and Semantic Versioning.
 
 ## [Unreleased]
 
+### Added
+- Always-visible update indicator in the header, reflecting the launch update
+  check in every state: checking, an available version (click to open the update
+  banner), up to date, or check failed (click to retry). It stays visible after
+  the update banner is dismissed, so the update action is never lost.
+- Setting to turn off checking for updates on launch (on by default). When off,
+  the app does not contact the release server and the header indicator is hidden.
+
 ## [0.1.6] - 2026-07-18
 
 ### Added

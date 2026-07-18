@@ -1,17 +1,28 @@
 <script lang="ts">
   import { t } from "../i18n";
-  import { availableUpdate, updateBannerOpen } from "$lib/store";
+  import { updateState, updateBannerOpen } from "$lib/store";
+  import { runUpdateCheck } from "$lib/update-check";
 
-  // Always-visible header affordance: shown whenever the startup check found an
-  // update, independent of the update banner's "remind later"/"skip" state, so
-  // the update action is never lost once the banner is dismissed. Clicking
-  // forces the full banner open (changelog + install/skip/later).
+  // Always-visible header affordance reflecting the single startup update check,
+  // in every phase (unlike the banner, which only surfaces an available update).
+  // `available` opens the full banner; `failed` retries the check; `checking`
+  // and `current` are informational; `disabled` renders nothing.
+  const state = $derived($updateState);
+
   function openBanner(): void {
     updateBannerOpen.set(true);
   }
+  function retry(): void {
+    void runUpdateCheck();
+  }
 </script>
 
-{#if $availableUpdate}
+{#if state.phase === "checking"}
+  <span class="update-status checking" role="status" aria-live="polite">
+    <span class="spinner" aria-hidden="true"></span>
+    <span class="update-status-label">{$t("update.checking")}</span>
+  </span>
+{:else if state.phase === "available"}
   <button
     type="button"
     class="update-flag"
@@ -21,7 +32,27 @@
   >
     <span class="update-flag-icon" aria-hidden="true">↓</span>
     <span class="update-flag-label"
-      >{$t("update.headerAction")} {$availableUpdate.version}</span
+      >{$t("update.headerAction")} {state.update.version}</span
     >
+  </button>
+{:else if state.phase === "current"}
+  <span
+    class="update-status current"
+    role="status"
+    title={$t("update.upToDate")}
+  >
+    <span class="update-status-icon" aria-hidden="true">✓</span>
+    <span class="update-status-label">{$t("update.upToDate")}</span>
+  </span>
+{:else if state.phase === "failed"}
+  <button
+    type="button"
+    class="update-status failed"
+    onclick={retry}
+    title={$t("update.checkFailed")}
+    aria-label={$t("update.checkFailed")}
+  >
+    <span class="update-status-icon" aria-hidden="true">!</span>
+    <span class="update-status-label">{$t("update.checkFailed")}</span>
   </button>
 {/if}

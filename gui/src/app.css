@@ -177,6 +177,47 @@ body {
   line-height: 1;
 }
 
+/* Non-actionable / secondary update phases (checking, up-to-date, failed) share
+   the header slot with `.update-flag` but read quieter: no accent fill. Like the
+   flag, `margin-left: auto` pins them to the right next to the settings gear. */
+.update-status {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-dim);
+  background: none;
+  border: none;
+}
+
+.update-status.current {
+  color: var(--ok);
+}
+
+/* Failed is an actionable button (retry): give it a subtle warn-tinted pill and
+   a pointer so it reads as clickable. */
+.update-status.failed {
+  color: var(--warn);
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--border));
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--warn) 10%, var(--surface));
+  cursor: pointer;
+}
+
+.update-status.failed:hover {
+  background: color-mix(in srgb, var(--warn) 20%, var(--surface));
+}
+
+.update-status-icon {
+  font-weight: 700;
+  line-height: 1;
+}
+
 .server-switch {
   display: flex;
   gap: 8px;

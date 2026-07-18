@@ -46,6 +46,10 @@ export const en = {
   "settings.layout.backendsHint": "Show the backends hint",
   "settings.layout.hint":
     "Hide the dashboard panels you do not need to declutter the view.",
+  "settings.updates": "Updates",
+  "settings.updates.check": "Check for updates on launch",
+  "settings.updates.hint":
+    "The header indicator reflects the check. When off, the app does not contact the release server and the indicator is hidden.",
   "settings.scale": "Interface scale",
   "settings.scale.decrease": "Decrease scale",
   "settings.scale.increase": "Increase scale",
@@ -198,6 +202,9 @@ export const en = {
   "update.skip": "Skip this version",
   "update.failed": "Update failed",
   "update.headerAction": "Update",
+  "update.checking": "Checking for updates…",
+  "update.upToDate": "Up to date",
+  "update.checkFailed": "Update check failed",
   "gh.missing.title": "GitHub servers use the GitHub CLI",
   "gh.missing.body":
     "To show your GitHub issues and pull requests, install the GitHub CLI (gh). Your other servers and the update checker don't need it.",

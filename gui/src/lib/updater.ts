@@ -19,6 +19,16 @@ export interface AvailableUpdate {
   notes: string | null;
 }
 
+/**
+ * Outcome of an update check, kept distinct so the header indicator can tell
+ * "you're on the latest" from "the check failed" — both of which the banner
+ * treats the same (nothing to install). `available` carries the found update.
+ */
+export type UpdateCheck =
+  | { status: "available"; update: AvailableUpdate }
+  | { status: "current" }
+  | { status: "failed" };
+
 /** The latest-release page, opened on platforms that cannot self-update. */
 export const RELEASES_URL =
   "https://github.com/VitalyOstanin/laba/releases/latest";
@@ -54,27 +64,35 @@ export function shouldShowUpdate(
 }
 
 /**
- * Check the configured endpoint for a newer release. Returns `null` when the
- * running version is current or the check fails (an update banner should never
- * surface an error). In the browser dev environment returns a fixture.
+ * Check the configured endpoint for a newer release. Distinguishes three
+ * outcomes: an update is `available`, the running version is `current`, or the
+ * check `failed` (network/endpoint error). The banner surfaces only
+ * `available`; the header indicator reflects all three. In the browser dev
+ * environment returns a fixture.
  */
-export async function checkForUpdate(): Promise<AvailableUpdate | null> {
+export async function checkForUpdate(): Promise<UpdateCheck> {
   if (!hasTauri) {
     // Dev fixture so the banner renders under `npm run dev`.
     return {
-      version: "0.2.0",
-      notes: "Example release notes for the dev mock.",
+      status: "available",
+      update: {
+        version: "0.2.0",
+        notes: "Example release notes for the dev mock.",
+      },
     };
   }
   try {
     const { check } = await import("@tauri-apps/plugin-updater");
     const update = await check();
     pending = update;
-    if (!update) return null;
-    return { version: update.version, notes: update.body ?? null };
+    if (!update) return { status: "current" };
+    return {
+      status: "available",
+      update: { version: update.version, notes: update.body ?? null },
+    };
   } catch (e) {
     console.error("update check failed:", e);
-    return null;
+    return { status: "failed" };
   }
 }
 

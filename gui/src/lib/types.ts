@@ -201,6 +201,8 @@ export interface Settings {
   show_tasks: boolean;
   // dashboard layout: show the time-logged indicator bar
   show_timelog: boolean;
+  // check for a newer release on launch (drives the header update indicator)
+  check_updates: boolean;
 }
 
 // One release in the update changelog, newest first (see core `update`).

@@ -6,12 +6,12 @@
   import { saveSettings, getChangelog } from "$lib/api";
   import type { ReleaseNote } from "$lib/types";
   import {
-    checkForUpdate,
     installUpdate,
     shouldShowUpdate,
     canSelfUpdate,
     RELEASES_URL,
   } from "$lib/updater";
+  import { runUpdateCheck } from "$lib/update-check";
   import { openExternal } from "$lib/external";
 
   // On platforms without self-update (macOS), the primary action opens the
@@ -79,9 +79,8 @@
   );
 
   onMount(async () => {
-    const found = await checkForUpdate();
-    availableUpdate.set(found);
-    if (found) {
+    await runUpdateCheck();
+    if (get(availableUpdate)) {
       try {
         changelog = await getChangelog();
       } catch (e) {

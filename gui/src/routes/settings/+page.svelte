@@ -135,6 +135,10 @@
     settings.update((s) => ({ ...s, show_timelog: v }));
     void persist();
   }
+  function setCheckUpdates(v: boolean): void {
+    settings.update((s) => ({ ...s, check_updates: v }));
+    void persist();
+  }
   // The backends hint banner is dismissable from its own "×"; this toggle brings
   // it back (checked = shown), since there is no other way to un-dismiss it.
   function setShowBackendsHint(v: boolean): void {
@@ -552,6 +556,19 @@
       {$t("settings.layout.backendsHint")}
     </label>
     <p class="hint">{$t("settings.layout.hint")}</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>{$t("settings.updates")}</legend>
+    <label class="toggle">
+      <input
+        type="checkbox"
+        checked={$settings.check_updates}
+        onchange={(e) => setCheckUpdates(e.currentTarget.checked)}
+      />
+      {$t("settings.updates.check")}
+    </label>
+    <p class="hint">{$t("settings.updates.hint")}</p>
   </fieldset>
 
   <fieldset>

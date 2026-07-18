@@ -8,6 +8,19 @@ import type {
 } from "./types";
 import type { AvailableUpdate } from "./updater";
 
+/**
+ * Where the startup update check is, for the always-visible header indicator:
+ * `checking` while the check is in flight, `available` with the found update,
+ * `current` when the running version is the latest, `failed` when the check
+ * could not complete, `disabled` when the user turned update checking off.
+ */
+export type UpdateState =
+  | { phase: "checking" }
+  | { phase: "available"; update: AvailableUpdate }
+  | { phase: "current" }
+  | { phase: "failed" }
+  | { phase: "disabled" };
+
 export const defaultSettings: Settings = {
   theme: "system",
   language: "system",
@@ -21,6 +34,7 @@ export const defaultSettings: Settings = {
   show_notifications: true,
   show_tasks: true,
   show_timelog: true,
+  check_updates: true,
 };
 
 export const settings = writable<Settings>(defaultSettings);
@@ -68,11 +82,19 @@ export const summaries = writable<Record<string, ServerSummary>>({});
 export const filterText = writable<string>("");
 
 /**
- * The update discovered by the startup check (null = none available, or not yet
- * checked). Shared state so the always-visible header indicator and the
- * dismissible update banner reflect a single check.
+ * Where the startup update check is. Shared state so the always-visible header
+ * indicator (all phases) and the dismissible update banner (only `available`)
+ * reflect a single check. Starts in `checking`; `runUpdateCheck` drives it.
  */
-export const availableUpdate = writable<AvailableUpdate | null>(null);
+export const updateState = writable<UpdateState>({ phase: "checking" });
+
+/**
+ * The update to present, or null in every non-`available` phase. Derived from
+ * {@link updateState} so the banner can keep consuming a plain nullable value.
+ */
+export const availableUpdate = derived(updateState, ($s) =>
+  $s.phase === "available" ? $s.update : null,
+);
 
 /**
  * Session flag set by the header update indicator to force the update banner

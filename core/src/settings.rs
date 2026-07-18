@@ -149,6 +149,11 @@ pub struct Settings {
     /// default) shows it (subject to a timelog-capable server being configured).
     #[serde(default = "default_true")]
     pub show_timelog: bool,
+    /// Check for a newer release on launch, driving the header update indicator.
+    /// `true` (the default) checks; `false` skips the network call and hides the
+    /// indicator.
+    #[serde(default = "default_true")]
+    pub check_updates: bool,
 }
 
 fn default_true() -> bool {
@@ -212,6 +217,7 @@ impl Default for Settings {
             show_notifications: true,
             show_tasks: true,
             show_timelog: true,
+            check_updates: true,
         }
     }
 }
@@ -301,6 +307,7 @@ mod tests {
             show_notifications: false,
             show_tasks: false,
             show_timelog: false,
+            check_updates: false,
         };
         s.save(&path).unwrap();
         assert_eq!(Settings::load(&path).unwrap(), s);
@@ -409,6 +416,17 @@ mod tests {
         let s: Settings = serde_json::from_str(r#"{"show_tasks": false}"#).unwrap();
         assert!(!s.show_tasks);
         assert!(s.show_notifications && s.show_timelog);
+    }
+
+    #[test]
+    fn check_updates_defaults_true() {
+        // Absent in older settings -> true (checking is on by default).
+        let s: Settings = serde_json::from_str("{}").unwrap();
+        assert!(s.check_updates);
+        assert!(Settings::default().check_updates);
+        // Explicit false is honored.
+        let s: Settings = serde_json::from_str(r#"{"check_updates": false}"#).unwrap();
+        assert!(!s.check_updates);
     }
 
     #[test]

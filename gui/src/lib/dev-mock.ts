@@ -124,6 +124,7 @@ let settings: Settings = {
   show_notifications: true,
   show_tasks: true,
   show_timelog: true,
+  check_updates: true,
 };
 
 let globalProxy: string | null = null;
