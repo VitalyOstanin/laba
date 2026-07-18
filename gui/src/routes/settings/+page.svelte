@@ -1,5 +1,8 @@
 <script lang="ts">
   import { get } from "svelte/store";
+  import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
+  import { onGlobalEscape } from "$lib/keys";
   import { settings, servers, activeServer, parsePollSecs } from "$lib/store";
   import {
     saveSettings,
@@ -66,6 +69,11 @@
     }
     noMatches = q.trim() !== "" && !anyShown;
   });
+
+  // ESC (outside a text field) returns to the dashboard, mirroring the "← Dashboard"
+  // link. Text inputs handle ESC themselves (fieldKeys reverts and stops it), so
+  // this never fires while editing a field.
+  onMount(() => onGlobalEscape(() => void goto("/")));
 
   // How long the "Saved" indicator stays up after a successful save.
   const SAVED_FLASH_MS = 1500;
