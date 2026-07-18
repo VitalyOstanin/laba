@@ -11,6 +11,9 @@ export default defineConfig({
     // The SvelteKit Vite plugin (which provides `$app/*`) is not loaded here,
     // so stub the `$app` modules that components import.
     alias: {
+      // SvelteKit provides `$lib` in the real build; the plain Svelte plugin
+      // used here does not, so map it to src/lib for component tests.
+      $lib: fileURLToPath(new URL("./src/lib", import.meta.url)),
       "$app/navigation": fileURLToPath(
         new URL("./src/test-stubs/app-navigation.ts", import.meta.url),
       ),

@@ -101,8 +101,15 @@
       if (backend === "openproject") {
         await loginServer(name.trim(), token.trim(), false);
       }
-      onDone();
+      // The profile is created; close the wizard first so a dashboard-refresh
+      // failure cannot trap it open, then refresh. A refresh error is not a
+      // setup error (the server exists) — swallow it; the next poll retries.
       onClose();
+      try {
+        onDone();
+      } catch {
+        // ignore: the dashboard refreshes on the next poll tick
+      }
     } catch (e) {
       error = friendlyError(String(e), get(t)).text;
     } finally {
