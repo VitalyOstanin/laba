@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { onGlobalEscape } from "$lib/keys";
+  import { runUpdateCheck } from "$lib/update-check";
   import { settings, servers, activeServer, parsePollSecs } from "$lib/store";
   import {
     saveSettings,
@@ -146,6 +147,9 @@
   function setCheckUpdates(v: boolean): void {
     settings.update((s) => ({ ...s, check_updates: v }));
     void persist();
+    // Reflect the toggle in the header immediately: disabling hides the indicator
+    // (goes to `disabled`), enabling re-runs the check — no restart needed (#91).
+    void runUpdateCheck();
   }
   // The backends hint banner is dismissable from its own "×"; this toggle brings
   // it back (checked = shown), since there is no other way to un-dismiss it.
