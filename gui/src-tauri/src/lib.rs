@@ -28,6 +28,16 @@ fn log_level_from_env() -> log::LevelFilter {
     }
 }
 
+/// Whether the launch should open the webview devtools panel. Debug-only:
+/// controlled by `LABA_DEVTOOLS`, opt-in (any non-empty value other than "0").
+#[cfg(debug_assertions)]
+fn devtools_requested() -> bool {
+    match std::env::var("LABA_DEVTOOLS").ok().as_deref().map(str::trim) {
+        Some("") | None => false,
+        Some(v) => v != "0",
+    }
+}
+
 /// Reveal and focus the main window (from the tray menu or a tray click).
 fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
     if let Some(w) = app.get_webview_window("main") {
@@ -116,11 +126,14 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
-            // Open the webview devtools automatically in debug builds; a
-            // right-click "Inspect" is also available there.
+            // Debug builds keep the webview devtools available (right-click
+            // "Inspect"), but no longer open the panel on launch. Set
+            // LABA_DEVTOOLS to a non-empty, non-"0" value to open it explicitly.
             #[cfg(debug_assertions)]
-            if let Some(w) = app.get_webview_window("main") {
-                w.open_devtools();
+            if devtools_requested() {
+                if let Some(w) = app.get_webview_window("main") {
+                    w.open_devtools();
+                }
             }
 
             // Linux: serve the tray over the native StatusNotifierItem so a

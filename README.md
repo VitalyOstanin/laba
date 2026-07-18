@@ -135,6 +135,10 @@ the header (checking / update available / up to date / check failed). Turn this
 off in Settings → Updates; when off, no network call is made and the indicator
 is hidden.
 
+Debug builds keep the webview devtools available (right-click → *Inspect*) but do
+not open the panel on launch. Set `LABA_DEVTOOLS=1` to open it automatically —
+for example `LABA_DEVTOOLS=1 scripts/gui-relaunch.sh`.
+
 ## Environment variables
 
 CLI request options can be supplied via the environment (equivalent to the
