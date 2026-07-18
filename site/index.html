@@ -154,6 +154,42 @@
         margin: 40px auto 0;
         border: 1px solid var(--border);
         border-radius: 10px;
+        cursor: zoom-in;
+      }
+      /* Full-screen preview of the screenshot, toggled by the click handler. */
+      .lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(6, 11, 16, 0.88);
+        cursor: zoom-out;
+      }
+      .lightbox.open {
+        display: flex;
+      }
+      .lightbox img {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+      }
+      .lightbox-close {
+        position: absolute;
+        top: 16px;
+        right: 22px;
+        font-size: 34px;
+        line-height: 1;
+        color: #f2f5f8;
+        background: none;
+        border: none;
+        cursor: pointer;
       }
       section {
         padding: 48px 0;
@@ -226,6 +262,9 @@
           alt="laba dashboard showing GitHub issues, pull requests and notifications"
           width="900"
           loading="lazy"
+          role="button"
+          tabindex="0"
+          aria-label="Enlarge the dashboard screenshot"
         />
       </div>
     </header>
@@ -292,5 +331,39 @@ laba wp list</code></pre>
         <a href="https://github.com/VitalyOstanin/laba">GitHub</a> · MIT License
       </div>
     </footer>
+
+    <div class="lightbox" id="lightbox" aria-hidden="true">
+      <button type="button" class="lightbox-close" aria-label="Close">×</button>
+      <img src="screenshot-dashboard.png" alt="laba dashboard, enlarged" />
+    </div>
+
+    <script>
+      // Click (or keyboard-activate) the hero screenshot to open a full-screen
+      // preview; click anywhere, press the close button, or hit Escape to close.
+      (function () {
+        const shot = document.querySelector(".shot");
+        const box = document.getElementById("lightbox");
+        if (!shot || !box) return;
+        const open = () => {
+          box.classList.add("open");
+          box.setAttribute("aria-hidden", "false");
+        };
+        const close = () => {
+          box.classList.remove("open");
+          box.setAttribute("aria-hidden", "true");
+        };
+        shot.addEventListener("click", open);
+        shot.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            open();
+          }
+        });
+        box.addEventListener("click", close);
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") close();
+        });
+      })();
+    </script>
   </body>
 </html>
