@@ -10,8 +10,10 @@ use serde_json::Value;
 
 use crate::client::Client;
 use crate::config::{BackendKind, ServerProfile};
+use crate::entities::{Notification, Task};
 use crate::error::Error;
 use crate::github::{GhCli, GhRunner, GithubBackend};
+use crate::normalize;
 use crate::resources::{notification, work_packages};
 
 /// Default page size for the paged list APIs.
@@ -25,8 +27,8 @@ pub const PAGE_SIZE: i64 = 50;
 /// whole collection in a single page (`next_offset: None`) because `gh` has no
 /// clean cursor across the client-merged issue/PR stream.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Page {
-    pub items: Vec<Value>,
+pub struct Page<T> {
+    pub items: Vec<T>,
     pub next_offset: Option<i64>,
 }
 
@@ -49,14 +51,18 @@ fn next_page(page: i64, page_size: i64, total: i64) -> Option<i64> {
 pub trait Backend: Send + Sync {
     /// Which tracker this backend talks to.
     fn kind(&self) -> BackendKind;
-    /// One page of my open tasks, normalized, plus the next cursor.
-    async fn list_tasks_page(&self, page: i64, page_size: i64) -> Result<Page, Error>;
-    /// One page of my notifications, normalized, plus the next cursor.
-    async fn list_notifications_page(&self, page: i64, page_size: i64) -> Result<Page, Error>;
-    /// All my open tasks, normalized (no pagination).
-    async fn list_tasks(&self) -> Result<Vec<Value>, Error>;
-    /// All my notifications, normalized (no pagination).
-    async fn list_notifications(&self) -> Result<Vec<Value>, Error>;
+    /// One page of my open tasks, plus the next cursor.
+    async fn list_tasks_page(&self, page: i64, page_size: i64) -> Result<Page<Task>, Error>;
+    /// One page of my notifications, plus the next cursor.
+    async fn list_notifications_page(
+        &self,
+        page: i64,
+        page_size: i64,
+    ) -> Result<Page<Notification>, Error>;
+    /// All my open tasks (no pagination).
+    async fn list_tasks(&self) -> Result<Vec<Task>, Error>;
+    /// All my notifications (no pagination).
+    async fn list_notifications(&self) -> Result<Vec<Notification>, Error>;
     /// Set one notification's read state.
     async fn set_notification_read(&self, id: i64, read: bool) -> Result<(), Error>;
     /// Mark every notification read. Returns the count marked.
@@ -100,7 +106,7 @@ impl Backend for OpenProjectBackend {
         BackendKind::OpenProject
     }
 
-    async fn list_tasks_page(&self, page: i64, page_size: i64) -> Result<Page, Error> {
+    async fn list_tasks_page(&self, page: i64, page_size: i64) -> Result<Page<Task>, Error> {
         let client = self.client()?;
         if self.profile.backend.needs_local_history() {
             // The server forgets past assignees, so aggregate current + locally
@@ -114,7 +120,7 @@ impl Backend for OpenProjectBackend {
             };
             let items = work_packages::list(&client, params, false).await?;
             Ok(Page {
-                items: as_array(items),
+                items: op_tasks(items),
                 next_offset: None,
             })
         } else {
@@ -127,23 +133,27 @@ impl Backend for OpenProjectBackend {
             };
             let (items, total) = work_packages::list_page(&client, params, false).await?;
             Ok(Page {
-                items: as_array(items),
+                items: op_tasks(items),
                 next_offset: next_page(page, page_size, total),
             })
         }
     }
 
-    async fn list_notifications_page(&self, page: i64, page_size: i64) -> Result<Page, Error> {
+    async fn list_notifications_page(
+        &self,
+        page: i64,
+        page_size: i64,
+    ) -> Result<Page<Notification>, Error> {
         let client = self.client()?;
         let (items, total) =
             notification::list_page(&client, page.max(1), Some(page_size), false).await?;
         Ok(Page {
-            items: as_array(items),
+            items: op_notifications(items),
             next_offset: next_page(page, page_size, total),
         })
     }
 
-    async fn list_tasks(&self) -> Result<Vec<Value>, Error> {
+    async fn list_tasks(&self) -> Result<Vec<Task>, Error> {
         let client = self.client()?;
         let params = work_packages::WpListParams {
             assignee: Some("me".into()),
@@ -151,12 +161,14 @@ impl Backend for OpenProjectBackend {
             offset: 1,
             ..Default::default()
         };
-        Ok(as_array(work_packages::list(&client, params, false).await?))
+        Ok(op_tasks(work_packages::list(&client, params, false).await?))
     }
 
-    async fn list_notifications(&self) -> Result<Vec<Value>, Error> {
+    async fn list_notifications(&self) -> Result<Vec<Notification>, Error> {
         let client = self.client()?;
-        Ok(as_array(notification::list(&client, 1, None, false).await?))
+        Ok(op_notifications(
+            notification::list(&client, 1, None, false).await?,
+        ))
     }
 
     async fn set_notification_read(&self, id: i64, read: bool) -> Result<(), Error> {
@@ -189,7 +201,7 @@ impl Backend for GithubBackendFacade {
         BackendKind::Github
     }
 
-    async fn list_tasks_page(&self, _page: i64, _page_size: i64) -> Result<Page, Error> {
+    async fn list_tasks_page(&self, _page: i64, _page_size: i64) -> Result<Page<Task>, Error> {
         let items = self.list_tasks().await?;
         Ok(Page {
             items,
@@ -197,7 +209,11 @@ impl Backend for GithubBackendFacade {
         })
     }
 
-    async fn list_notifications_page(&self, _page: i64, _page_size: i64) -> Result<Page, Error> {
+    async fn list_notifications_page(
+        &self,
+        _page: i64,
+        _page_size: i64,
+    ) -> Result<Page<Notification>, Error> {
         let items = self.list_notifications().await?;
         Ok(Page {
             items,
@@ -205,12 +221,12 @@ impl Backend for GithubBackendFacade {
         })
     }
 
-    async fn list_tasks(&self) -> Result<Vec<Value>, Error> {
+    async fn list_tasks(&self) -> Result<Vec<Task>, Error> {
         let host = self.host.clone();
         run_blocking(move || github_tasks(GhCli { host })).await
     }
 
-    async fn list_notifications(&self) -> Result<Vec<Value>, Error> {
+    async fn list_notifications(&self) -> Result<Vec<Notification>, Error> {
         let host = self.host.clone();
         run_blocking(move || github_notifications(GhCli { host })).await
     }
@@ -239,35 +255,35 @@ pub async fn list_tasks_page(
     token: Option<&str>,
     page: i64,
     page_size: i64,
-) -> Result<Page, Error> {
+) -> Result<Page<Task>, Error> {
     backend_for(profile, token)
         .list_tasks_page(page, page_size)
         .await
 }
 
-/// One page of my notifications for a server, normalized, plus the next cursor.
+/// One page of my notifications for a server, plus the next cursor.
 pub async fn list_notifications_page(
     profile: &ServerProfile,
     token: Option<&str>,
     page: i64,
     page_size: i64,
-) -> Result<Page, Error> {
+) -> Result<Page<Notification>, Error> {
     backend_for(profile, token)
         .list_notifications_page(page, page_size)
         .await
 }
 
-/// My open tasks for a server, normalized. OpenProject requires a token; GitHub
-/// authenticates through `gh` and ignores it.
-pub async fn list_tasks(profile: &ServerProfile, token: Option<&str>) -> Result<Vec<Value>, Error> {
+/// My open tasks for a server. OpenProject requires a token; GitHub authenticates
+/// through `gh` and ignores it.
+pub async fn list_tasks(profile: &ServerProfile, token: Option<&str>) -> Result<Vec<Task>, Error> {
     backend_for(profile, token).list_tasks().await
 }
 
-/// My notifications for a server, normalized.
+/// My notifications for a server.
 pub async fn list_notifications(
     profile: &ServerProfile,
     token: Option<&str>,
-) -> Result<Vec<Value>, Error> {
+) -> Result<Vec<Notification>, Error> {
     backend_for(profile, token).list_notifications().await
 }
 
@@ -290,23 +306,40 @@ pub async fn mark_all_read(profile: &ServerProfile, token: Option<&str>) -> Resu
     backend_for(profile, token).mark_all_read().await
 }
 
-/// Run a blocking `gh`-backed closure off the async executor.
-async fn run_blocking<F>(f: F) -> Result<Vec<Value>, Error>
+/// Run a blocking `gh`-backed closure returning a `Vec<T>` off the async executor.
+async fn run_blocking<T, F>(f: F) -> Result<Vec<T>, Error>
 where
-    F: FnOnce() -> Result<Vec<Value>, Error> + Send + 'static,
+    T: Send + 'static,
+    F: FnOnce() -> Result<Vec<T>, Error> + Send + 'static,
 {
     tokio::task::spawn_blocking(f)
         .await
         .map_err(|e| Error::Internal(format!("join gh task: {e}")))?
 }
 
+/// Map flattened OpenProject work packages to typed tasks.
+fn op_tasks(v: Value) -> Vec<Task> {
+    as_array(v)
+        .iter()
+        .map(normalize::work_package_task)
+        .collect()
+}
+
+/// Map flattened OpenProject notifications to typed notifications.
+fn op_notifications(v: Value) -> Vec<Notification> {
+    as_array(v)
+        .iter()
+        .map(normalize::notification_entity)
+        .collect()
+}
+
 /// Seam for testing the GitHub task branch with a fake runner.
-fn github_tasks<R: GhRunner>(runner: R) -> Result<Vec<Value>, Error> {
+fn github_tasks<R: GhRunner>(runner: R) -> Result<Vec<Task>, Error> {
     GithubBackend::new(runner).list_my_tasks()
 }
 
 /// Seam for testing the GitHub notification branch with a fake runner.
-fn github_notifications<R: GhRunner>(runner: R) -> Result<Vec<Value>, Error> {
+fn github_notifications<R: GhRunner>(runner: R) -> Result<Vec<Notification>, Error> {
     GithubBackend::new(runner).list_notifications()
 }
 
@@ -363,7 +396,7 @@ mod tests {
         let fake = FakeGh::new(issues, b"[]".to_vec(), b"[]".to_vec());
         let out = github_tasks(fake).unwrap();
         assert_eq!(out.len(), 1);
-        assert_eq!(out[0]["id"], json!("acme/app#1"));
+        assert_eq!(out[0].id.display, "acme/app#1");
     }
 
     #[test]
@@ -378,7 +411,7 @@ mod tests {
         let fake = FakeGh::new(b"[]".to_vec(), b"[]".to_vec(), notifs);
         let out = github_notifications(fake).unwrap();
         assert_eq!(out.len(), 1);
-        assert_eq!(out[0]["subject"], json!("T"));
+        assert_eq!(out[0].title, "T");
     }
 
     #[test]

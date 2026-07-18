@@ -72,6 +72,26 @@ export interface CustomField {
   value: unknown;
 }
 
+// A task's identity: a human-facing display id (format varies by backend) and
+// the raw id the backend uses for its own API calls. Mirrors Rust TaskId.
+export interface TaskId {
+  display: string;
+  raw: string;
+}
+
+// What kind of thing a task is (Rust TaskKind, flat token; Other -> raw label).
+export type TaskKind = "issue" | "pullRequest" | "workPackage" | (string & {});
+// Why a task is in the user's list — the core of "don't miss it" (Rust InboxReason).
+export type InboxReason =
+  | "assigned"
+  | "authored"
+  | "reviewRequested"
+  | "mentioned"
+  | "involved"
+  | "own";
+// Normalized workflow status bucket for tint/filter (Rust StatusCategory).
+export type StatusCategory = "open" | "inProgress" | "done" | "unknown";
+
 // A named task filter: a label plus the statuses it groups. Shown as a tab.
 export interface StatusFilter {
   label: string;
@@ -82,9 +102,57 @@ export interface StatusFilter {
 export type StatusColorToken =
   "danger" | "warn" | "success" | "progress" | "dimmed";
 
-// Normalized task/notification: open-ended maps from core.
-export type Task = Record<string, unknown>;
-export type Notification = Record<string, unknown>;
+// A task (issue / pull request / work package) in the inbox. Mirrors the Rust
+// `entities::Task`, serialized camelCase. Every field the backend cannot supply
+// is null / empty rather than omitted, so the shape is stable across backends.
+export interface Task {
+  id: TaskId;
+  kind: TaskKind;
+  reason: InboxReason;
+  title: string;
+  url: string | null;
+  status: string | null;
+  statusCategory: StatusCategory;
+  project: string | null;
+  assignee: string | null;
+  author: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  dueDate: string | null;
+  priority: string | null;
+  labels: string[];
+  customFields: CustomField[];
+}
+
+// The task-detail screen (OpenProject only) consumes the raw flattened work
+// package — subject, description, customFields, ... — which is a different shape
+// from the normalized list `Task`. Kept as an open record until the detail path
+// is typed too.
+export type WorkPackageDetail = Record<string, unknown>;
+// One comment on the detail screen (raw flattened OpenProject activity).
+export type WpComment = Record<string, unknown>;
+
+// What a notification is about (Rust NotifKind, flat token; Other -> raw label).
+export type NotifKind = "issue" | "pullRequest" | "checkSuite" | (string & {});
+// CI (check-suite) run outcome, for tinting (Rust CiOutcome).
+export type CiOutcome = "failure" | "success" | "neutral";
+
+// A notification in the inbox. Mirrors the Rust `entities::Notification`. `url`
+// is resolved to a concrete target where possible (including a specific CI run).
+export interface Notification {
+  id: string;
+  reason: string;
+  kind: NotifKind;
+  title: string;
+  project: string | null;
+  url: string | null;
+  updatedAt: string | null;
+  read: boolean;
+  // CI run outcome, present only for check-suite notifications.
+  outcome: CiOutcome | null;
+  // Related work package id when the notification opens in-app (OpenProject).
+  wpId: number | null;
+}
 
 // One page of items plus the cursor for the next page. `next_offset` is an
 // opaque backend cursor (OpenProject: next 1-based page number; null when the

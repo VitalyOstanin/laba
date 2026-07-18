@@ -12,6 +12,9 @@ import type {
   Settings,
   Task,
   Notification,
+  CustomField,
+  WorkPackageDetail,
+  WpComment,
   TimelogResult,
   Activity,
   Candidate,
@@ -147,147 +150,234 @@ const GH_DEPENDENCY: GhDependency = { used: true, status: "missing" };
 
 // --- fixtures keyed by server ------------------------------------------------
 
-function rank(n: number) {
+function rank(n: number): CustomField {
   return { key: "customField1", name: "НПП", value: n };
+}
+
+// A typed OpenProject-style work-package task for the demo tracker.
+function wp(
+  id: number,
+  title: string,
+  status: string,
+  assignee: string,
+  updatedAt: string,
+  cfRank: number,
+): Task {
+  return {
+    id: { display: `#${id}`, raw: String(id) },
+    kind: "workPackage",
+    reason: "assigned",
+    title,
+    url: null,
+    status,
+    statusCategory: "unknown",
+    project: "Demo Tracker",
+    assignee,
+    author: null,
+    createdAt: null,
+    updatedAt,
+    dueDate: null,
+    priority: null,
+    labels: [],
+    customFields: [rank(cfRank)],
+  };
+}
+
+// A typed GitHub-style issue task.
+function ghIssue(
+  repo: string,
+  n: number,
+  title: string,
+  updatedAt: string,
+): Task {
+  return {
+    id: { display: `${repo}#${n}`, raw: String(n) },
+    kind: "issue",
+    reason: "involved",
+    title,
+    url: `https://github.com/${repo}/issues/${n}`,
+    status: "open",
+    statusCategory: "open",
+    project: repo,
+    assignee: null,
+    author: null,
+    createdAt: null,
+    updatedAt,
+    dueDate: null,
+    priority: null,
+    labels: [],
+    customFields: [],
+  };
 }
 
 const TASKS: Record<string, Task[]> = {
   demo: [
-    {
-      id: 101,
-      subject: "Fix login redirect loop on session expiry",
-      status: "In progress",
-      type: "Bug",
-      assignee: "Sam Rivera",
-      updatedAt: "2026-07-10T09:20:00Z",
-      description:
-        "When a session expires mid-request the app redirects back to the\nexpired page, causing a **loop**.\n\n## Steps to reproduce\n\n1. Let the token lapse\n2. Click any nav item\n3. Observe the redirect bounce\n\nWorkaround: clear `localStorage.session` and reload. See the [tracker](https://example.com/issues/101) for logs.",
-      customFields: [rank(1)],
-    },
-    {
-      id: 102,
-      subject: "Add dark-mode tokens to the settings screen",
-      status: "Under review",
-      type: "Feature",
-      assignee: "Sam Rivera",
-      updatedAt: "2026-07-09T14:05:00Z",
-      description: "Route the remaining literal colors through theme tokens.",
-      customFields: [rank(2)],
-    },
-    {
-      id: 103,
-      subject: "Timeout on large export",
-      status: "Blocked",
-      type: "Bug",
-      assignee: "Lee Park",
-      updatedAt: "2026-07-08T11:00:00Z",
-      description: "Exports over ~10k rows time out. Blocked on the batch API.",
-      customFields: [rank(3)],
-    },
-    {
-      id: 104,
-      subject: "Document the release checklist",
-      status: "Done",
-      type: "Task",
-      assignee: "Sam Rivera",
-      updatedAt: "2026-07-05T16:30:00Z",
-      description: "",
-      customFields: [rank(4)],
-    },
+    wp(
+      101,
+      "Fix login redirect loop on session expiry",
+      "In progress",
+      "Sam Rivera",
+      "2026-07-10T09:20:00Z",
+      1,
+    ),
+    wp(
+      102,
+      "Add dark-mode tokens to the settings screen",
+      "Under review",
+      "Sam Rivera",
+      "2026-07-09T14:05:00Z",
+      2,
+    ),
+    wp(
+      103,
+      "Timeout on large export",
+      "Blocked",
+      "Lee Park",
+      "2026-07-08T11:00:00Z",
+      3,
+    ),
+    wp(
+      104,
+      "Document the release checklist",
+      "Done",
+      "Sam Rivera",
+      "2026-07-05T16:30:00Z",
+      4,
+    ),
   ],
   oss: [
-    {
-      id: 5521,
-      subject: "Crash on empty config file",
-      status: "open",
-      updatedAt: "2026-07-10T08:00:00Z",
-      url: "https://github.com/acme/tool/issues/5521",
-    },
-    {
-      id: 5510,
-      subject: "Docs: clarify the proxy precedence",
-      status: "open",
-      updatedAt: "2026-07-07T12:00:00Z",
-      url: "https://github.com/acme/tool/issues/5510",
-    },
+    ghIssue(
+      "acme/tool",
+      5521,
+      "Crash on empty config file",
+      "2026-07-10T08:00:00Z",
+    ),
+    ghIssue(
+      "acme/tool",
+      5510,
+      "Docs: clarify the proxy precedence",
+      "2026-07-07T12:00:00Z",
+    ),
   ],
 };
+
+// The detail screen (OpenProject only) fetches the raw work package by id; keep
+// its description + custom fields here, separate from the normalized list Task.
+const DETAILS: Record<number, WorkPackageDetail> = {
+  101: {
+    subject: "Fix login redirect loop on session expiry",
+    description:
+      "When a session expires mid-request the app redirects back to the\nexpired page, causing a **loop**.\n\n## Steps to reproduce\n\n1. Let the token lapse\n2. Click any nav item\n3. Observe the redirect bounce\n\nWorkaround: clear `localStorage.session` and reload. See the [tracker](https://example.com/issues/101) for logs.",
+    customFields: [rank(1)],
+  },
+  102: {
+    subject: "Add dark-mode tokens to the settings screen",
+    description: "Route the remaining literal colors through theme tokens.",
+    customFields: [rank(2)],
+  },
+  103: {
+    subject: "Timeout on large export",
+    description: "Exports over ~10k rows time out. Blocked on the batch API.",
+    customFields: [rank(3)],
+  },
+  104: {
+    subject: "Document the release checklist",
+    description: "",
+    customFields: [rank(4)],
+  },
+};
+
+// A typed notification pointing at a demo work package (OpenProject in-app).
+function wpNotif(
+  id: number,
+  reason: string,
+  wpId: number,
+  title: string,
+  read: boolean,
+  updatedAt: string,
+): Notification {
+  return {
+    id: String(id),
+    reason,
+    kind: "workPackage",
+    title,
+    project: "Demo Tracker",
+    url: null,
+    updatedAt,
+    read,
+    outcome: null,
+    wpId,
+  };
+}
 
 const NOTIFICATIONS: Record<string, Notification[]> = {
   demo: [
-    {
-      id: 9001,
-      reason: "mentioned",
-      subject: "Fix login redirect loop on session expiry",
-      wpId: 101,
-      wpTitle: "Fix login redirect loop on session expiry",
-      read: false,
-      createdAt: "2026-07-10T09:25:00Z",
-      updatedAt: "2026-07-10T09:25:00Z",
-      user: "Lee Park",
-      comment: "Can you take a look today? Blocking the release.",
-    },
-    {
-      id: 9002,
-      reason: "assigned",
-      subject: "Timeout on large export",
-      wpId: 103,
-      wpTitle: "Timeout on large export",
-      read: false,
-      createdAt: "2026-07-09T10:10:00Z",
-      updatedAt: "2026-07-09T10:10:00Z",
-      user: "Sam Rivera",
-      comment: "Reassigned to you.",
-    },
-    {
-      id: 9003,
-      reason: "commented",
-      subject: "Document the release checklist",
-      wpId: 104,
-      wpTitle: "Document the release checklist",
-      read: true,
-      createdAt: "2026-07-05T17:00:00Z",
-      updatedAt: "2026-07-05T17:00:00Z",
-      user: "Lee Park",
-      comment: "Looks good, merged.",
-    },
+    wpNotif(
+      9001,
+      "mentioned",
+      101,
+      "Fix login redirect loop on session expiry",
+      false,
+      "2026-07-10T09:25:00Z",
+    ),
+    wpNotif(
+      9002,
+      "assigned",
+      103,
+      "Timeout on large export",
+      false,
+      "2026-07-09T10:10:00Z",
+    ),
+    wpNotif(
+      9003,
+      "commented",
+      104,
+      "Document the release checklist",
+      true,
+      "2026-07-05T17:00:00Z",
+    ),
   ],
   oss: [
     {
-      id: 7001,
+      id: "7001",
       reason: "review_requested",
-      subject: "Crash on empty config file",
-      wpTitle: "Crash on empty config file",
-      htmlUrl: "https://github.com/acme/app/issues/5521",
-      read: false,
-      createdAt: "2026-07-10T08:05:00Z",
+      kind: "issue",
+      title: "Crash on empty config file",
+      project: "acme/app",
+      url: "https://github.com/acme/app/issues/5521",
       updatedAt: "2026-07-10T08:05:00Z",
-      user: "octocat",
-    },
-    {
-      id: 7002,
-      reason: "ci_activity",
-      subject: "CI workflow run failed for deps/keyring-core branch",
-      type: "CheckSuite",
-      outcome: "failure",
-      htmlUrl: "https://github.com/acme/app/actions",
       read: false,
-      updatedAt: "2026-07-10T07:40:00Z",
+      outcome: null,
+      wpId: null,
     },
     {
-      id: 7003,
+      id: "7002",
       reason: "ci_activity",
-      subject: "CI workflow run succeeded for main branch",
-      type: "CheckSuite",
-      outcome: "success",
-      htmlUrl: "https://github.com/acme/app/actions",
-      read: true,
+      kind: "checkSuite",
+      title: "CI workflow run failed for deps/keyring-core branch",
+      project: "acme/app",
+      url: "https://github.com/acme/app/actions/runs/29414263745",
+      updatedAt: "2026-07-10T07:40:00Z",
+      read: false,
+      outcome: "failure",
+      wpId: null,
+    },
+    {
+      id: "7003",
+      reason: "ci_activity",
+      kind: "checkSuite",
+      title: "CI workflow run succeeded for main branch",
+      project: "acme/app",
+      url: "https://github.com/acme/app/actions/runs/29414200001",
       updatedAt: "2026-07-10T06:15:00Z",
+      read: true,
+      outcome: "success",
+      wpId: null,
     },
   ],
 };
 
-const COMMENTS: Record<number, Notification[]> = {
+const COMMENTS: Record<number, WpComment[]> = {
   101: [
     {
       id: 1,
@@ -392,8 +482,8 @@ function page<T>(items: T[]) {
   return { items, next_offset: null };
 }
 
-function taskById(serverName: string, id: number): Task | undefined {
-  return (TASKS[serverName] ?? []).find((t) => Number(t.id) === id);
+function taskDetailById(id: number): WorkPackageDetail | undefined {
+  return DETAILS[id];
 }
 
 // --- the mock bridge ---------------------------------------------------------
@@ -411,7 +501,7 @@ export async function mockInvoke(
     case "list_notifications":
       return page(NOTIFICATIONS[a.server as string] ?? []);
     case "get_task_detail":
-      return taskById(a.server as string, Number(a.id)) ?? {};
+      return taskDetailById(Number(a.id)) ?? {};
     case "list_task_comments":
       return COMMENTS[Number(a.id)] ?? [];
     case "get_settings":
@@ -446,7 +536,7 @@ export async function mockInvoke(
     case "set_notification_read": {
       const list = NOTIFICATIONS[a.server as string] ?? [];
       const n = list.find((x) => Number(x.id) === Number(a.id));
-      if (n) n.read = a.read;
+      if (n) n.read = a.read as boolean;
       return null;
     }
     // Per-server profile edits: mutate the in-memory server so the settings

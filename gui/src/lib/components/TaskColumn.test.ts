@@ -4,6 +4,7 @@ import { render, screen, cleanup } from "@testing-library/svelte";
 import { tick } from "svelte";
 import TaskColumn from "./TaskColumn.svelte";
 import { filterText } from "../store";
+import { makeTask } from "../test-fixtures";
 
 afterEach(() => {
   cleanup();
@@ -12,8 +13,16 @@ afterEach(() => {
 
 describe("TaskColumn", () => {
   const tasks = [
-    { id: "#1", subject: "Fix pagination", status: "open" },
-    { id: "#2", subject: "Cache avatars", status: "closed" },
+    makeTask({
+      id: { display: "#1", raw: "1" },
+      title: "Fix pagination",
+      status: "open",
+    }),
+    makeTask({
+      id: { display: "#2", raw: "2" },
+      title: "Cache avatars",
+      status: "closed",
+    }),
   ];
 
   it("shows all tasks with empty filter", () => {
@@ -31,11 +40,13 @@ describe("TaskColumn", () => {
   });
 
   it("windows a long list to one page and reveals more on demand", async () => {
-    const many = Array.from({ length: 60 }, (_, i) => ({
-      id: `#${i + 1}`,
-      subject: `Task ${i + 1}`,
-      status: "open",
-    }));
+    const many = Array.from({ length: 60 }, (_, i) =>
+      makeTask({
+        id: { display: `#${i + 1}`, raw: String(i + 1) },
+        title: `Task ${i + 1}`,
+        status: "open",
+      }),
+    );
     render(TaskColumn, { props: { tasks: many } });
     // First page (50) is rendered; the 51st row is withheld.
     expect(screen.getByText("Task 50")).toBeInTheDocument();

@@ -324,7 +324,7 @@ pub async fn list_tasks(
     server: String,
     page: Option<i64>,
     page_size: Option<i64>,
-) -> Result<backend::Page, String> {
+) -> Result<backend::Page<laba_core::entities::Task>, String> {
     let cfg = load_cfg()?;
     let profile = cfg
         .servers
@@ -352,7 +352,7 @@ pub async fn list_notifications(
     server: String,
     page: Option<i64>,
     page_size: Option<i64>,
-) -> Result<backend::Page, String> {
+) -> Result<backend::Page<laba_core::entities::Notification>, String> {
     let cfg = load_cfg()?;
     let profile = cfg
         .servers
@@ -620,15 +620,12 @@ pub async fn pick_candidates() -> Result<Vec<timelog::Candidate>, String> {
             Err(_) => continue,
         };
         for t in &tasks {
-            if let Some(wp) = t.get("id").and_then(|v| v.as_i64()) {
+            // OpenProject task ids are the numeric work-package id (id.raw).
+            if let Ok(wp) = t.id.raw.parse::<i64>() {
                 candidates.push(timelog::Candidate {
                     server: name.clone(),
                     wp_id: wp,
-                    subject: t
-                        .get("subject")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("")
-                        .to_string(),
+                    subject: t.title.clone(),
                     logged_min: *logged.get(&wp).unwrap_or(&0),
                 });
             }

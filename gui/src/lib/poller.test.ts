@@ -16,6 +16,7 @@ vi.mock("./api", () => ({
 import * as api from "./api";
 import { refreshAll, refreshServer, loadMoreTasks } from "./poller";
 import { servers, byServer, summaries, activeServer } from "./store";
+import { makeTask, makeNotif } from "./test-fixtures";
 import type { ServerInfo } from "./types";
 
 function srv(name: string, enabled: boolean): ServerInfo {
@@ -79,10 +80,13 @@ describe("residency and summaries", () => {
 
   it("keeps full arrays only for the active server, summaries for all", async () => {
     vi.mocked(api.listNotifications).mockResolvedValue(
-      page<Notification>([{ read: false }, { reason: "x" }], null),
+      page<Notification>(
+        [makeNotif({ read: false }), makeNotif({ reason: "x" })],
+        null,
+      ),
     );
     vi.mocked(api.listTasks).mockResolvedValue(
-      page<Task>([{ id: "#1" }], null),
+      page<Task>([makeTask({ id: { display: "#1", raw: "1" } })], null),
     );
     await refreshServer("a");
     await refreshServer("b");
@@ -110,7 +114,7 @@ describe("loadMoreTasks", () => {
     activeServer.set("a");
     byServer.set({
       a: {
-        tasks: [{ id: "#1" }],
+        tasks: [makeTask({ id: { display: "#1", raw: "1" } })],
         notifications: [],
         error: null,
         taskCursor: 2,
@@ -121,11 +125,14 @@ describe("loadMoreTasks", () => {
 
   it("appends the next page and advances the cursor", async () => {
     vi.mocked(api.listTasks).mockResolvedValueOnce(
-      page<Task>([{ id: "#2" }], 3),
+      page<Task>([makeTask({ id: { display: "#2", raw: "2" } })], 3),
     );
     await loadMoreTasks("a");
     expect(vi.mocked(api.listTasks)).toHaveBeenCalledWith("a", 2);
-    expect(get(byServer).a.tasks.map((t) => t.id)).toEqual(["#1", "#2"]);
+    expect(get(byServer).a.tasks.map((t) => t.id.display)).toEqual([
+      "#1",
+      "#2",
+    ]);
     expect(get(byServer).a.taskCursor).toBe(3);
   });
 

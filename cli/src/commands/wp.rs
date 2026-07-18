@@ -105,7 +105,9 @@ async fn run_github(cmd: WpCmd, profile: &ServerProfile, g: &Globals) -> Result<
         WpCmd::List { .. } => {
             super::ensure_gh_ready(profile)?;
             let tasks = laba_core::backend::list_tasks(profile, None).await?;
-            crate::output::emit(&Value::Array(tasks), g.human);
+            let v = serde_json::to_value(&tasks)
+                .map_err(|e| Error::Internal(format!("serialize tasks: {e}")))?;
+            crate::output::emit(&v, g.human);
             Ok(())
         }
         _ => super::require_openproject(profile, "this 'wp' subcommand"),

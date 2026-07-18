@@ -16,20 +16,21 @@ import {
   type ServerState,
   type ServerSummary,
 } from "./store";
+import { makeTask, makeNotif } from "./test-fixtures";
 
 describe("unreadOf", () => {
   it("treats an item as unread unless read === true", () => {
-    expect(unreadOf({ id: "1" })).toBe(true);
-    expect(unreadOf({ id: "2", read: false })).toBe(true);
-    expect(unreadOf({ id: "3", read: true })).toBe(false);
+    expect(unreadOf(makeNotif({ id: "1" }))).toBe(true);
+    expect(unreadOf(makeNotif({ id: "2", read: false }))).toBe(true);
+    expect(unreadOf(makeNotif({ id: "3", read: true }))).toBe(false);
   });
 });
 
 describe("notificationsForView", () => {
   const list = [
-    { id: "1", read: true, subject: "handled" },
-    { id: "2", read: false, subject: "pending" },
-    { id: "3", subject: "no flag" },
+    makeNotif({ id: "1", read: true, title: "handled" }),
+    makeNotif({ id: "2", read: false, title: "pending" }),
+    makeNotif({ id: "3", title: "no flag" }),
   ];
   it("all view passes everything", () => {
     expect(notificationsForView(list, "all").map((n) => n.id)).toEqual([
@@ -48,26 +49,44 @@ describe("notificationsForView", () => {
 
 describe("filterTasks", () => {
   const tasks = [
-    { id: "#1", subject: "Fix pagination", status: "open" },
-    { id: "#2", subject: "Cache avatars", status: "closed" },
+    makeTask({
+      id: { display: "#1", raw: "1" },
+      title: "Fix pagination",
+      status: "open",
+    }),
+    makeTask({
+      id: { display: "#2", raw: "2" },
+      title: "Cache avatars",
+      status: "closed",
+    }),
   ];
   it("matches across all fields, case-insensitive", () => {
-    expect(filterTasks(tasks, "CLOSED").map((t) => t.id)).toEqual(["#2"]);
-    expect(filterTasks(tasks, "pagination").map((t) => t.id)).toEqual(["#1"]);
+    expect(filterTasks(tasks, "CLOSED").map((t) => t.id.display)).toEqual([
+      "#2",
+    ]);
+    expect(filterTasks(tasks, "pagination").map((t) => t.id.display)).toEqual([
+      "#1",
+    ]);
     expect(filterTasks(tasks, "").length).toBe(2);
   });
 });
 
 describe("filterNotifications", () => {
   const notifs = [
-    { id: 1, reason: "mentioned", subject: "Fix login redirect" },
-    { id: 2, reason: "ci_activity", subject: "CI workflow run failed" },
+    makeNotif({ id: "1", reason: "mentioned", title: "Fix login redirect" }),
+    makeNotif({
+      id: "2",
+      reason: "ci_activity",
+      title: "CI workflow run failed",
+    }),
   ];
   it("matches across all fields, case-insensitive", () => {
-    expect(filterNotifications(notifs, "CI").map((n) => n.id)).toEqual([2]);
-    expect(filterNotifications(notifs, "login").map((n) => n.id)).toEqual([1]);
+    expect(filterNotifications(notifs, "CI").map((n) => n.id)).toEqual(["2"]);
+    expect(filterNotifications(notifs, "login").map((n) => n.id)).toEqual([
+      "1",
+    ]);
     expect(filterNotifications(notifs, "mentioned").map((n) => n.id)).toEqual([
-      1,
+      "1",
     ]);
     expect(filterNotifications(notifs, "").length).toBe(2);
   });
@@ -127,8 +146,8 @@ describe("contentOpenPlan", () => {
 
 describe("cache entry round-trip", () => {
   const state = {
-    tasks: [{ id: "#1", subject: "A" }],
-    notifications: [{ id: 1, subject: "N" }],
+    tasks: [makeTask({ id: { display: "#1", raw: "1" }, title: "A" })],
+    notifications: [makeNotif({ id: "1", title: "N" })],
     error: null,
     taskCursor: 2,
     notifCursor: null,
@@ -170,20 +189,34 @@ describe("cache entry round-trip", () => {
 
 describe("filter include/exclude semantics", () => {
   const notifs = [
-    { id: 1, reason: "ci_activity", subject: "CI workflow run failed" },
-    { id: 2, reason: "ci_activity", subject: "CI workflow run passed" },
-    { id: 3, reason: "mentioned", subject: "review requested" },
+    makeNotif({
+      id: "1",
+      reason: "ci_activity",
+      title: "CI workflow run failed",
+    }),
+    makeNotif({
+      id: "2",
+      reason: "ci_activity",
+      title: "CI workflow run passed",
+    }),
+    makeNotif({ id: "3", reason: "mentioned", title: "review requested" }),
   ];
   it("excludes rows containing a -term", () => {
     expect(filterNotifications(notifs, "ci -passed").map((n) => n.id)).toEqual([
-      1,
+      "1",
     ]);
   });
   it("requires every include term", () => {
-    expect(filterTasks(notifs, "ci run").map((n) => n.id)).toEqual([1, 2]);
+    expect(filterNotifications(notifs, "ci run").map((n) => n.id)).toEqual([
+      "1",
+      "2",
+    ]);
   });
   it("exclude-only removes matches, keeps the rest", () => {
-    expect(filterTasks(notifs, "-mentioned").map((n) => n.id)).toEqual([1, 2]);
+    expect(filterNotifications(notifs, "-mentioned").map((n) => n.id)).toEqual([
+      "1",
+      "2",
+    ]);
   });
 });
 
@@ -197,13 +230,18 @@ describe("unread accounting (read !== true)", () => {
   });
 
   it("unreadIn counts everything not explicitly read", () => {
-    // OpenProject: read boolean present. GitHub: no read field = unread.
-    expect(unreadIn(state([{ read: false }, { read: true }]))).toBe(1);
-    expect(unreadIn(state([{ reason: "mention" }]))).toBe(1);
+    // OpenProject: read boolean present. GitHub: read defaults to unread.
+    expect(
+      unreadIn(state([makeNotif({ read: false }), makeNotif({ read: true })])),
+    ).toBe(1);
+    expect(unreadIn(state([makeNotif({ reason: "mention" })]))).toBe(1);
   });
 
   it("summarize reduces a state to error + unread", () => {
-    const s: ServerState = { ...state([{ read: false }]), error: "boom" };
+    const s: ServerState = {
+      ...state([makeNotif({ read: false })]),
+      error: "boom",
+    };
     expect(summarize(s)).toEqual({ error: "boom", unread: 1 });
   });
 
@@ -219,8 +257,8 @@ describe("unread accounting (read !== true)", () => {
 describe("freshUnread", () => {
   it("first poll (no prior seen) establishes a baseline without announcing", () => {
     const { fresh, seen } = freshUnread(undefined, [
-      { id: 1, read: false },
-      { id: 2, read: false },
+      makeNotif({ id: "1", read: false }),
+      makeNotif({ id: "2", read: false }),
     ]);
     expect(fresh).toEqual([]);
     expect(seen).toEqual(new Set(["1", "2"]));
@@ -229,22 +267,24 @@ describe("freshUnread", () => {
   it("announces only unread ids not seen on the previous poll", () => {
     const prev = new Set(["1"]);
     const { fresh, seen } = freshUnread(prev, [
-      { id: 1, read: false },
-      { id: 2, read: false },
-      { id: 3, read: true },
+      makeNotif({ id: "1", read: false }),
+      makeNotif({ id: "2", read: false }),
+      makeNotif({ id: "3", read: true }),
     ]);
-    expect(fresh.map((n) => (n as Record<string, unknown>).id)).toEqual([2]);
+    expect(fresh.map((n) => n.id)).toEqual(["2"]);
     // seen tracks current unread only; the read id 3 is not carried.
     expect(seen).toEqual(new Set(["1", "2"]));
   });
 
   it("a read notification drops from seen and re-announces if it returns unread", () => {
-    const afterRead = freshUnread(new Set(["1"]), [{ id: 1, read: true }]);
+    const afterRead = freshUnread(new Set(["1"]), [
+      makeNotif({ id: "1", read: true }),
+    ]);
     expect(afterRead.fresh).toEqual([]);
     expect(afterRead.seen).toEqual(new Set());
-    const backToUnread = freshUnread(afterRead.seen, [{ id: 1, read: false }]);
-    expect(
-      backToUnread.fresh.map((n) => (n as Record<string, unknown>).id),
-    ).toEqual([1]);
+    const backToUnread = freshUnread(afterRead.seen, [
+      makeNotif({ id: "1", read: false }),
+    ]);
+    expect(backToUnread.fresh.map((n) => n.id)).toEqual(["1"]);
   });
 });

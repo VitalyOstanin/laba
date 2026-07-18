@@ -3,6 +3,8 @@ import type {
   ServerInfo,
   Task,
   Notification,
+  WorkPackageDetail,
+  WpComment,
   Page,
   Settings,
   TimelogResult,
@@ -155,13 +157,16 @@ export const addComment = (
   text: string,
 ): Promise<void> => invoke("add_comment", { server, workPackage, text });
 // Task-detail screen: one work package with description + custom fields, and its
-// comment thread (oldest first). OpenProject only (supports_task_detail).
-export const getTaskDetail = (server: string, id: number): Promise<Task> =>
-  invoke("get_task_detail", { server, id });
+// comment thread (oldest first). OpenProject only (task_detail capability). The
+// detail path returns the raw flattened work package, not the normalized Task.
+export const getTaskDetail = (
+  server: string,
+  id: number,
+): Promise<WorkPackageDetail> => invoke("get_task_detail", { server, id });
 export const listTaskComments = (
   server: string,
   id: number,
-): Promise<Notification[]> => invoke("list_task_comments", { server, id });
+): Promise<WpComment[]> => invoke("list_task_comments", { server, id });
 // Push the aggregate attention count (unread + red-tab tasks) to the tray icon.
 export const setTrayStatus = (count: number): Promise<void> =>
   invoke("set_tray_status", { count });

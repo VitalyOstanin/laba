@@ -20,7 +20,7 @@
     onLoadMore?: () => void;
   } = $props();
   function statusOf(task: Task): string {
-    return task.status == null ? "" : String(task.status);
+    return task.status ?? "";
   }
 
   // Status-filter tabs: an "All" tab plus either the server's configured filters
@@ -154,8 +154,7 @@
   }
 
   function customFields(task: Task): CustomField[] {
-    const cf = task.customFields;
-    return Array.isArray(cf) ? (cf as CustomField[]) : [];
+    return task.customFields;
   }
   // Raw value of a display field on a task (by field name), or undefined.
   function fieldValue(task: Task, name: string): unknown {
@@ -172,9 +171,9 @@
   // Opening the detail screen (description + comments) is a backend capability.
   const canDetail = $derived(supportsTaskDetail(server));
   function openDetail(task: Task): void {
-    if (!server || task.id == null) return;
+    if (!server || !task.id.raw) return;
     goto(
-      `/task?server=${encodeURIComponent(server.name)}&id=${encodeURIComponent(String(task.id))}`,
+      `/task?server=${encodeURIComponent(server.name)}&id=${encodeURIComponent(task.id.raw)}`,
     );
   }
 
@@ -200,7 +199,7 @@
   // Semantic row tint for a task, looked up by its exact status string in the
   // server's per-status color map. Unmapped statuses render neutral.
   function tone(task: Task): string {
-    const status = task.status == null ? "" : String(task.status);
+    const status = task.status ?? "";
     const token = server?.status_colors?.[status];
     return token ? `tone-${token}` : "";
   }
@@ -210,11 +209,11 @@
   // is available (no server or no id), so the number stays plain text.
   function taskHref(task: Task): string | null {
     if (server?.backend === "github") {
-      return typeof task.url === "string" ? task.url : null;
+      return task.url ?? null;
     }
     const base = server?.base_url;
-    if (!base || task.id == null) return null;
-    return `${base.replace(/\/+$/, "")}/work_packages/${task.id}`;
+    if (!base || !task.id.raw) return null;
+    return `${base.replace(/\/+$/, "")}/work_packages/${task.id.raw}`;
   }
 </script>
 
@@ -259,7 +258,7 @@
     <p class="empty">{$t("empty.tasks")}</p>
   {:else}
     <ul class="list">
-      {#each visible as task (task.id)}
+      {#each visible as task (task.id.display)}
         <li class="task {tone(task)}" class:clickable={canDetail}>
           {#if taskHref(task)}
             <button
@@ -267,10 +266,10 @@
               class="id id-link"
               title={taskHref(task)}
               onclick={() => openExternal(taskHref(task) ?? "")}
-              >{task.id}</button
+              >{task.id.display}</button
             >
           {:else}
-            <span class="id">{task.id}</span>
+            <span class="id">{task.id.display}</span>
           {/if}
           {#if plan(task).primary !== "none"}
             <button
@@ -279,10 +278,10 @@
               onclick={() => openPrimary(task)}
               title={plan(task).primary === "app"
                 ? $t("task.openDetail")
-                : (taskHref(task) ?? "")}>{task.subject}</button
+                : (taskHref(task) ?? "")}>{task.title}</button
             >
           {:else}
-            <span class="subject">{task.subject}</span>
+            <span class="subject">{task.title}</span>
           {/if}
           {#if plan(task).secondaryBrowser}
             <button

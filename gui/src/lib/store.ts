@@ -168,20 +168,30 @@ export function parseFilter(text: string): FilterQuery {
 }
 
 /**
- * Include/exclude substring match over the concatenation of all field values.
- * Empty (or exclude-only-but-blank) query returns every row.
+ * Collect every string/number leaf value of a (possibly nested) row into one
+ * lowercase haystack. Recurses into objects (e.g. a task's `id: {display, raw}`)
+ * and arrays (labels, custom fields) so the filter matches nested values, not
+ * just top-level ones.
  */
-function filterRows<T extends Record<string, unknown>>(
-  rows: T[],
-  text: string,
-): T[] {
+function haystack(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "object") {
+    return Object.values(value as Record<string, unknown>)
+      .map(haystack)
+      .join(" ");
+  }
+  return String(value);
+}
+
+/**
+ * Include/exclude substring match over all (nested) field values. Empty (or
+ * exclude-only-but-blank) query returns every row.
+ */
+function filterRows<T>(rows: T[], text: string): T[] {
   const { include, exclude } = parseFilter(text);
   if (include.length === 0 && exclude.length === 0) return rows;
   return rows.filter((r) => {
-    const hay = Object.values(r)
-      .map((v) => String(v ?? ""))
-      .join(" ")
-      .toLowerCase();
+    const hay = haystack(r).toLowerCase();
     return (
       include.every((t) => hay.includes(t)) &&
       !exclude.some((t) => hay.includes(t))
@@ -225,12 +235,12 @@ export function contentOpenPlan(p: {
 /**
  * Whether a normalized notification is unread.
  *
- * Both backends set `read: boolean` (OpenProject in `core::normalize`, GitHub in
- * `github::normalize_notification`, which fetches read items too via `all=true`).
- * The rule is: unread unless explicitly `read === true`.
+ * Both backends set `read: boolean` (OpenProject in `normalize::notification_entity`,
+ * GitHub in `github::notification_from_gh`, which fetches read items too via
+ * `all=true`). The rule is: unread unless explicitly `read === true`.
  */
 export function unreadOf(n: Notification): boolean {
-  return n["read"] !== true;
+  return n.read !== true;
 }
 
 /** Notification list view: only unread (triage pending) or everything. */

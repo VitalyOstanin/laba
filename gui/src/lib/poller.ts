@@ -24,6 +24,7 @@ import {
   type SyncPhase,
 } from "./store";
 import { supportsTaskDetail } from "./capabilities";
+import type { Task } from "./types";
 import { t, locale, plural } from "./i18n";
 import { goto } from "$app/navigation";
 import { openExternal } from "./external";
@@ -105,20 +106,17 @@ function buildNotifyItems(s: ServerInfo, fresh: Notification[]): NotifyItem[] {
       },
     ];
   }
-  return fresh.map((raw) => {
-    const n = raw as Record<string, unknown>;
-    const subject = String(n.wpTitle ?? n.subject ?? "");
-    const reason = n.reason ? `${String(n.reason)}: ` : "";
-    const wpId = Number(n.wpId);
+  return fresh.map((n) => {
+    const reason = n.reason ? `${n.reason}: ` : "";
     let target: unknown;
-    if (supportsTaskDetail(s) && Number.isFinite(wpId)) {
-      target = { kind: "task", server: s.name, id: wpId };
-    } else if (typeof n.htmlUrl === "string" && n.htmlUrl) {
-      target = { kind: "external", url: n.htmlUrl };
+    if (supportsTaskDetail(s) && n.wpId != null) {
+      target = { kind: "task", server: s.name, id: n.wpId };
+    } else if (n.url) {
+      target = { kind: "external", url: n.url };
     } else {
       target = { kind: "server", server: s.name };
     }
-    return { title: label, body: reason + subject, target };
+    return { title: label, body: reason + n.title, target };
   });
 }
 
@@ -408,12 +406,15 @@ async function loadMore(
         which === "tasks"
           ? {
               ...cur,
-              tasks: [...cur.tasks, ...page.items],
+              tasks: [...cur.tasks, ...(page.items as Task[])],
               taskCursor: page.next_offset,
             }
           : {
               ...cur,
-              notifications: [...cur.notifications, ...page.items],
+              notifications: [
+                ...cur.notifications,
+                ...(page.items as Notification[]),
+              ],
               notifCursor: page.next_offset,
             };
       return { ...by, [name]: merged };

@@ -13,7 +13,12 @@
   import { getTaskDetail, listTaskComments, addComment } from "$lib/api";
   import { openExternal } from "$lib/external";
   import { renderMarkdown, isExternalHref } from "$lib/markdown";
-  import type { Task, Notification, ServerInfo, CustomField } from "$lib/types";
+  import type {
+    WorkPackageDetail,
+    WpComment,
+    ServerInfo,
+    CustomField,
+  } from "$lib/types";
 
   // Query params: which server and work package to show.
   const serverName = $derived(page.url.searchParams.get("server") ?? "");
@@ -22,8 +27,8 @@
     $servers.find((s) => s.name === serverName),
   );
 
-  let detail = $state<Task | null>(null);
-  let comments = $state<Notification[]>([]);
+  let detail = $state<WorkPackageDetail | null>(null);
+  let comments = $state<WpComment[]>([]);
   let loading = $state(false);
   let error = $state<string | null>(null);
 
@@ -77,7 +82,7 @@
     };
   }
 
-  function customFields(task: Task | null): CustomField[] {
+  function customFields(task: WorkPackageDetail | null): CustomField[] {
     const cf = task?.customFields;
     return Array.isArray(cf) ? (cf as CustomField[]) : [];
   }

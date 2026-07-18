@@ -59,6 +59,15 @@ The format follows Keep a Changelog and Semantic Versioning.
   reads (one `capabilities` record instead of a growing list of flat `supports_*`
   booleans), with enums for the nuanced ones (one-way vs two-way read toggle,
   timelog with or without activities). Groundwork for additional backends.
+- Tasks and notifications are now typed domain entities across the backend and
+  the GUI (real `Task` / `Notification` shapes instead of open-ended records), so
+  a field a backend cannot supply is explicit rather than a silent gap. Tasks
+  carry why they are in the list (assigned, authored, review-requested, …) and a
+  normalized status category; a task id is split into a display form and the raw
+  id. GitHub pull requests whose review is requested from you now keep that
+  reason even when they also match a broader search.
+- GitHub is now the default backend for a new server (`server add` and the setup
+  wizard), instead of OpenProject; OpenProject remains fully supported.
 
 ### Fixed
 - Dashboard: hide the time-logged indicator entirely when no enabled server

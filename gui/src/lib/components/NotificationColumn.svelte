@@ -124,8 +124,7 @@
   // The related work package id a notification points at, or null when absent
   // (the notification is not about a work package, or the backend omits it).
   function wpIdOf(n: Notification): number | null {
-    const id = Number(n.wpId);
-    return Number.isFinite(id) ? id : null;
+    return n.wpId;
   }
   function openTask(n: Notification): void {
     const id = wpIdOf(n);
@@ -135,10 +134,9 @@
     );
   }
   // Browser URL for a notification whose task has no in-app detail screen
-  // (GitHub): the subject's web address (`htmlUrl`), or null when absent.
+  // (GitHub): the subject's resolved web address (`url`), or null when absent.
   function hrefOf(n: Notification): string | null {
-    const u = n.htmlUrl;
-    return typeof u === "string" && u ? u : null;
+    return n.url ?? null;
   }
 
   // Where a notification's subject opens on click: the server's effective
@@ -173,8 +171,7 @@
 
   // The notification's timestamp as an ISO string, or "" when absent.
   function tsOf(n: Notification): string {
-    const u = n.updatedAt;
-    return typeof u === "string" ? u : "";
+    return n.updatedAt ?? "";
   }
   function tsAbsolute(n: Notification): string {
     const iso = tsOf(n);
@@ -293,10 +290,10 @@
               onclick={() => openPrimary(n)}
               title={plan(n).primary === "app"
                 ? $t("task.openDetail")
-                : (hrefOf(n) ?? "")}>{n.wpTitle ?? n.subject}</button
+                : (hrefOf(n) ?? "")}>{n.title}</button
             >
           {:else}
-            <span class="subject">{n.wpTitle ?? n.subject}</span>
+            <span class="subject">{n.title}</span>
           {/if}
           {#if plan(n).secondaryBrowser}
             <button

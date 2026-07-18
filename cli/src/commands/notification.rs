@@ -27,7 +27,9 @@ pub async fn run(cmd: NotificationCmd, g: &Globals) -> Result<(), Error> {
             NotificationCmd::List { .. } => {
                 super::ensure_gh_ready(&profile)?;
                 let items = laba_core::backend::list_notifications(&profile, None).await?;
-                crate::output::emit(&serde_json::Value::Array(items), g.human);
+                let v = serde_json::to_value(&items)
+                    .map_err(|e| Error::Internal(format!("serialize notifications: {e}")))?;
+                crate::output::emit(&v, g.human);
                 Ok(())
             }
             _ => super::require_openproject(&profile, "'notification read/unread'"),

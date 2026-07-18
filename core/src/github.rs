@@ -8,7 +8,7 @@
 //! CLI and GUI can render both backends uniformly.
 
 use serde::Serialize;
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use crate::entities;
 use crate::error::Error;
@@ -88,20 +88,12 @@ impl GhRunner for GhCli {
     }
 }
 
-/// Whether a searched item is an issue or a pull request; sets the `type` field.
+/// Whether a searched item is an issue or a pull request; maps to the typed
+/// [`entities::TaskKind`] on the produced task.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TaskKind {
     Issue,
     PullRequest,
-}
-
-impl TaskKind {
-    fn type_label(self) -> &'static str {
-        match self {
-            TaskKind::Issue => "Issue",
-            TaskKind::PullRequest => "Pull request",
-        }
-    }
 }
 
 /// Join assignee logins into a single `", "`-separated string, or `Null` when
@@ -121,47 +113,6 @@ fn assignees_label(v: &Value) -> Value {
     } else {
         Value::from(logins.join(", "))
     }
-}
-
-/// Normalize one `gh search issues`/`gh search prs` element to the shared task
-/// shape (`id`, `subject`, `type`, `status`, `project`, `assignee`, `dueDate`,
-/// `createdAt`, `updatedAt`, `url`).
-pub fn normalize_task(v: &Value, kind: TaskKind) -> Value {
-    let repo = v
-        .get("repository")
-        .and_then(|r| r.get("nameWithOwner"))
-        .and_then(Value::as_str)
-        .unwrap_or("");
-    let number = v.get("number").cloned().unwrap_or(Value::Null);
-    let id = match number.as_i64() {
-        Some(n) if !repo.is_empty() => Value::from(format!("{repo}#{n}")),
-        _ => number.clone(),
-    };
-
-    let mut m = Map::new();
-    m.insert("id".into(), id);
-    m.insert(
-        "subject".into(),
-        v.get("title").cloned().unwrap_or(Value::Null),
-    );
-    m.insert("type".into(), Value::from(kind.type_label()));
-    m.insert(
-        "status".into(),
-        v.get("state").cloned().unwrap_or(Value::Null),
-    );
-    m.insert("project".into(), Value::from(repo));
-    m.insert("assignee".into(), assignees_label(v));
-    m.insert("dueDate".into(), Value::Null);
-    m.insert(
-        "createdAt".into(),
-        v.get("createdAt").cloned().unwrap_or(Value::Null),
-    );
-    m.insert(
-        "updatedAt".into(),
-        v.get("updatedAt").cloned().unwrap_or(Value::Null),
-    );
-    m.insert("url".into(), v.get("url").cloned().unwrap_or(Value::Null));
-    Value::Object(m)
 }
 
 /// Assignees as a comma-joined string, or `None` when there are none.
@@ -293,77 +244,6 @@ pub fn notification_from_gh(v: &Value) -> entities::Notification {
     }
 }
 
-/// Normalize one element of `gh api notifications` (GitHub REST) to a compact
-/// notification shape.
-pub fn normalize_notification(v: &Value) -> Value {
-    let subject = v.get("subject");
-    let mut m = Map::new();
-    m.insert("id".into(), v.get("id").cloned().unwrap_or(Value::Null));
-    m.insert(
-        "reason".into(),
-        v.get("reason").cloned().unwrap_or(Value::Null),
-    );
-    m.insert(
-        "subject".into(),
-        subject
-            .and_then(|s| s.get("title"))
-            .cloned()
-            .unwrap_or(Value::Null),
-    );
-    m.insert(
-        "type".into(),
-        subject
-            .and_then(|s| s.get("type"))
-            .cloned()
-            .unwrap_or(Value::Null),
-    );
-    m.insert(
-        "project".into(),
-        v.get("repository")
-            .and_then(|r| r.get("full_name"))
-            .cloned()
-            .unwrap_or(Value::Null),
-    );
-    m.insert(
-        "updatedAt".into(),
-        v.get("updated_at").cloned().unwrap_or(Value::Null),
-    );
-    // Read state, so the client can triage handled from pending. GitHub carries
-    // `unread: bool`; a missing flag is treated as unread (the pre-`all=true`
-    // behavior, when only unread items were ever returned).
-    let unread = v.get("unread").and_then(Value::as_bool).unwrap_or(true);
-    m.insert("read".into(), Value::Bool(!unread));
-    m.insert(
-        "url".into(),
-        subject
-            .and_then(|s| s.get("url"))
-            .cloned()
-            .unwrap_or(Value::Null),
-    );
-    // A browser URL for the notification's subject. `subject.url` is the REST API
-    // address (`api.github.com/repos/O/R/issues/N`), which is not viewable in a
-    // browser, so derive the web address from the repository and the issue/PR
-    // number instead. Only Issue and PullRequest map cleanly; other subject types
-    // (Discussion, Release, CheckSuite, …) get no link and stay plain text.
-    m.insert(
-        "htmlUrl".into(),
-        notification_html_url(v)
-            .map(Value::String)
-            .unwrap_or(Value::Null),
-    );
-    // For CI (CheckSuite) notifications, classify the run outcome from the
-    // subject title so the UI can tint it: a failed run reads as a warning, a
-    // successful run as good. Absent for every other subject type.
-    if subject.and_then(|s| s.get("type")).and_then(Value::as_str) == Some("CheckSuite") {
-        let title = subject
-            .and_then(|s| s.get("title"))
-            .and_then(Value::as_str)
-            .unwrap_or("");
-        m.insert("outcome".into(), Value::from(check_suite_outcome(title)));
-    }
-    Value::Object(m)
-}
-
 /// Classify a CheckSuite notification's outcome from its subject title, which
 /// GitHub phrases as "… workflow run failed/succeeded/cancelled for … branch".
 /// Returns `"failure"`, `"success"`, or `"neutral"` so the UI can tint it
@@ -470,25 +350,31 @@ fn parse_ts(s: &str) -> Option<chrono::DateTime<chrono::FixedOffset>> {
     chrono::DateTime::parse_from_rfc3339(s).ok()
 }
 
-fn parse_tasks(raw: &[u8], kind: TaskKind) -> Result<Vec<Value>, Error> {
+fn parse_tasks(
+    raw: &[u8],
+    kind: TaskKind,
+    reason: entities::InboxReason,
+) -> Result<Vec<entities::Task>, Error> {
     let arr: Vec<Value> =
         serde_json::from_slice(raw).map_err(|e| Error::Api(format!("parse gh output: {e}")))?;
-    Ok(arr.iter().map(|v| normalize_task(v, kind)).collect())
+    Ok(arr.iter().map(|v| task_from_gh(v, kind, reason)).collect())
 }
 
 /// Drop duplicate tasks that surfaced from more than one search, keeping the
-/// first occurrence. Keyed by the normalized `id` (`owner/repo#N`), falling back
-/// to `url` when an id is absent, so order (issues before PRs) is preserved.
-fn dedup_by_id(tasks: Vec<Value>) -> Vec<Value> {
+/// first occurrence. Keyed by the display id (`owner/repo#N`), falling back to
+/// `url` when it is empty. Ordering matters: the searches are run most-specific
+/// reason first (review-requested before involves), so the kept copy carries the
+/// most useful "why it's in my list" reason.
+fn dedup_by_id(tasks: Vec<entities::Task>) -> Vec<entities::Task> {
     let mut seen = std::collections::HashSet::new();
     tasks
         .into_iter()
         .filter(|t| {
-            let key = t
-                .get("id")
-                .or_else(|| t.get("url"))
-                .map(|v| v.to_string())
-                .unwrap_or_default();
+            let key = if t.id.display.is_empty() {
+                t.url.clone().unwrap_or_default()
+            } else {
+                t.id.display.clone()
+            };
             seen.insert(key)
         })
         .collect()
@@ -516,7 +402,8 @@ impl<R: GhRunner> GithubBackend<R> {
     /// issues/PRs I'm involved in (author, assignee, mention, comment), PRs whose
     /// review is requested from me, and everything open in my own repositories.
     /// The same item surfacing in several searches is collapsed by `id`.
-    pub fn list_my_tasks(&self) -> Result<Vec<Value>, Error> {
+    pub fn list_my_tasks(&self) -> Result<Vec<entities::Task>, Error> {
+        use entities::InboxReason;
         const ISSUE_FIELDS: &str =
             "number,title,state,repository,assignees,createdAt,updatedAt,url";
         const PR_FIELDS: &str =
@@ -525,59 +412,82 @@ impl<R: GhRunner> GithubBackend<R> {
 
         let mut out = Vec::new();
         // Issues: anything I'm involved in, plus everything open in my repos.
-        for args in [
-            vec![
-                "search",
-                "issues",
-                "--involves",
-                "@me",
-                "--state",
-                "open",
-                "--json",
-                ISSUE_FIELDS,
-            ],
-            vec![
-                "search",
-                "issues",
-                "--owner",
-                &login,
-                "--state",
-                "open",
-                "--json",
-                ISSUE_FIELDS,
-            ],
+        // `reason` records why each item is in the list; the more specific search
+        // runs first so its reason wins over `Own`/`Involved` on dedup.
+        for (args, reason) in [
+            (
+                vec![
+                    "search",
+                    "issues",
+                    "--involves",
+                    "@me",
+                    "--state",
+                    "open",
+                    "--json",
+                    ISSUE_FIELDS,
+                ],
+                InboxReason::Involved,
+            ),
+            (
+                vec![
+                    "search",
+                    "issues",
+                    "--owner",
+                    &login,
+                    "--state",
+                    "open",
+                    "--json",
+                    ISSUE_FIELDS,
+                ],
+                InboxReason::Own,
+            ),
         ] {
-            out.extend(parse_tasks(&self.runner.run(&args)?, TaskKind::Issue)?);
+            out.extend(parse_tasks(
+                &self.runner.run(&args)?,
+                TaskKind::Issue,
+                reason,
+            )?);
         }
-        // PRs: involving me, review requested from me, plus everything in my repos.
-        for args in [
-            vec![
-                "search",
-                "prs",
-                "--involves",
-                "@me",
-                "--state",
-                "open",
-                "--json",
-                PR_FIELDS,
-            ],
-            vec![
-                "search",
-                "prs",
-                "--review-requested",
-                "@me",
-                "--state",
-                "open",
-                "--json",
-                PR_FIELDS,
-            ],
-            vec![
-                "search", "prs", "--owner", &login, "--state", "open", "--json", PR_FIELDS,
-            ],
+        // PRs: review requested from me (highest-priority reason) first, then
+        // involving me, then everything in my repos.
+        for (args, reason) in [
+            (
+                vec![
+                    "search",
+                    "prs",
+                    "--review-requested",
+                    "@me",
+                    "--state",
+                    "open",
+                    "--json",
+                    PR_FIELDS,
+                ],
+                InboxReason::ReviewRequested,
+            ),
+            (
+                vec![
+                    "search",
+                    "prs",
+                    "--involves",
+                    "@me",
+                    "--state",
+                    "open",
+                    "--json",
+                    PR_FIELDS,
+                ],
+                InboxReason::Involved,
+            ),
+            (
+                vec![
+                    "search", "prs", "--owner", &login, "--state", "open", "--json", PR_FIELDS,
+                ],
+                InboxReason::Own,
+            ),
         ] {
             out.extend(parse_tasks(
                 &self.runner.run(&args)?,
                 TaskKind::PullRequest,
+                reason,
             )?);
         }
         Ok(dedup_by_id(out))
@@ -585,12 +495,12 @@ impl<R: GhRunner> GithubBackend<R> {
 
     /// My GitHub notifications, normalized. Fetches read ones too (`all=true`) so
     /// the dashboard can triage handled from pending; each item carries a `read`
-    /// flag ([`normalize_notification`]) for the client to filter on.
-    pub fn list_notifications(&self) -> Result<Vec<Value>, Error> {
+    /// flag ([`notification_from_gh`]) for the client to filter on.
+    pub fn list_notifications(&self) -> Result<Vec<entities::Notification>, Error> {
         let raw = self.runner.run(&["api", "notifications?all=true"])?;
         let arr: Vec<Value> = serde_json::from_slice(&raw)
             .map_err(|e| Error::Api(format!("parse gh output: {e}")))?;
-        let mut items: Vec<Value> = arr.iter().map(normalize_notification).collect();
+        let mut items: Vec<entities::Notification> = arr.iter().map(notification_from_gh).collect();
         self.link_check_suite_runs(&mut items);
         Ok(items)
     }
@@ -602,12 +512,12 @@ impl<R: GhRunner> GithubBackend<R> {
     /// Best-effort: a repository whose runs cannot be fetched keeps the
     /// Actions-page fallback, and a notification with no confident match is left
     /// unchanged.
-    fn link_check_suite_runs(&self, items: &mut [Value]) {
-        let is_ci = |i: &Value| i.get("type").and_then(Value::as_str) == Some("CheckSuite");
+    fn link_check_suite_runs(&self, items: &mut [entities::Notification]) {
+        let is_ci = |i: &entities::Notification| i.kind == entities::NotifKind::CheckSuite;
         let repos: std::collections::BTreeSet<String> = items
             .iter()
             .filter(|i| is_ci(i))
-            .filter_map(|i| i.get("project").and_then(Value::as_str).map(str::to_string))
+            .filter_map(|i| i.project.clone())
             .collect();
         if repos.is_empty() {
             return;
@@ -621,16 +531,15 @@ impl<R: GhRunner> GithubBackend<R> {
                 continue;
             }
             let Some(runs) = item
-                .get("project")
-                .and_then(Value::as_str)
+                .project
+                .as_deref()
                 .and_then(|repo| runs_by_repo.get(repo))
             else {
                 continue;
             };
-            let title = item.get("subject").and_then(Value::as_str).unwrap_or("");
-            let updated = item.get("updatedAt").and_then(Value::as_str).unwrap_or("");
-            if let Some(url) = match_run_url(runs, title, updated) {
-                item["htmlUrl"] = Value::String(url);
+            let updated = item.updated_at.as_deref().unwrap_or("");
+            if let Some(url) = match_run_url(runs, &item.title, updated) {
+                item.url = Some(url);
             }
         }
     }
@@ -784,22 +693,20 @@ mod tests {
     }
 
     #[test]
-    fn normalize_sets_read_flag_from_unread() {
-        let read = normalize_notification(&json!({
+    fn notification_from_gh_sets_read_flag_from_unread() {
+        let read = notification_from_gh(&json!({
             "id": "1", "unread": false, "subject": {"title": "done"}
         }));
-        assert_eq!(read.get("read"), Some(&Value::Bool(true)));
-
-        let unread = normalize_notification(&json!({
+        assert!(read.read);
+        let unread = notification_from_gh(&json!({
             "id": "2", "unread": true, "subject": {"title": "pending"}
         }));
-        assert_eq!(unread.get("read"), Some(&Value::Bool(false)));
-
+        assert!(!unread.read);
         // A missing `unread` flag is treated as unread (read == false).
-        let absent = normalize_notification(&json!({
+        let absent = notification_from_gh(&json!({
             "id": "3", "subject": {"title": "legacy"}
         }));
-        assert_eq!(absent.get("read"), Some(&Value::Bool(false)));
+        assert!(!absent.read);
     }
 
     /// Fake runner whose `--version` / `auth status` outcomes are configurable,
@@ -847,72 +754,15 @@ mod tests {
     }
 
     #[test]
-    fn normalize_issue_maps_shared_shape() {
-        let v = json!({
-            "number": 42,
-            "title": "Fix the widget",
-            "state": "open",
-            "repository": {"name": "app", "nameWithOwner": "acme/app"},
-            "assignees": [{"login": "me"}, {"login": "you"}],
-            "createdAt": "2026-07-01T00:00:00Z",
-            "updatedAt": "2026-07-02T00:00:00Z",
-            "url": "https://github.com/acme/app/issues/42"
-        });
-        let n = normalize_task(&v, TaskKind::Issue);
-        assert_eq!(n["id"], json!("acme/app#42"));
-        assert_eq!(n["subject"], json!("Fix the widget"));
-        assert_eq!(n["type"], json!("Issue"));
-        assert_eq!(n["status"], json!("open"));
-        assert_eq!(n["project"], json!("acme/app"));
-        assert_eq!(n["assignee"], json!("me, you"));
-        assert_eq!(n["dueDate"], Value::Null);
-        assert_eq!(n["url"], json!("https://github.com/acme/app/issues/42"));
-    }
-
-    #[test]
-    fn normalize_pr_sets_type_and_handles_no_assignee() {
-        let v = json!({
-            "number": 7,
-            "title": "Add caching",
-            "state": "open",
-            "repository": {"nameWithOwner": "acme/app"},
-            "assignees": [],
-            "url": "https://github.com/acme/app/pull/7"
-        });
-        let n = normalize_task(&v, TaskKind::PullRequest);
-        assert_eq!(n["id"], json!("acme/app#7"));
-        assert_eq!(n["type"], json!("Pull request"));
-        assert_eq!(n["assignee"], Value::Null);
-    }
-
-    #[test]
-    fn normalize_notification_maps_fields() {
-        let v = json!({
-            "id": "9001",
-            "reason": "mention",
-            "subject": {"title": "Ping", "type": "Issue", "url": "https://api.github.com/repos/acme/app/issues/42"},
-            "repository": {"full_name": "acme/app", "html_url": "https://github.com/acme/app"},
-            "updated_at": "2026-07-02T00:00:00Z"
-        });
-        let n = normalize_notification(&v);
-        assert_eq!(n["id"], json!("9001"));
-        assert_eq!(n["reason"], json!("mention"));
-        assert_eq!(n["subject"], json!("Ping"));
-        assert_eq!(n["type"], json!("Issue"));
-        assert_eq!(n["project"], json!("acme/app"));
-        assert_eq!(n["htmlUrl"], json!("https://github.com/acme/app/issues/42"));
-    }
-
-    #[test]
-    fn normalize_notification_html_url_for_pr_and_fallback() {
+    fn notification_from_gh_browser_url_for_pr_and_fallback() {
         // PullRequest maps to the `/pull/N` web path (not the API `/pulls/N`).
         let pr = json!({
             "subject": {"title": "PR", "type": "PullRequest", "url": "https://api.github.com/repos/acme/app/pulls/7"},
             "repository": {"full_name": "acme/app", "html_url": "https://github.com/acme/app"}
         });
         assert_eq!(
-            normalize_notification(&pr)["htmlUrl"],
-            json!("https://github.com/acme/app/pull/7")
+            notification_from_gh(&pr).url.as_deref(),
+            Some("https://github.com/acme/app/pull/7")
         );
         // No html_url on the repository: fall back to github.com/<full_name>.
         let fallback = json!({
@@ -920,37 +770,28 @@ mod tests {
             "repository": {"full_name": "acme/app"}
         });
         assert_eq!(
-            normalize_notification(&fallback)["htmlUrl"],
-            json!("https://github.com/acme/app/issues/3")
+            notification_from_gh(&fallback).url.as_deref(),
+            Some("https://github.com/acme/app/issues/3")
         );
         // Unsupported subject type: no link.
         let disc = json!({
             "subject": {"title": "D", "type": "Discussion", "url": "https://api.github.com/repos/acme/app/discussions/1"},
             "repository": {"full_name": "acme/app"}
         });
-        assert_eq!(normalize_notification(&disc)["htmlUrl"], json!(null));
+        assert_eq!(notification_from_gh(&disc).url, None);
     }
 
     #[test]
-    fn normalize_notification_check_suite_links_to_actions() {
+    fn notification_from_gh_check_suite_links_to_actions_page() {
         // CI (CheckSuite) notifications carry no subject number/url; they link to
-        // the repository's Actions page. Uses the repository html_url as the base.
+        // the repository's Actions page (later upgraded to the specific run).
         let ci = json!({
             "subject": {"title": "CI workflow run failed", "type": "CheckSuite", "url": null},
             "repository": {"full_name": "acme/app", "html_url": "https://github.com/acme/app"}
         });
         assert_eq!(
-            normalize_notification(&ci)["htmlUrl"],
-            json!("https://github.com/acme/app/actions")
-        );
-        // Enterprise host / no repo html_url: fall back to github.com/<full_name>.
-        let ci_fallback = json!({
-            "subject": {"title": "CI", "type": "CheckSuite"},
-            "repository": {"full_name": "acme/app"}
-        });
-        assert_eq!(
-            normalize_notification(&ci_fallback)["htmlUrl"],
-            json!("https://github.com/acme/app/actions")
+            notification_from_gh(&ci).url.as_deref(),
+            Some("https://github.com/acme/app/actions")
         );
     }
 
@@ -967,28 +808,6 @@ mod tests {
         assert_eq!(check_suite_outcome("All checks passed"), "success");
         assert_eq!(check_suite_outcome("CI workflow run cancelled"), "neutral");
         assert_eq!(check_suite_outcome(""), "neutral");
-    }
-
-    #[test]
-    fn normalize_notification_sets_ci_outcome_only_for_check_suite() {
-        // Failed CI run -> outcome "failure".
-        let fail = json!({
-            "subject": {"title": "CI workflow run failed for x", "type": "CheckSuite"},
-            "repository": {"full_name": "acme/app"}
-        });
-        assert_eq!(normalize_notification(&fail)["outcome"], json!("failure"));
-        // Successful CI run -> outcome "success".
-        let ok = json!({
-            "subject": {"title": "CI workflow run succeeded for x", "type": "CheckSuite"},
-            "repository": {"full_name": "acme/app"}
-        });
-        assert_eq!(normalize_notification(&ok)["outcome"], json!("success"));
-        // Non-CI notifications carry no outcome field.
-        let issue = json!({
-            "subject": {"title": "Ping", "type": "Issue", "url": "https://api.github.com/repos/acme/app/issues/1"},
-            "repository": {"full_name": "acme/app"}
-        });
-        assert_eq!(normalize_notification(&issue).get("outcome"), None);
     }
 
     #[test]
@@ -1073,22 +892,50 @@ mod tests {
         // owner, review-requested); dedup_by_id collapses each to one entry.
         let out = GithubBackend::new(fake).list_my_tasks().unwrap();
         assert_eq!(out.len(), 2);
-        assert_eq!(out[0]["type"], json!("Issue"));
-        assert_eq!(out[0]["id"], json!("acme/app#1"));
-        assert_eq!(out[1]["type"], json!("Pull request"));
-        assert_eq!(out[1]["id"], json!("acme/app#2"));
+        assert_eq!(out[0].kind, entities::TaskKind::Issue);
+        assert_eq!(out[0].id.display, "acme/app#1");
+        assert_eq!(out[1].kind, entities::TaskKind::PullRequest);
+        assert_eq!(out[1].id.display, "acme/app#2");
+        // The PR surfaces first from the review-requested search, so its reason wins.
+        assert_eq!(out[1].reason, entities::InboxReason::ReviewRequested);
+    }
+
+    /// Build a minimal typed task with the given display id and reason.
+    fn task(display: &str, reason: entities::InboxReason) -> entities::Task {
+        entities::Task {
+            id: entities::TaskId {
+                display: display.into(),
+                raw: display.into(),
+            },
+            kind: entities::TaskKind::Issue,
+            reason,
+            title: String::new(),
+            url: None,
+            status: None,
+            status_category: entities::StatusCategory::Unknown,
+            project: None,
+            assignee: None,
+            author: None,
+            created_at: None,
+            updated_at: None,
+            due_date: None,
+            priority: None,
+            labels: Vec::new(),
+            custom_fields: Vec::new(),
+        }
     }
 
     #[test]
     fn dedup_by_id_keeps_first_occurrence_and_order() {
-        let a1 = json!({"id": "acme/app#1", "subject": "first"});
-        let a1_dup = json!({"id": "acme/app#1", "subject": "again"});
-        let b2 = json!({"id": "acme/app#2", "subject": "second"});
-        let out = dedup_by_id(vec![a1.clone(), b2.clone(), a1_dup]);
+        let a1 = task("acme/app#1", entities::InboxReason::ReviewRequested);
+        let a1_dup = task("acme/app#1", entities::InboxReason::Involved);
+        let b2 = task("acme/app#2", entities::InboxReason::Own);
+        let out = dedup_by_id(vec![a1, b2, a1_dup]);
         assert_eq!(out.len(), 2);
-        assert_eq!(out[0]["id"], json!("acme/app#1"));
-        assert_eq!(out[0]["subject"], json!("first"));
-        assert_eq!(out[1]["id"], json!("acme/app#2"));
+        assert_eq!(out[0].id.display, "acme/app#1");
+        // The first occurrence (ReviewRequested) is kept over the later duplicate.
+        assert_eq!(out[0].reason, entities::InboxReason::ReviewRequested);
+        assert_eq!(out[1].id.display, "acme/app#2");
     }
 
     #[test]
@@ -1181,8 +1028,8 @@ mod tests {
         };
         let out = GithubBackend::new(gh).list_notifications().unwrap();
         assert_eq!(
-            out[0]["htmlUrl"],
-            json!("https://github.com/acme/app/actions/runs/999")
+            out[0].url.as_deref(),
+            Some("https://github.com/acme/app/actions/runs/999")
         );
     }
 
@@ -1195,8 +1042,8 @@ mod tests {
         let out = GithubBackend::new(gh).list_notifications().unwrap();
         // Runs could not be fetched → the link stays the repository Actions page.
         assert_eq!(
-            out[0]["htmlUrl"],
-            json!("https://github.com/acme/app/actions")
+            out[0].url.as_deref(),
+            Some("https://github.com/acme/app/actions")
         );
     }
 
@@ -1215,7 +1062,7 @@ mod tests {
         );
         let out = GithubBackend::new(fake).list_notifications().unwrap();
         assert_eq!(out.len(), 1);
-        assert_eq!(out[0]["subject"], json!("T"));
-        assert_eq!(out[0]["project"], json!("acme/app"));
+        assert_eq!(out[0].title, "T");
+        assert_eq!(out[0].project.as_deref(), Some("acme/app"));
     }
 }
