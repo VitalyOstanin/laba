@@ -8,8 +8,8 @@
   <rect width="1200" height="630" fill="url(#bg)"/>
   <rect x="0" y="0" width="14" height="630" fill="#3b6ea5"/>
   <text x="90" y="250" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="140" font-weight="700" fill="#f2f5f8">laba</text>
-  <text x="96" y="330" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="42" font-weight="400" fill="#9aa4b0">OpenProject desktop client &amp; CLI</text>
-  <text x="96" y="405" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="32" font-weight="400" fill="#6f7b88">Work packages, notifications and time tracking</text>
-  <text x="96" y="450" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="32" font-weight="400" fill="#6f7b88">in a native tray app. Built with Tauri + Rust.</text>
+  <text x="96" y="330" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="42" font-weight="400" fill="#9aa4b0">GitHub desktop dashboard &amp; CLI</text>
+  <text x="96" y="405" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="32" font-weight="400" fill="#6f7b88">Issues, pull requests and notifications in a</text>
+  <text x="96" y="450" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="32" font-weight="400" fill="#6f7b88">native tray app. Built with Tauri + Rust.</text>
   <text x="96" y="560" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" font-weight="600" fill="#5a92cc">github.com/VitalyOstanin/laba</text>
 </svg>

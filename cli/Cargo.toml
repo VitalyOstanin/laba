@@ -7,8 +7,8 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
-description = "Command-line interface for OpenProject."
-keywords = ["openproject", "cli", "project-management", "issues", "productivity"]
+description = "Command-line interface for GitHub and OpenProject (part of laba)."
+keywords = ["github", "cli", "openproject", "issues", "productivity"]
 categories = ["command-line-utilities"]
 
 [[bin]]

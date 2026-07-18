@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>laba — OpenProject desktop client &amp; CLI (Tauri + Rust)</title>
+    <title>laba — GitHub desktop dashboard &amp; CLI (Tauri + Rust)</title>
     <meta
       name="description"
-      content="laba is an open-source desktop tray client and command-line interface for OpenProject, built with Tauri and Rust. Manage work packages, notifications and time tracking, and aggregate GitHub issues from one dashboard."
+      content="laba is an open-source desktop tray dashboard and command-line interface for GitHub — issues, pull requests and notifications in one place. Built with Tauri and Rust, with a pluggable multi-backend design (OpenProject also implemented)."
     />
     <meta
       name="keywords"
-      content="OpenProject desktop client, OpenProject CLI, OpenProject tray app, GitHub issues dashboard, Tauri, Rust, task management, project management"
+      content="GitHub desktop client, GitHub issues dashboard, GitHub notifications, GitHub pull requests, GitHub CLI, multi-backend task dashboard, Tauri, Rust"
     />
     <link rel="canonical" href="https://vitalyostanin.github.io/laba/" />
     <link rel="icon" type="image/png" href="favicon.png" />
@@ -19,13 +19,10 @@
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="laba" />
-    <meta
-      property="og:title"
-      content="laba — OpenProject desktop client & CLI"
-    />
+    <meta property="og:title" content="laba — GitHub desktop dashboard & CLI" />
     <meta
       property="og:description"
-      content="Open-source desktop tray client and CLI for OpenProject, built with Tauri and Rust. Work packages, notifications, time tracking, and GitHub issues in one dashboard."
+      content="Open-source desktop tray dashboard and CLI for GitHub — issues, pull requests and notifications in one place. Built with Tauri and Rust; pluggable multi-backend design."
     />
     <meta property="og:url" content="https://vitalyostanin.github.io/laba/" />
     <meta
@@ -39,11 +36,11 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta
       name="twitter:title"
-      content="laba — OpenProject desktop client & CLI"
+      content="laba — GitHub desktop dashboard & CLI"
     />
     <meta
       name="twitter:description"
-      content="Open-source desktop tray client and CLI for OpenProject, built with Tauri and Rust."
+      content="Open-source desktop tray dashboard and CLI for GitHub — issues, pull requests and notifications. Built with Tauri and Rust."
     />
     <meta
       name="twitter:image"
@@ -56,7 +53,7 @@
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": "laba",
-        "description": "Open-source desktop tray client and command-line interface for OpenProject, built with Tauri and Rust. Work packages, notifications, time tracking, and GitHub issues in one dashboard.",
+        "description": "Open-source desktop tray dashboard and command-line interface for GitHub — issues, pull requests and notifications in one place. Built with Tauri and Rust, with a pluggable multi-backend design (OpenProject also implemented).",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Linux, Windows, macOS",
         "url": "https://vitalyostanin.github.io/laba/",
@@ -208,8 +205,9 @@
       <div class="wrap">
         <h1>laba</h1>
         <p class="tagline">
-          Desktop tray client and command-line interface for
-          <a href="https://www.openproject.org/">OpenProject</a> — built with
+          Desktop tray dashboard and command-line interface for
+          <a href="https://github.com/">GitHub</a> — issues, pull requests and
+          notifications in one place. Built with
           <a href="https://tauri.app/">Tauri</a> and a shared Rust core.
         </p>
         <div class="cta">
@@ -225,7 +223,7 @@
         <img
           class="shot"
           src="screenshot-dashboard.png"
-          alt="laba dashboard showing OpenProject work packages and notifications"
+          alt="laba dashboard showing GitHub issues, pull requests and notifications"
           width="900"
           loading="lazy"
         />
@@ -237,31 +235,34 @@
         <h2>What it does</h2>
         <div class="grid">
           <div class="feature">
-            <h3>Native desktop tray app</h3>
+            <h3>GitHub in your tray</h3>
             <p>
-              Work packages, notifications and logged time for OpenProject in a
-              small tray application for Linux, Windows and macOS.
+              Your GitHub issues, pull requests and notifications in a small
+              tray application for Linux, Windows and macOS. Uses the
+              <code>gh</code> CLI, so no extra token setup.
             </p>
           </div>
           <div class="feature">
             <h3>Scriptable CLI</h3>
             <p>
               A <code>laba</code> command-line binary with JSON output by
-              default, for automation and scripting against the OpenProject API.
+              default, for automation and scripting — GitHub is the default
+              backend.
             </p>
           </div>
           <div class="feature">
-            <h3>Multiple backends</h3>
+            <h3>Pluggable backends</h3>
             <p>
-              Several OpenProject servers with a selectable default, and GitHub
-              issues and notifications aggregated in the same dashboard.
+              One dashboard and CLI over a multi-backend design. Besides GitHub,
+              OpenProject is implemented too; more trackers (Jira, YouTrack,
+              GitLab, …) fit the same facade.
             </p>
           </div>
           <div class="feature">
             <h3>Open source</h3>
             <p>
               MIT-licensed, a single Rust workspace. The desktop app talks to
-              the OpenProject API directly through the core library.
+              each backend directly through the core library.
             </p>
           </div>
         </div>
@@ -271,9 +272,8 @@
     <section>
       <div class="wrap">
         <h2>Get started</h2>
-        <p>Command-line interface:</p>
-        <pre><code>laba server add my-op https://op.example
-laba auth login --server my-op
+        <p>Command-line interface (GitHub is the default backend):</p>
+        <pre><code>laba server add gh github.com
 laba wp list</code></pre>
         <p>
           The desktop app is distributed as release builds (including a Debian
@@ -288,7 +288,7 @@ laba wp list</code></pre>
 
     <footer>
       <div class="wrap">
-        laba — open-source OpenProject desktop client &amp; CLI ·
+        laba — open-source GitHub desktop dashboard &amp; CLI ·
         <a href="https://github.com/VitalyOstanin/laba">GitHub</a> · MIT License
       </div>
     </footer>

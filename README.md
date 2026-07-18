@@ -1,14 +1,20 @@
 # laba
 
-**laba** is a desktop tray client and command-line interface (CLI) for
-[OpenProject](https://www.openproject.org/), built on
-[Tauri](https://tauri.app/) with a shared Rust core. It brings OpenProject work
-packages, notifications and time tracking to a native desktop app and a
-scriptable CLI, and can also aggregate GitHub issues and notifications from the
-same dashboard.
+**laba** is a desktop tray dashboard and command-line interface (CLI) for
+[GitHub](https://github.com/) — it brings your GitHub issues, pull requests and
+notifications into one native app and a scriptable CLI. Built on
+[Tauri](https://tauri.app/) with a shared Rust core.
 
-Keywords: OpenProject desktop client, OpenProject CLI, OpenProject tray app,
-GitHub issues dashboard, Rust, Tauri.
+It is designed around a pluggable, multi-backend architecture: the same
+dashboard and CLI can talk to different trackers. GitHub is the primary backend
+and the CLI default. Besides GitHub, [OpenProject](https://www.openproject.org/)
+is the only other backend implemented so far; the author no longer uses
+OpenProject, so that backend is kept working but is not actively developed.
+Support for more trackers (Jira, YouTrack, GitLab, …) is a planned extension of
+the same design.
+
+Keywords: GitHub desktop client, GitHub issues dashboard, GitHub notifications,
+GitHub pull requests, multi-backend task dashboard, Rust, Tauri.
 
 Website: <https://vitalyostanin.github.io/laba/>
 
@@ -45,26 +51,29 @@ captures it with ffmpeg).
 ## Goals
 
 - A single Rust workspace providing:
-  - a **core** library — OpenProject API v3 client (authentication, HAL
-    normalization, credential storage, configuration);
+  - a **core** library — a backend facade over GitHub (through the `gh` CLI) and
+    OpenProject (API v3), with credential storage, caching and configuration;
   - a **CLI** binary for scripting and automation (JSON output by default);
   - a **desktop tray application** (Tauri) for Windows, macOS and Linux.
-- The desktop application talks to the OpenProject API directly through the
-  core library — it does not shell out to the CLI.
+- The desktop application talks to each backend directly through the core
+  library — it does not shell out to the CLI.
+- A pluggable backend design so more trackers can be added behind the same
+  dashboard and CLI.
 
 ## Planned capabilities
 
-- Work packages, comments, attachments, relations, time entries and
-  notifications.
-- Multiple OpenProject servers with a selectable default; per-server
-  credentials and proxy settings (SOCKS5 / HTTP).
-- Tray summaries for assigned work packages and logged time.
+- GitHub issues, pull requests and notifications aggregated per account.
+- Multiple servers of either backend with a selectable default; per-server
+  settings and proxy (SOCKS5 / HTTP).
+- Tray summaries for assigned items and, on OpenProject, logged time.
+- Additional backends (Jira, YouTrack, GitLab, …) as extensions of the same
+  facade.
 
 ## Repository layout
 
 | Path         | Crate / package  | Contents                                          |
 |--------------|------------------|---------------------------------------------------|
-| `core/`      | `laba-core`| OpenProject API client, config, cache, timelog    |
+| `core/`      | `laba-core`| Backend clients (GitHub, OpenProject), config, cache, timelog |
 | `cli/`       | `laba-cli` | `laba` command-line binary                  |
 | `gui/`       | —                | SvelteKit frontend                                |
 | `gui/src-tauri/` | `laba-gui` | Tauri desktop shell (Rust)                     |
@@ -108,10 +117,15 @@ scripts/tauri-container.sh 'cd gui && npm ci && npm run lint && npm run format:c
 ## Running
 
 ```sh
-# CLI: log in to a server, then list your work packages.
-cargo run -p laba-cli -- server add my-op https://op.example
-cargo run -p laba-cli -- auth login --server my-op
+# CLI: add a GitHub server (the default backend; uses the `gh` CLI, no token),
+# then list your items.
+cargo run -p laba-cli -- server add gh github.com
 cargo run -p laba-cli -- wp list
+
+# OpenProject works the same way with an explicit backend and a token login:
+cargo run -p laba-cli -- server add my-op https://op.example --backend openproject
+cargo run -p laba-cli -- auth login --server my-op
+cargo run -p laba-cli -- wp list --server my-op
 
 # GUI in development (hot reload), inside the container:
 scripts/tauri-container.sh 'cd gui && npm ci && npm run tauri dev'
