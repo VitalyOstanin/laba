@@ -61,7 +61,7 @@ const SEED_SERVERS: ServerInfo[] = [
       { label: "Done", statuses: ["Done"] },
     ],
     open_content_in: "app",
-    display_fields: ["НПП"],
+    display_fields: ["Rank"],
     proxy: null,
     has_token: true,
   },
@@ -155,7 +155,7 @@ const GH_DEPENDENCY: GhDependency = { used: true, status: "missing" };
 // --- fixtures keyed by server ------------------------------------------------
 
 function rank(n: number): CustomField {
-  return { key: "customField1", name: "НПП", value: n };
+  return { key: "customField1", name: "Rank", value: n };
 }
 
 // A typed OpenProject-style work-package task for the demo tracker.
