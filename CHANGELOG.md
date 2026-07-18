@@ -5,6 +5,8 @@ The format follows Keep a Changelog and Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-07-18
+
 ### Added
 - Settings: manage servers from the GUI — remove a server profile (and its
   stored token), set the default server, and sign out of an OpenProject server
@@ -51,6 +53,13 @@ The format follows Keep a Changelog and Semantic Versioning.
 - Settings search: a filter box at the top of Settings hides sections that do
   not match the query (matching legends, labels, and hints), like Chrome's
   settings search.
+- GitHub task list: scope tabs "My repos" (default) and "Others" separate tasks
+  in repositories you own from those you only follow, each with a count.
+- Setup wizard: the GitHub URL field defaults to `github.com`, and when the `gh`
+  CLI is authenticated the wizard shows which account on which host it is signed
+  in as, so you can confirm the identity before adding the server.
+- Server switcher: each enabled server has a refresh control to resync just that
+  server on demand, with a spinner while the refresh runs.
 
 ### Changed
 - The task list no longer transfers each task's description body; it is fetched
@@ -68,17 +77,15 @@ The format follows Keep a Changelog and Semantic Versioning.
   reason even when they also match a broader search.
 - GitHub is now the default backend for a new server (`server add` and the setup
   wizard), instead of OpenProject; OpenProject remains fully supported.
+- Store OpenProject tokens through `keyring-core` with per-OS credential stores
+  (Secret Service on Linux, Keychain on macOS, Credential Manager on Windows)
+  instead of the `keyring` 3.x crate, following its 4.0 re-architecture. Existing
+  tokens are migrated lazily on first read, so no re-login is needed.
 
 ### Fixed
 - Dashboard: hide the time-logged indicator entirely when no enabled server
   supports time tracking (e.g. only GitHub servers are configured), instead of
   showing an empty "not configured" bar.
-
-### Changed
-- Store OpenProject tokens through `keyring-core` with per-OS credential stores
-  (Secret Service on Linux, Keychain on macOS, Credential Manager on Windows)
-  instead of the `keyring` 3.x crate, following its 4.0 re-architecture. Existing
-  tokens are migrated lazily on first read, so no re-login is needed.
 
 ## [0.1.5] - 2026-07-14
 
