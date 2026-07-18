@@ -5,8 +5,15 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
 authors.workspace = true
 description = "OpenProject API v3 client library (config, auth, transport)."
+keywords = ["openproject", "api", "client", "rest", "project-management"]
+categories = [
+    "api-bindings",
+    "web-programming::http-client",
+    "authentication",
+]
 
 [dependencies]
 # Async HTTP transport with SOCKS5 + streaming; rustls to avoid a system OpenSSL build dep.

@@ -1,7 +1,16 @@
 # laba
 
-Desktop tray client and command-line interface for [OpenProject](https://www.openproject.org/),
-built on [Tauri](https://tauri.app/) with a shared Rust core.
+**laba** is a desktop tray client and command-line interface (CLI) for
+[OpenProject](https://www.openproject.org/), built on
+[Tauri](https://tauri.app/) with a shared Rust core. It brings OpenProject work
+packages, notifications and time tracking to a native desktop app and a
+scriptable CLI, and can also aggregate GitHub issues and notifications from the
+same dashboard.
+
+Keywords: OpenProject desktop client, OpenProject CLI, OpenProject tray app,
+GitHub issues dashboard, Rust, Tauri.
+
+Website: <https://vitalyostanin.github.io/laba/>
 
 > Status: early work in progress. The design and implementation plan are being
 > drafted; APIs and commands are not yet stable.
