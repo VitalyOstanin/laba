@@ -241,10 +241,15 @@
       <div class="wrap">
         <h1>laba</h1>
         <p class="tagline">
-          Desktop tray dashboard and command-line interface for
-          <a href="https://github.com/">GitHub</a> — issues, pull requests and
-          notifications in one place. Built with
-          <a href="https://tauri.app/">Tauri</a> and a shared Rust core.
+          One desktop tray dashboard and CLI over a pluggable backend layer:
+          connect several issue-tracker servers at once and see all their
+          issues, pull requests and notifications in one place.
+          <a href="https://github.com/">GitHub</a> is the primary backend today,
+          <a href="https://www.openproject.org/">OpenProject</a> is supported too,
+          and more trackers (Jira, YouTrack, GitLab, …) are planned — not yet
+          implemented, but they fit the same design.
+          Built with <a href="https://tauri.app/">Tauri</a> and a shared Rust
+          core.
         </p>
         <div class="cta">
           <a class="btn primary" href="https://github.com/VitalyOstanin/laba"
@@ -274,6 +279,17 @@
         <h2>What it does</h2>
         <div class="grid">
           <div class="feature">
+            <h3>Pluggable backends</h3>
+            <p>
+              A backend is an issue tracker laba connects to. Add several
+              servers of different trackers at once — a GitHub account and an
+              OpenProject instance side by side — and work with all of them in
+              one dashboard. GitHub and OpenProject are implemented today; more
+              trackers (Jira, YouTrack, GitLab, …) are planned — not yet built,
+              but they fit the same design.
+            </p>
+          </div>
+          <div class="feature">
             <h3>GitHub in your tray</h3>
             <p>
               Your GitHub issues, pull requests and notifications in a small
@@ -287,14 +303,6 @@
               A <code>laba</code> command-line binary with JSON output by
               default, for automation and scripting — GitHub is the default
               backend.
-            </p>
-          </div>
-          <div class="feature">
-            <h3>Pluggable backends</h3>
-            <p>
-              One dashboard and CLI over a multi-backend design. Besides GitHub,
-              OpenProject is implemented too; more trackers (Jira, YouTrack,
-              GitLab, …) fit the same facade.
             </p>
           </div>
           <div class="feature">
