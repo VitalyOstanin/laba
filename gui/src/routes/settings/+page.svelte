@@ -40,6 +40,7 @@
     UI_SCALE_STEP,
   } from "$lib/scale";
   import { language, t } from "$lib/i18n";
+  import { openExternal } from "$lib/external";
   import { fieldKeys } from "$lib/keys";
   import { friendlyError } from "$lib/friendly-error";
   import { settingsSectionMatches } from "$lib/settings-search";
@@ -56,6 +57,9 @@
     StatusFilter,
     ServerInfo,
   } from "$lib/types";
+
+  // Project homepage, opened externally from the About section.
+  const HOMEPAGE_URL = "https://github.com/VitalyOstanin/laba";
 
   // Chrome-style settings search: filter fieldsets by their visible text. The
   // effect runs whenever the query changes, hiding non-matching sections and
@@ -1014,7 +1018,17 @@
     </div>
   </fieldset>
 
-  {#if $appVersion}
-    <p class="app-version">laba {$appVersion}</p>
-  {/if}
+  <fieldset>
+    <legend>{$t("settings.about")}</legend>
+    {#if $appVersion}
+      <p class="app-version">laba {$appVersion}</p>
+    {/if}
+    <button
+      type="button"
+      class="link-btn"
+      onclick={() => openExternal(HOMEPAGE_URL)}
+    >
+      {$t("settings.about.homepage")}
+    </button>
+  </fieldset>
 </section>

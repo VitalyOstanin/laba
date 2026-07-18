@@ -63,6 +63,8 @@ export const en = {
   "settings.saved": "Saved",
   "settings.search": "Search settings",
   "settings.search.empty": "No settings match your search.",
+  "settings.about": "About",
+  "settings.about.homepage": "Project homepage",
   "settings.servers": "Servers",
   "settings.server.enabled": "Enabled",
   "settings.server.fullName": "Full name",

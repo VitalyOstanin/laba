@@ -67,6 +67,8 @@ export const ru: Dict = {
   "settings.saved": "Сохранено",
   "settings.search": "Поиск по настройкам",
   "settings.search.empty": "Ничего не найдено по запросу.",
+  "settings.about": "О программе",
+  "settings.about.homepage": "Домашняя страница проекта",
   "settings.servers": "Серверы",
   "settings.server.enabled": "Включён",
   "settings.server.fullName": "Полное имя",
