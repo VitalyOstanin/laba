@@ -176,6 +176,7 @@ pub fn run() {
             commands::add_server,
             commands::login_server,
             commands::gh_probe,
+            commands::gh_account,
             commands::set_server_display_name,
             commands::set_server_enabled,
             commands::set_server_poll_secs,

@@ -230,6 +230,7 @@ export const en = {
   "wizard.gh.scopes":
     "A read-only login may miss notifications and private repositories. For full coverage, grant the scopes with: gh auth refresh -s repo,read:org,notifications",
   "wizard.gh.ready": "gh is installed and signed in.",
+  "wizard.gh.as": "Signed in as",
   "wizard.connection.title": "Connection",
   "wizard.name": "Short name",
   "wizard.url.op": "Instance URL, e.g. https://openproject.example.com",

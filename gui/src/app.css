@@ -838,6 +838,15 @@ body {
 .wizard-ok {
   color: var(--ok);
 }
+.wizard-account {
+  margin-top: 2px;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+.wizard-account strong {
+  color: var(--text);
+  font-weight: 600;
+}
 .wizard-hint {
   font-size: var(--fs-sm);
   color: var(--text-dim);

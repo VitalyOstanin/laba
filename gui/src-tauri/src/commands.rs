@@ -522,6 +522,18 @@ pub async fn gh_probe(host: String) -> Result<laba_core::github::GhStatus, Strin
         .map_err(|e| format!("gh probe failed: {e}"))
 }
 
+/// Read the authenticated `gh` account (login + host) for a host (empty =
+/// default). The setup wizard shows it so the user confirms *who* and *where*
+/// `gh` is signed in before creating the profile.
+#[tauri::command]
+pub async fn gh_account(host: String) -> Result<laba_core::github::GhAccount, String> {
+    use laba_core::github::gh_account_for_host;
+    tauri::async_runtime::spawn_blocking(move || gh_account_for_host(&host))
+        .await
+        .map_err(|e| format!("gh account failed: {e}"))?
+        .map_err(|e| e.to_string())
+}
+
 /// List a server's time-entry activity types for the log-time form.
 #[tauri::command]
 pub async fn list_activities(server: String) -> Result<Value, String> {

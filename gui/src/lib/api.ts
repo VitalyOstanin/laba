@@ -15,6 +15,7 @@ import type {
   ReleaseNote,
   GhDependency,
   GhStatus,
+  GhAccount,
 } from "./types";
 
 export const listServers = (): Promise<ServerInfo[]> => invoke("list_servers");
@@ -136,6 +137,10 @@ export const loginServer = (
 // setup wizard's GitHub step.
 export const ghProbe = (host: string): Promise<GhStatus> =>
   invoke("gh_probe", { host });
+// The authenticated gh account (login + host); shown once the wizard's GitHub
+// step reports "ready" so the user confirms who and where gh is signed in.
+export const ghAccount = (host: string): Promise<GhAccount> =>
+  invoke("gh_account", { host });
 
 export const getSettings = (): Promise<Settings> => invoke("get_settings");
 export const saveSettings = (settings: Settings): Promise<void> =>

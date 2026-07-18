@@ -1,10 +1,10 @@
 <script lang="ts">
   import { get } from "svelte/store";
   import { t } from "$lib/i18n";
-  import { addServer, loginServer, ghProbe } from "$lib/api";
+  import { addServer, loginServer, ghProbe, ghAccount } from "$lib/api";
   import { openExternal } from "$lib/external";
   import { friendlyError } from "$lib/friendly-error";
-  import type { GhStatus } from "$lib/types";
+  import type { GhStatus, GhAccount } from "$lib/types";
 
   // Parent closes the wizard (onClose) and refreshes the dashboard (onDone).
   let { onClose, onDone }: { onClose: () => void; onDone: () => void } =
@@ -21,6 +21,7 @@
   let token = $state("");
   let ghStatus = $state<GhStatus | null>(null);
   let ghChecking = $state(false);
+  let ghAcct = $state<GhAccount | null>(null);
   let created = $state(false); // profile already created; a retry only signs in
   let busy = $state(false);
   let error = $state("");
@@ -39,8 +40,19 @@
   async function checkGh(): Promise<void> {
     ghChecking = true;
     error = "";
+    ghAcct = null;
     try {
       ghStatus = await ghProbe("");
+      // When signed in, read which login on which host, so the user confirms
+      // who and where before creating the profile. A failure here is not fatal:
+      // the status is still "ready"; just omit the account line.
+      if (ghStatus === "ready") {
+        try {
+          ghAcct = await ghAccount("");
+        } catch {
+          ghAcct = null;
+        }
+      }
     } catch (e) {
       ghStatus = null;
       error = friendlyError(String(e), get(t)).text;
@@ -53,7 +65,13 @@
     backend = b;
     error = "";
     ghStatus = null;
-    if (b === "github") void checkGh();
+    ghAcct = null;
+    if (b === "github") {
+      // GitHub has a single host; prefill it so the user need not type it.
+      // Only when the field is still empty, to avoid clobbering a typed value.
+      if (url.trim() === "") url = "github.com";
+      void checkGh();
+    }
   }
 
   const canNext = $derived.by((): boolean => {
@@ -184,6 +202,13 @@
               >
             {:else if ghStatus === "ready"}
               <p class="wizard-ok">{$t("wizard.gh.ready")}</p>
+              {#if ghAcct}
+                <p class="wizard-account">
+                  {$t("wizard.gh.as")}
+                  <strong>{ghAcct.login}</strong>
+                  · {ghAcct.host}
+                </p>
+              {/if}
             {/if}
             <p class="wizard-hint">{$t("wizard.gh.scopes")}</p>
           </div>

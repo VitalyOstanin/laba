@@ -233,6 +233,7 @@ export const ru: Dict = {
   "wizard.gh.scopes":
     "Вход в режиме только для чтения может не давать доступ к уведомлениям и приватным репозиториям. Для полного охвата выдайте scope командой: gh auth refresh -s repo,read:org,notifications",
   "wizard.gh.ready": "gh установлен, вход выполнен.",
+  "wizard.gh.as": "Вход выполнен как",
   "wizard.connection.title": "Подключение",
   "wizard.name": "Короткое имя",
   "wizard.url.op": "URL инстанса, например https://openproject.example.com",

@@ -9,6 +9,7 @@ vi.mock("../api", () => ({
   addServer: vi.fn(async () => {}),
   loginServer: vi.fn(async () => {}),
   ghProbe: vi.fn(async () => "ready"),
+  ghAccount: vi.fn(async () => ({ login: "octocat", host: "github.com" })),
 }));
 vi.mock("../external", () => ({ openExternal: vi.fn(async () => {}) }));
 
@@ -82,6 +83,37 @@ describe("SetupWizard finish", () => {
 
     expect(api.addServer).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("prefills the URL with github.com when GitHub is picked", async () => {
+    const { container } = render(SetupWizard, {
+      props: { onClose: vi.fn(), onDone: vi.fn() },
+    });
+    const cards = container.querySelectorAll<HTMLButtonElement>(".wizard-card");
+    await fireEvent.click(cards[0]); // GitHub
+    await waitFor(() =>
+      expect(container.querySelector(".wizard-ok")).toBeInTheDocument(),
+    );
+    await fireEvent.click(primary(container)); // -> connection
+    const inputs = container.querySelectorAll<HTMLInputElement>(
+      ".wizard-field input",
+    );
+    expect(inputs[1].value).toBe("github.com"); // URL field prefilled
+  });
+
+  it("shows the signed-in gh account (login and host) on the GitHub step", async () => {
+    const { container } = render(SetupWizard, {
+      props: { onClose: vi.fn(), onDone: vi.fn() },
+    });
+    const cards = container.querySelectorAll<HTMLButtonElement>(".wizard-card");
+    await fireEvent.click(cards[0]); // GitHub
+    await waitFor(() =>
+      expect(container.querySelector(".wizard-account")).toBeInTheDocument(),
+    );
+    expect(api.ghAccount).toHaveBeenCalledWith("");
+    const acct = container.querySelector(".wizard-account")!;
+    expect(acct.textContent).toContain("octocat");
+    expect(acct.textContent).toContain("github.com");
   });
 
   it("keeps the wizard open and shows an error when creating the server fails", async () => {

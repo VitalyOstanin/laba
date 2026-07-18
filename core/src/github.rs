@@ -52,6 +52,41 @@ pub fn gh_status_for_host(host: &str) -> GhStatus {
     })
 }
 
+/// The authenticated `gh` account: which login on which host. Shown in the setup
+/// wizard so the user sees *who* and *where* `gh` is signed in, not just that it
+/// is.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct GhAccount {
+    /// Authenticated user's login on this host.
+    pub login: String,
+    /// Host the login belongs to (`github.com` for the default host).
+    pub host: String,
+}
+
+/// Read the authenticated account for `host` via a [`GhRunner`]. The login comes
+/// from `gh api user`; the host echoes the probed host (`github.com` when empty).
+/// Separated from process spawning so it is unit-tested with a fake runner.
+pub fn gh_account<R: GhRunner>(runner: &R, host: &str) -> Result<GhAccount, Error> {
+    let raw = runner.run(&["api", "user", "--jq", ".login"])?;
+    let login = String::from_utf8_lossy(&raw).trim().to_string();
+    let host = if host.is_empty() { "github.com" } else { host };
+    Ok(GhAccount {
+        login,
+        host: host.to_owned(),
+    })
+}
+
+/// Read the authenticated account for `host` from the real `gh`. Convenience
+/// over [`gh_account`] with a [`GhCli`] runner.
+pub fn gh_account_for_host(host: &str) -> Result<GhAccount, Error> {
+    gh_account(
+        &GhCli {
+            host: host.to_owned(),
+        },
+        host,
+    )
+}
+
 /// Abstraction over invoking `gh`, so tests can feed fixtures instead of
 /// spawning the real process.
 pub trait GhRunner {
@@ -759,6 +794,31 @@ mod tests {
             }),
             GhStatus::Ready
         );
+    }
+
+    /// Fake runner that answers `gh api user --jq .login` with a fixed login.
+    struct AccountGh {
+        login: &'static str,
+    }
+
+    impl GhRunner for AccountGh {
+        fn run(&self, args: &[&str]) -> Result<Vec<u8>, Error> {
+            match args {
+                ["api", "user", "--jq", ".login"] => Ok(self.login.as_bytes().to_vec()),
+                _ => Err(Error::Api(format!("unexpected gh args: {args:?}"))),
+            }
+        }
+    }
+
+    #[test]
+    fn gh_account_reads_login_and_defaults_host() {
+        // Empty host resolves to github.com; login trimmed from `gh api user`.
+        let acc = gh_account(&AccountGh { login: "octocat\n" }, "").unwrap();
+        assert_eq!(acc.login, "octocat");
+        assert_eq!(acc.host, "github.com");
+        // An explicit enterprise host is echoed verbatim.
+        let ent = gh_account(&AccountGh { login: "worker" }, "ghe.example").unwrap();
+        assert_eq!(ent.host, "ghe.example");
     }
 
     #[test]

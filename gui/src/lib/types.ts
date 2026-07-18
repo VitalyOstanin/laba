@@ -218,6 +218,11 @@ export interface GhDependency {
   used: boolean;
   status: GhStatus;
 }
+// The authenticated gh account: which login on which host (see core `github`).
+export interface GhAccount {
+  login: string;
+  host: string;
+}
 
 export type TimelogState = "red" | "yellow" | "green" | "over";
 
