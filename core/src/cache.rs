@@ -256,12 +256,27 @@ fn set_file_mode_0600(_path: &Path) {}
 mod tests {
     use super::*;
 
-    /// Point the cache base at a fresh temp dir for this test process.
-    /// nextest runs each test in its own process, so the global env var is safe.
-    fn isolate() -> tempfile::TempDir {
+    use std::sync::{MutexGuard, OnceLock};
+
+    /// Serializes cache tests that share the process-global `OPENPROJECT_CACHE`
+    /// env var. Under nextest (a process per test) it is uncontended; under
+    /// `cargo test` (threads in one process) it prevents the tests from stomping
+    /// on each other's env var, which otherwise makes them flaky.
+    fn env_lock() -> &'static std::sync::Mutex<()> {
+        static L: OnceLock<std::sync::Mutex<()>> = OnceLock::new();
+        L.get_or_init(|| std::sync::Mutex::new(()))
+    }
+
+    /// Point the cache base at a fresh temp dir and hold the env lock for the
+    /// duration of the test. The returned guard must be kept alive (bind it, e.g.
+    /// `let _t = isolate();`) so the lock is released only when the test ends.
+    fn isolate() -> (tempfile::TempDir, MutexGuard<'static, ()>) {
+        // Recover from a poisoned lock: a panicking test still leaves the env in
+        // a defined state once we re-point it below.
+        let guard = env_lock().lock().unwrap_or_else(|e| e.into_inner());
         let dir = tempfile::tempdir().unwrap();
         std::env::set_var("OPENPROJECT_CACHE", dir.path());
-        dir
+        (dir, guard)
     }
 
     #[test]
