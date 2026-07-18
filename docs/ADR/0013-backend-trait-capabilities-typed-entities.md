@@ -4,7 +4,7 @@ Date: 2026-07-18
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -59,8 +59,9 @@ Introduce a backend abstraction in three parts:
    interfaces.
 
 Rollout is phased: (1) trait + capabilities, (2) typed entities, (3) Jira/YouTrack
-implementations. All four backends are designed up front (see the design spec); only
-GitHub is implemented concretely for now.
+implementations. All four backends are designed up front (see the design spec); GitHub
+and OpenProject are implemented concretely, while Jira and YouTrack are designed but not
+yet implemented.
 
 ## Consequences
 
