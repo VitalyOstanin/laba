@@ -115,15 +115,20 @@ replaces any running instance) and is meant to be bound to a hotkey (Ctrl+Alt+P
 in the author's setup) so pressing it after a rebuild runs the fresh binary. It
 picks the binary as follows:
 
-- the installed deb build (`/usr/bin/laba-gui`) runs only when it exists **and**
-  the local `laba.dev` marker file (in the repo root) is present — the normal,
+- when the local `use-debug-binary` marker file (in the repo root) is present,
+  the freshly built debug binary (`target/debug/laba-gui`) runs — for
+  development;
+- otherwise the installed deb build (`/usr/bin/laba-gui`) runs — the normal,
   stable everyday build;
-- otherwise the freshly built debug binary (`target/debug/laba-gui`) runs, i.e.
-  when the deb is not installed, or while developing. **Delete `laba.dev` to
-  develop against the debug build; restore it (`touch laba.dev`) for the deb.**
+- if the deb is not installed, the debug binary runs regardless.
 
-`LABA_GUI_BIN` overrides the choice with an explicit path; `LABA_DEV_MARKER`
-overrides the marker file location. `laba.dev` is gitignored (a local toggle).
+So the default (no marker) runs the stable deb. **Create the marker
+(`touch use-debug-binary`) to develop against the debug build; delete it to go
+back to the deb.**
+
+`LABA_GUI_BIN` overrides the choice with an explicit path; `LABA_DEBUG_MARKER`
+overrides the marker file location. `use-debug-binary` is gitignored (a local
+toggle).
 
 The GUI checks GitHub for a newer release once on launch and shows the result in
 the header (checking / update available / up to date / check failed). Turn this
@@ -153,10 +158,10 @@ File locations follow the XDG base directories and can be overridden:
 
 The GUI relaunch helper (`scripts/gui-relaunch.sh`) reads two more:
 
-| Variable          | Overrides                                        | Default                  |
-|-------------------|--------------------------------------------------|--------------------------|
-| `LABA_GUI_BIN`    | Binary to launch (explicit path wins over all)   | chosen by the `laba.dev` marker |
-| `LABA_DEV_MARKER` | Dev marker file location (present → deb build)    | `<repo>/laba.dev`        |
+| Variable            | Overrides                                      | Default                   |
+|---------------------|------------------------------------------------|---------------------------|
+| `LABA_GUI_BIN`      | Binary to launch (explicit path wins over all) | chosen by the marker file |
+| `LABA_DEBUG_MARKER` | Marker file location (present → debug build)   | `<repo>/use-debug-binary` |
 
 Logging verbosity is controlled independently:
 

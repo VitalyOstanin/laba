@@ -14,8 +14,8 @@ dist
 # Local working artifacts
 docs/superpowers/
 docs/reviews/
-# Dev marker toggling which binary Ctrl+Alt+P launches (see scripts/gui-relaunch.sh)
-laba.dev
+# Marker forcing Ctrl+Alt+P to launch the debug build (see scripts/gui-relaunch.sh)
+use-debug-binary
 
 # OS / editor
 .DS_Store
