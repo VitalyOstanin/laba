@@ -1,8 +1,10 @@
 # Third-party licenses
 
-This project bundles Rust crates from the ecosystem. The table below lists
-every third-party crate in the resolved dependency graph (632 crates) with
-its version and SPDX license expression.
+This project bundles third-party code from two ecosystems: Rust crates in
+the workspace binaries, and the npm packages of the Tauri frontend that ship
+inside the desktop bundle. The tables below list every third-party Rust crate
+in the resolved dependency graph (632 crates) and every production npm
+package, each with its version and SPDX license expression.
 
 Regenerate with `scripts/gen-third-party-licenses.sh`. The dependency
 license allow-list is enforced separately in CI via `deny.toml`
@@ -682,3 +684,23 @@ license allow-list is enforced separately in CI via `deny.toml`
 | zvariant_derive | 5.13.0 | MIT |
 | zvariant_utils | 2.1.0 | MIT |
 | zvariant_utils | 3.5.0 | MIT |
+
+## npm production dependencies
+
+Runtime npm packages bundled into the Tauri frontend (12 packages). The
+dev-only toolchain (build, lint, test) is excluded — it is not distributed.
+
+| Package | Version | License |
+| --- | --- | --- |
+| argparse | 2.0.1 | Python-2.0 |
+| entities | 4.5.0 | BSD-2-Clause |
+| linkify-it | 5.0.2 | MIT |
+| markdown-it | 14.3.0 | MIT |
+| mdurl | 2.0.0 | MIT |
+| punycode.js | 2.3.1 | MIT |
+| @tauri-apps/api | 2.11.1 | Apache-2.0 OR MIT |
+| @tauri-apps/plugin-log | 2.8.0 | MIT OR Apache-2.0 |
+| @tauri-apps/plugin-opener | 2.5.4 | MIT OR Apache-2.0 |
+| @tauri-apps/plugin-process | 2.3.1 | MIT OR Apache-2.0 |
+| @tauri-apps/plugin-updater | 2.10.1 | MIT OR Apache-2.0 |
+| uc.micro | 2.1.0 | MIT |

@@ -34,18 +34,48 @@ body="$(printf '%s' "$meta" | jq -r '
 
 count="$(printf '%s' "$meta" | jq -r '[.packages[] | select(.name | test("^laba-") | not)] | length')"
 
+# npm production dependencies. The distributable is a Tauri app whose bundled
+# binary embeds the built frontend (gui/), so the runtime npm packages ship too
+# and their licenses need attribution alongside the Rust crates. Reads the
+# resolved production tree from the installed node_modules (no network, no extra
+# tooling beyond npm+jq). Skipped with a note if node_modules is absent.
+npm_section=""
+if command -v npm >/dev/null 2>&1 && [ -d "$ROOT/gui/node_modules" ]; then
+  npm_rows="$(cd "$ROOT/gui" && npm ls --omit=dev --all --parseable 2>/dev/null | tail -n +2 \
+    | while IFS= read -r p; do
+        [ -f "$p/package.json" ] || continue
+        jq -r '
+          def lic:
+            if (.license | type) == "string" then .license
+            elif (.license | type) == "object" then (.license.type // "UNSPECIFIED")
+            elif (.licenses | type) == "array" then ([.licenses[].type] | join(" OR "))
+            else "UNSPECIFIED" end;
+          "| \(.name) | \(.version) | \(lic) |"' "$p/package.json" 2>/dev/null
+      done | sort -u)"
+  npm_count="$(printf '%s\n' "$npm_rows" | grep -c '^| ')"
+  npm_section="$(printf '## npm production dependencies\n\nRuntime npm packages bundled into the Tauri frontend (%s packages). The\ndev-only toolchain (build, lint, test) is excluded — it is not distributed.\n\n| Package | Version | License |\n| --- | --- | --- |\n%s' "$npm_count" "$npm_rows")"
+else
+  npm_section="## npm production dependencies
+
+Not generated: \`gui/node_modules\` is absent (run \`npm ci\` in \`gui/\` first)."
+fi
+
 {
   echo "# Third-party licenses"
   echo
-  echo "This project bundles Rust crates from the ecosystem. The table below lists"
-  echo "every third-party crate in the resolved dependency graph ($count crates) with"
-  echo "its version and SPDX license expression."
+  echo "This project bundles third-party code from two ecosystems: Rust crates in"
+  echo "the workspace binaries, and the npm packages of the Tauri frontend that ship"
+  echo "inside the desktop bundle. The tables below list every third-party Rust crate"
+  echo "in the resolved dependency graph ($count crates) and every production npm"
+  echo "package, each with its version and SPDX license expression."
   echo
   echo "Regenerate with \`scripts/gen-third-party-licenses.sh\`. The dependency"
   echo "license allow-list is enforced separately in CI via \`deny.toml\`"
   echo "(\`cargo deny check licenses\`)."
   echo
   echo "$body"
+  echo
+  echo "$npm_section"
 } > "$OUT"
 
-echo "wrote $OUT ($count crates)"
+echo "wrote $OUT ($count crates, ${npm_count:-0} npm packages)"
