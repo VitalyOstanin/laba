@@ -69,8 +69,10 @@ jobs:
         run: shellcheck scripts/*.sh scripts/tests/*.sh
       - name: Run script tests
         run: |
-          scripts/tests/build-updater-json.test.sh
-          scripts/tests/changelog-section.test.sh
+          for t in scripts/tests/*.test.sh; do
+            echo "== $t =="
+            "$t"
+          done
 
   gui:
     runs-on: ubuntu-24.04
@@ -112,6 +114,9 @@ jobs:
       # host lint job excludes it). Kept ahead of the e2e build so a clippy
       # regression fails fast.
       - run: cargo clippy -p laba-gui --all-targets -- -D warnings
+      # The gui crate's Rust unit tests run here too: the host `test` job excludes
+      # laba-gui (no webkit2gtk there), so this is the only place they execute.
+      - run: cargo test -p laba-gui
       # onPrepare builds the frontend and a release binary (embedded assets),
       # then tauri-driver launches it through WebKitWebDriver under xvfb.
       - run: xvfb-run -a npx wdio run wdio.conf.js
