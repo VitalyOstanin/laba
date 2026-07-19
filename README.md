@@ -41,8 +41,8 @@ The recording walks the first-run setup wizard (adding a GitHub server) and then
 the dashboard it fills in — GitHub issues, pull requests and notifications. It
 runs against built-in mock data (fictional), so no real server or account is
 needed to preview the interface, and is reproducible with
-`gui/scripts/record-demo.sh` (drives `vite dev` in headless Chrome under Xvfb and
-captures it with ffmpeg).
+`gui/scripts/record-demo.sh` (drives `vite dev` with Playwright-controlled Chrome
+on an Xvfb screen and captures it with ffmpeg).
 
 | Setup wizard (GitHub)                                     | Dashboard                                         | Settings                                        |
 | -------------------------------------------------------- | ------------------------------------------------- | ----------------------------------------------- |
@@ -173,6 +173,7 @@ corresponding global flags):
 | `OPENPROJECT_TOKEN`  | `--token`       | API token override for this invocation   |
 | `OPENPROJECT_PROXY`  | `--proxy`       | Proxy override (`none` disables it)      |
 | `OPENPROJECT_RETRIES`| `--retries`     | Retry attempts for idempotent GETs       |
+| `LABA_TZ`            | `--tz`          | IANA timezone for date defaults and datetime display (defaults to the machine-local zone) |
 
 File locations follow the XDG base directories and can be overridden:
 
