@@ -22,6 +22,7 @@ changes. It complements `README.md` (what the project is) and `docs/ADR/`
   - [Accessibility](#accessibility)
   - [Anti-patterns](#anti-patterns)
 - [Content rules](#content-rules)
+- [Keeping demo & docs in sync](#keeping-demo--docs-in-sync)
 - [Commits](#commits)
 
 ## Project shape
@@ -226,6 +227,27 @@ also exposes `aria-busy` while its async action is in flight.
   a real organization's names, statuses, URLs, logins, or hosts.
 - User-facing copy names things by what the user recognizes; controls say what
   they do; errors say what went wrong and how to fix it.
+
+## Keeping demo & docs in sync
+
+The demo GIF and screenshots render from the dev mock, so they only stay honest
+if the mock, the docs, and the media are updated alongside the feature. After any
+noticeable change to functionality — a new command, field, setting, or a change
+to how a screen looks or behaves — update all of these in the same change:
+
+- **dev mock** (`gui/src/lib/dev-mock.ts`): add or adjust the command handlers
+  and fixtures so the new behavior is actually exercised and visible in the
+  mock-driven UI. If a feature has no supporting mock data, the demo cannot show
+  it.
+- **README**: reflect the change in the feature lists, command examples, env
+  tables, and prose (the demo table too, if screens changed).
+- **Screenshots & demo video**: regenerate `gui/media/demo.gif` and
+  `gui/media/screenshots/*.png` with `gui/scripts/record-demo.sh`, and refresh
+  the landing screenshot `site/screenshot-dashboard.png`, so they show the
+  current UI.
+
+A functional change is not done until the mock, the README, and the media
+reflect it.
 
 ## Commits
 
