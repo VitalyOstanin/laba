@@ -5,6 +5,8 @@ The format follows Keep a Changelog and Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-07-21
+
 ### Added
 - Settings now has an About section showing the running version, with a link to
   the project homepage; the version also appears on the up-to-date indicator's
