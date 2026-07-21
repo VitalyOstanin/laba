@@ -13,6 +13,10 @@ use serde_json::Value;
 use crate::entities;
 use crate::error::Error;
 
+/// GitHub's REST API caps `per_page` at 100; request the maximum to keep the
+/// number of round-trips down. Shared with the update checker ([`crate::update`]).
+pub const GITHUB_MAX_PER_PAGE: u32 = 100;
+
 /// Availability of the `gh` CLI, which the GitHub task backend requires. The
 /// update checker does NOT use `gh` (it reads public releases anonymously), so
 /// this only matters when a GitHub server is configured.
@@ -591,7 +595,7 @@ impl<R: GhRunner> GithubBackend<R> {
     /// the Actions API call or its parse fails (kept non-fatal so listing still
     /// succeeds with the Actions-page fallback).
     fn fetch_recent_runs(&self, repo: &str) -> Option<Vec<Value>> {
-        let path = format!("repos/{repo}/actions/runs?per_page=100");
+        let path = format!("repos/{repo}/actions/runs?per_page={GITHUB_MAX_PER_PAGE}");
         let raw = self.runner.run(&["api", &path]).ok()?;
         let v: Value = serde_json::from_slice(&raw).ok()?;
         v.get("workflow_runs").and_then(Value::as_array).cloned()
@@ -610,7 +614,11 @@ impl<R: GhRunner> GithubBackend<R> {
     /// that were unread before the call, counted from the current list (GitHub's
     /// endpoint itself reports no count).
     pub fn mark_all_notifications_read(&self) -> Result<u64, Error> {
-        let count = self.list_notifications()?.len() as u64;
+        let count = self
+            .list_notifications()?
+            .iter()
+            .filter(|n| !n.read)
+            .count() as u64;
         self.runner.run(&["api", "-X", "PUT", "notifications"])?;
         Ok(count)
     }
@@ -710,9 +718,12 @@ mod tests {
 
     #[test]
     fn mark_all_read_counts_unread_then_puts() {
+        // The list carries read items too (`all=true`); only the unread ones are
+        // counted, so an already-read item must not inflate the reported number.
         let notifs = json!([
-            {"id":"1","subject":{"title":"A"}},
-            {"id":"2","subject":{"title":"B"}}
+            {"id":"1","unread":true,"subject":{"title":"A"}},
+            {"id":"2","unread":true,"subject":{"title":"B"}},
+            {"id":"3","unread":false,"subject":{"title":"already read"}}
         ])
         .to_string()
         .into_bytes();

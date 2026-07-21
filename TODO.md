@@ -2,6 +2,24 @@
 
 Backlog of ideas to evaluate. Not commitments.
 
+## Contents
+
+- [Dashboard: notifications & layout (2026-07-17)](#dashboard-notifications--layout-2026-07-17)
+- [Desktop integration](#desktop-integration)
+- [Dates / timezone](#dates--timezone)
+- [UX](#ux)
+- [Dependencies](#dependencies)
+- [Deferred review follow-ups](#deferred-review-follow-ups)
+- [Comfort & build review follow-ups (2026-07-12)](#comfort--build-review-follow-ups-2026-07-12)
+- [UI testing](#ui-testing)
+- [Branding](#branding)
+- [Updates / self-update](#updates--self-update)
+- [Networking / proxy](#networking--proxy)
+- [Documentation](#documentation)
+- [Observability / debugging](#observability--debugging)
+- [Backends / issue trackers](#backends--issue-trackers)
+- [SEO / discoverability (2026-07-19)](#seo--discoverability-2026-07-19)
+
 ## Dashboard: notifications & layout (2026-07-17)
 
 - [x] Notifications: show each item's date/time. Done (2026-07-17): the
@@ -435,3 +453,27 @@ Backlog of ideas to evaluate. Not commitments.
       scales (1.25/1.5) that WebKitGTK historically under-honors — if that ever
       bites, add a conservative `auto` mode that compensates only the *unhonored*
       part (`scale_factor / devicePixelRatio`), never the full OS scale.
+
+## SEO / discoverability (2026-07-19)
+
+On-repo and on-site basics are done: repo topics, crate keywords/categories,
+workspace `homepage`, README keywords, the GitHub Pages landing site (`site/`
+with JSON-LD, canonical, OG/Twitter, `sitemap.xml`, `robots.txt`, `.nojekyll`,
+`og-image.png`). Remaining items need account access, so they are on the owner:
+
+- [ ] Set the repository **Social preview** image (Settings → General → Social
+      preview). Upload the ready `site/og-image.png` (1200×630). Highest-value,
+      one-minute action — the repo card is what shows when the GitHub link is
+      shared. (The landing page's OG tags already point at this image; the repo's
+      own preview is a separate setting.)
+- [ ] Publish the crates to **crates.io** (`laba-core`, `laba-cli`). Strong
+      backlink plus automatic listing on lib.rs / docs.rs, both indexed by Google.
+      Needs a crates.io token and `cargo publish` (publish `laba-core` first).
+- [ ] **Google Search Console** for the Pages domain
+      (`vitalyostanin.github.io/laba/`): verify ownership and submit `sitemap.xml`.
+      GSC is available for the Pages domain (not for `github.com`). Verification
+      via a meta tag can be added to `site/index.html` on request once the code is
+      issued.
+- [ ] Submit to **awesome lists and catalogs**: PRs to awesome-tauri /
+      awesome-rust / awesome-selfhosted; listings on AlternativeTo, Libhunt.
+      Thematic backlinks and referral traffic.

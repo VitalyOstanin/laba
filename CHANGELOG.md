@@ -5,6 +5,19 @@ The format follows Keep a Changelog and Semantic Versioning.
 
 ## [Unreleased]
 
+### Added
+- Settings now has an About section showing the running version, with a link to
+  the project homepage; the version also appears on the up-to-date indicator's
+  hover.
+- Debug devtools in the GUI are opt-in via the `LABA_DEVTOOLS` environment
+  variable (off by default), so a normal launch does not expose them.
+- Project landing page published on GitHub Pages, with the screenshot openable
+  in a full-screen lightbox.
+
+### Fixed
+- Demo dashboard: replaced a domain-specific sample field with a neutral
+  fictional "Rank" so the mock data carries no real-world terms.
+
 ## [0.1.7] - 2026-07-18
 
 ### Added

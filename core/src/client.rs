@@ -504,7 +504,10 @@ impl Client {
                     .map_err(join_err)?;
                 Ok(name)
             }
-            Err(_) => Ok(None),
+            Err(e) => {
+                log::debug!("user name lookup failed for id {id}: {e}");
+                Ok(None)
+            }
         }
     }
 }
@@ -624,7 +627,10 @@ impl Client {
             .await
         {
             Ok(v) => v,
-            Err(_) => return std::collections::HashMap::new(),
+            Err(e) => {
+                log::warn!("custom field schema fetch failed for {schema_href}: {e}");
+                return std::collections::HashMap::new();
+            }
         };
         let mut map = std::collections::HashMap::new();
         if let Some(obj) = schema.as_object() {

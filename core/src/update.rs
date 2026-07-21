@@ -87,7 +87,8 @@ pub async fn changelog_since(current: &str) -> Result<Vec<ReleaseNote>, Error> {
 /// [`changelog_since`] against an arbitrary API base, so tests can point it at a
 /// local mock server.
 async fn changelog_from(api_base: &str, current: &str) -> Result<Vec<ReleaseNote>, Error> {
-    let url = format!("{api_base}/repos/{UPDATE_OWNER}/{UPDATE_REPO}/releases?per_page=100");
+    let per_page = crate::github::GITHUB_MAX_PER_PAGE;
+    let url = format!("{api_base}/repos/{UPDATE_OWNER}/{UPDATE_REPO}/releases?per_page={per_page}");
     crate::client::ensure_crypto_provider();
     let client = reqwest::Client::builder()
         // GitHub rejects requests without a User-Agent.

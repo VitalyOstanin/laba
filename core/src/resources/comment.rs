@@ -2,6 +2,7 @@
 //! create, update. There is no delete. Ported 1:1 from the predecessor Python
 //! `comment.py`.
 
+use futures_util::future::try_join_all;
 use serde_json::{json, Value};
 
 use crate::client::Client;
@@ -73,10 +74,12 @@ pub async fn list(
     if raw {
         return Ok(Value::Array(elements));
     }
-    let mut out = Vec::with_capacity(elements.len());
-    for e in &elements {
-        out.push(resolved_comment(client, e).await?);
-    }
+    // Resolve author names concurrently: each unique author whose name is not
+    // embedded needs a `users/{id}` lookup, and a comment thread can hold many
+    // distinct authors. Sequential `await`s would be a round-trip per author;
+    // `try_join_all` overlaps them (name lookups are cached, so repeats are free).
+    // Order is preserved, matching the source element order.
+    let out = try_join_all(elements.iter().map(|e| resolved_comment(client, e))).await?;
     Ok(Value::Array(out))
 }
 
@@ -241,6 +244,54 @@ mod tests {
         let c = client_for(&server, "comment-resolve-user");
         let out = list(&c, 5, false, 1, None, false).await.unwrap();
         assert_eq!(out.as_array().unwrap()[0]["user"], json!("Ivan"));
+    }
+
+    #[tokio::test]
+    async fn list_resolves_multiple_authors_in_order() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::env::set_var("OPENPROJECT_CACHE", tmp.path());
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/v3/work_packages/5/activities"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "_embedded": {"elements": [
+                    json!({
+                        "id": 1,
+                        "_type": "Activity::Comment",
+                        "comment": {"raw": "first"},
+                        "_links": {"user": {"href": "/api/v3/users/9"}}
+                    }),
+                    json!({
+                        "id": 2,
+                        "_type": "Activity::Comment",
+                        "comment": {"raw": "second"},
+                        "_links": {"user": {"href": "/api/v3/users/10"}}
+                    })
+                ]}
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/api/v3/users/9"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({"name": "Ivan"})))
+            .expect(1)
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/api/v3/users/10"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({"name": "Olga"})))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let c = client_for(&server, "comment-resolve-multi");
+        let out = list(&c, 5, false, 1, None, false).await.unwrap();
+        let arr = out.as_array().unwrap();
+        // Both authors resolved and the source order is preserved.
+        assert_eq!(arr[0]["id"], json!(1));
+        assert_eq!(arr[0]["user"], json!("Ivan"));
+        assert_eq!(arr[1]["id"], json!(2));
+        assert_eq!(arr[1]["user"], json!("Olga"));
     }
 
     #[tokio::test]
